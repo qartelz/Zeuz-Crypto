@@ -10,6 +10,7 @@ import Settings from './pages/Settings'
 import OptionsChain from './components/OptionChain'
 import OrderBookChart from './components/OrderBookChart'
 import LiveTradingViewChart from './components/LiveTradingViewChart'
+import LoginPage from './pages/Login'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
             <Route path="/" element={<Home />} /> 
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<LoginPage />} />
           </Routes>
 
          

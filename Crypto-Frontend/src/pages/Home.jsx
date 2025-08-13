@@ -5,6 +5,7 @@ import WhyChooseUs from '../components/WhyChooseUs';
 import HeroBgImg from '../../src/assets/images/hero-bg.png';
 import TradingJourney from '../components/TradingJourney';
 import TradingHeroSection from '../components/TradingHeroSection';
+import Footer from '../components/Footer';
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
       <WhyChooseUs />
       <TradingJourney/>
       <TradingHeroSection/>
+      <Footer/>
     </div>
   );
 }
