@@ -21,18 +21,37 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
+# class UserRegistrationSerializer(serializers.ModelSerializer):
+#     """Serializer for user registration."""
+#
+#     password = serializers.CharField(write_only=True)
+#
+#     class Meta:
+#         model = User
+#         fields = ["id", "email", "password", "first_name", "last_name"]
+#
+#     def create(self, validated_data):
+#         user = User.objects.create_user(
+#             email=validated_data["email"],
+#             password=validated_data["password"],
+#             first_name=validated_data.get("first_name", ""),
+#             last_name=validated_data.get("last_name", ""),
+#         )
+#         return user
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration."""
 
     password = serializers.CharField(write_only=True)
+    mobile = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "password", "first_name", "last_name"]
+        fields = ["id", "email", "mobile", "password", "first_name", "last_name"]
 
     def create(self, validated_data):
         user = User.objects.create_user(
             email=validated_data["email"],
+            mobile=validated_data["mobile"],   # ✅ Pass mobile here
             password=validated_data["password"],
             first_name=validated_data.get("first_name", ""),
             last_name=validated_data.get("last_name", ""),

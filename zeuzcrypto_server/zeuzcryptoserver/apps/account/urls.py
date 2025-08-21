@@ -6,11 +6,15 @@ from .views import (
     UserProfileView,
     UserSessionsView,
     user_login_history,
+    B2BAdminLoginView,
+    AdminLoginView
 )
 
 urlpatterns = [
     # Authentication
     path("auth/register/", UserRegistrationView.as_view(), name="user-register"),
+    path("auth/admin-login/", AdminLoginView.as_view(), name="admin-login"),
+    path("auth/b2badmin-login/", B2BAdminLoginView.as_view(), name="b2badmin-login"),  # b2b admin login
     path("auth/login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/verify/", TokenVerifyView.as_view(), name="token_verify"),

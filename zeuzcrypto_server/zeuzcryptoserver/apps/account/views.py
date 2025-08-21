@@ -90,12 +90,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
-
+            import uuid
             create_user_session(
                 user=user,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                session_key=str(refresh.token)
+                # session_key=str(refresh.token)
+                # session_key=str(refresh)  # ✅ Proper refresh token string
+                session_key=uuid.uuid4().hex  # ✅ always 32 chars
             )
 
             login_history.user = user
@@ -249,3 +251,96 @@ def user_login_history(request):
             'success': False,
             'message': 'Failed to retrieve login history'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils import timezone
+from .serializers import UserSerializer
+
+class B2BAdminLoginView(APIView):
+    permission_classes = []  # AllowAny if you're using custom permission globally
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        if not email or not password:
+            return Response({"success": False, "message": "Email and password required"}, status=400)
+
+        user = authenticate(request, email=email, password=password)
+
+        if not user:
+            return Response({"success": False, "message": "Invalid credentials"}, status=401)
+
+        if not user.is_active:
+            return Response({"success": False, "message": "Account disabled"}, status=403)
+
+        if user.role != "b2b_admin":
+            return Response({"success": False, "message": "Not authorized as B2B admin"}, status=403)
+
+        # ✅ Issue JWT tokens
+        refresh = RefreshToken.for_user(user)
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])
+
+        return Response({
+            "success": True,
+            "message": "B2B Admin login successful",
+            "data": {
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
+                "user": UserSerializer(user).data
+            }
+        }, status=200)
+# views.py
+from django.contrib.auth import authenticate
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils import timezone
+from django.contrib.auth import get_user_model
+from .serializers import UserSerializer
+
+# User = get_user_model()
+
+
+class AdminLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        if not email or not password:
+            return Response({"success": False, "message": "Email and password required"}, status=400)
+
+        user = authenticate(request, email=email, password=password)
+
+        if not user:
+            return Response({"success": False, "message": "Invalid credentials"}, status=401)
+
+        if not user.is_active:
+            return Response({"success": False, "message": "Account disabled"}, status=403)
+
+        if not user.is_superuser:
+            return Response({"success": False, "message": "Not authorized as  Admin"}, status=403)
+
+        # ✅ Issue JWT tokens
+        refresh = RefreshToken.for_user(user)
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])
+
+        return Response({
+            "success": True,
+            "message": " Admin login successful",
+            "data": {
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
+                "user": UserSerializer(user).data
+            }
+        }, status=200)
