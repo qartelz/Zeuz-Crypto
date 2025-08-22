@@ -11,6 +11,8 @@ import OptionsChain from './components/OptionChain'
 import OrderBookChart from './components/OrderBookChart'
 import LiveTradingViewChart from './components/LiveTradingViewChart'
 import LoginPage from './pages/Login'
+import DashboardLayout from './layouts/DashboardLayout'
+import Trading from './components/common/Trading'
 
 function App() {
   return (
@@ -20,15 +22,18 @@ function App() {
         <main className="flex-1  overflow-auto">
           <Routes>
             <Route path="/" element={<Home />} /> 
-            <Route path="/challenges" element={<Challenges />} />
-            <Route path="/settings" element={<Settings />} />
+           <Route element={<DashboardLayout />}>
+           <Route path="/trading" element={<Trading />} />      
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/challenge" element={<Challenges />} />
+        </Route>
             <Route path="/login" element={<LoginPage />} />
           </Routes>
 
          
-          {/* <OptionsChain /> 
+          <OptionsChain /> 
           <OrderBookChart />
-         <LiveTradingViewChart /> */}
+         <LiveTradingViewChart />
         </main>
       </div>
     </Router>
