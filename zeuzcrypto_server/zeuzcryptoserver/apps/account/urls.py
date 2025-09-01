@@ -34,3 +34,4 @@ urlpatterns = [
     # path("auth/password/reset/confirm/", 
     #      PasswordResetConfirmSerializer.as_view(), name="password-reset-confirm"),
 ]
+
