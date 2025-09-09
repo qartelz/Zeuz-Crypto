@@ -28,15 +28,24 @@ ALLOWED_HOSTS = []
 #     }
 # }
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "zeuzcrupto",   # 👈 your new local DB
+#         "USER": "postgres",     # default superuser for local PostgreSQL
+#         "PASSWORD": "sidharth",         # leave blank if you don’t use a password locally
+#         "HOST": "localhost",    # local DB
+#         "PORT": "5432",         # default PostgreSQL port
+#     }
+# }
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "zeuzcrupto",   # 👈 your new local DB
-        "USER": "postgres",     # default superuser for local PostgreSQL
-        "PASSWORD": "sidharth",         # leave blank if you don’t use a password locally
-        "HOST": "localhost",    # local DB
-        "PORT": "5432",         # default PostgreSQL port
+        "NAME": "railway",
+        "USER": "postgres",
+        "PASSWORD": "iDLijIdGtsgKjIeJxmUHDUDskdftytZX",
+        "HOST": "shinkansen.proxy.rlwy.net",
+        "PORT": "13821",
     }
 }
-
-
