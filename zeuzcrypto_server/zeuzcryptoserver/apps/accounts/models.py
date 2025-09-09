@@ -124,7 +124,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def can_create_users(self):
         return self.role in ["admin", "b2b_admin"]
-
+    
     def send_password_setup_email(self):
         self.password_setup_token = generate_token()
         self.password_setup_expires = timezone.now() + timedelta(hours=24)
@@ -136,6 +136,19 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         html = render_to_string("emails/password_setup.html", {"user": self, "setup_url": url})
         send_mail(subject, strip_tags(html), "noreply@yourplatform.com", [self.email], html_message=html)
+
+
+    # def send_password_setup_email(self):
+    #     self.password_setup_token = generate_token()
+    #     self.password_setup_expires = timezone.now() + timedelta(hours=24)
+    #     self.save(update_fields=["password_setup_token", "password_setup_expires"])
+
+    #     subject = "Set your password"
+    #     domain = Site.objects.get_current().domain
+    #     url = f"https://{domain}/auth/setup-password/{self.password_setup_token}/"
+
+    #     html = render_to_string("emails/password_setup.html", {"user": self, "setup_url": url})
+    #     send_mail(subject, strip_tags(html), "noreply@yourplatform.com", [self.email], html_message=html)
 
     def send_password_reset_email(self):
         self.password_reset_token = generate_token()

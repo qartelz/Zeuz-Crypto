@@ -70,9 +70,9 @@ class UserWalletAdmin(admin.ModelAdmin):
     
     def formatted_balance(self, obj):
         return format_html(
-            '<span style="color: {};">${:,.2f}</span>',
+            '<span style="color: {};">${}</span>',
             'green' if obj.balance > 0 else 'red',
-            obj.balance
+            f'{obj.balance:,.2f}'
         )
     formatted_balance.short_description = 'Balance'
 
