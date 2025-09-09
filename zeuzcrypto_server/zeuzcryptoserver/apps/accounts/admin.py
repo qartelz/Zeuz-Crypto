@@ -79,19 +79,9 @@ class UserWalletAdmin(admin.ModelAdmin):
 
 @admin.register(UserBatch)
 class UserBatchAdmin(admin.ModelAdmin):
-    list_display = ['name', 'created_by', 'user_count', 'max_users', 'utilization', 'is_active']
-    list_filter = ['is_active', 'created_by']
+    list_display = ['name', 'description', 'max_users', 'is_active', 'created_at']
     search_fields = ['name', 'description']
-    raw_id_fields = ['created_by']
-    ordering = ['-created_at']
-    
-    def utilization(self, obj):
-        percentage = (obj.user_count / obj.max_users) * 100 if obj.max_users > 0 else 0
-        color = 'red' if percentage > 90 else 'orange' if percentage > 70 else 'green'
-        return format_html(
-            '<span style="color: {};">{:.1f}%</span>',
-            color, percentage
-        )
+    list_filter = ['is_active', 'created_at']
 
 
 @admin.register(UserApproval)

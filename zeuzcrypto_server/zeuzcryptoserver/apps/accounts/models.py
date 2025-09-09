@@ -6,7 +6,11 @@ import string
 from datetime import timedelta
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.core.validators import RegexValidator
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -20,7 +24,9 @@ def default_session_expiry():
 
 def generate_token():
     """Generate secure random token (used for password setup/reset)."""
-    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
+    return "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+    )
 
 
 class UserManager(BaseUserManager):
@@ -71,8 +77,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
     mobile = models.CharField(
-        max_length=15, unique=True, db_index=True,
-        validators=[RegexValidator(r'^\+?1?\d{9,15}$')]
+        max_length=15,
+        unique=True,
+        db_index=True,
+        validators=[RegexValidator(r"^\+?1?\d{9,15}$")],
     )
 
     # Personal info
@@ -80,14 +88,24 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=30, blank=True)
 
     # Role
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="b2c_user", db_index=True)
+    role = models.CharField(
+        max_length=20, choices=ROLE_CHOICES, default="b2c_user", db_index=True
+    )
 
     # Hierarchy
     created_by = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="created_users"
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_users",
     )
     batch = models.ForeignKey(
-        "UserBatch", on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
+        "UserBatch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
     )
 
     # Status
@@ -124,7 +142,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def can_create_users(self):
         return self.role in ["admin", "b2b_admin"]
-    
+
     def send_password_setup_email(self):
         self.password_setup_token = generate_token()
         self.password_setup_expires = timezone.now() + timedelta(hours=24)
@@ -134,9 +152,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         domain = Site.objects.get_current().domain
         url = f"https://{domain}/auth/setup-password/{self.password_setup_token}/"
 
-        html = render_to_string("emails/password_setup.html", {"user": self, "setup_url": url})
-        send_mail(subject, strip_tags(html), "noreply@yourplatform.com", [self.email], html_message=html)
-
+        html = render_to_string(
+            "emails/password_setup.html", {"user": self, "setup_url": url}
+        )
+        send_mail(
+            subject,
+            strip_tags(html),
+            "noreply@yourplatform.com",
+            [self.email],
+            html_message=html,
+        )
 
     # def send_password_setup_email(self):
     #     self.password_setup_token = generate_token()
@@ -159,15 +184,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         domain = Site.objects.get_current().domain
         url = f"https://{domain}/auth/reset-password/{self.password_reset_token}/"
 
-        html = render_to_string("emails/password_reset.html", {"user": self, "reset_url": url})
-        send_mail(subject, strip_tags(html), "noreply@yourplatform.com", [self.email], html_message=html)
+        html = render_to_string(
+            "emails/password_reset.html", {"user": self, "reset_url": url}
+        )
+        send_mail(
+            subject,
+            strip_tags(html),
+            "noreply@yourplatform.com",
+            [self.email],
+            html_message=html,
+        )
 
 
 class UserBatch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="created_batches")
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="created_batches"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     max_users = models.PositiveIntegerField(default=100)
     is_active = models.BooleanField(default=True)
@@ -213,12 +248,22 @@ class UserProfile(models.Model):
 
 
 class UserApproval(models.Model):
-    STATUS = [("pending", "Pending"), ("approved", "Approved"), ("rejected", "Rejected")]
+    STATUS = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="approval")
     status = models.CharField(max_length=20, choices=STATUS, default="pending")
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_users")
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_users",
+    )
     approved_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True)
 
@@ -242,12 +287,6 @@ class UserApproval(models.Model):
         self.save()
         self.user.is_active = False
         self.user.save(update_fields=["is_active"])
-
-
-
-
-
-
 
 
 # import uuid
@@ -464,7 +503,6 @@ class UserApproval(models.Model):
 #         db_table = "account_wallet"
 
 
-
 # # ------------------------
 # # Profiles
 # # ------------------------
@@ -475,7 +513,7 @@ class UserApproval(models.Model):
 #     address = models.TextField(blank=True)
 #     city = models.CharField(max_length=100, blank=True)
 
-#     class Meta : 
+#     class Meta :
 #         db_table = "account_profile"
 
 
@@ -503,7 +541,7 @@ class UserApproval(models.Model):
 #         self.user.save(update_fields=["is_approved"])
 
 #     def reject(self, reason=""):
-        
+
 #         self.status = "rejected"
 #         self.rejection_reason = reason
 #         self.save()
