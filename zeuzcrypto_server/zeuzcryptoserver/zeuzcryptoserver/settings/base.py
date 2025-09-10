@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Local apps
     "apps.account",   
     "apps.accounts",  
+    "apps.admin.subscriptions",
 
     # Third-party apps
     "rest_framework",
