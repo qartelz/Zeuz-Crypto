@@ -150,7 +150,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         subject = "Set your password"
         domain = Site.objects.get_current().domain
-        url = f"https://{domain}/auth/setup-password/{self.password_setup_token}/"
+        # url = f"https://{domain}/auth/setup-password/{self.password_setup_token}/"
+        url = f"http://localhost:5173/setup-password?token={self.password_setup_token}"
 
         html = render_to_string(
             "emails/password_setup.html", {"user": self, "setup_url": url}
@@ -182,8 +183,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         subject = "Reset your password"
         domain = Site.objects.get_current().domain
-        url = f"https://{domain}/auth/reset-password/{self.password_reset_token}/"
-
+        # url = f"https://{domain}/auth/reset-password/{self.password_reset_token}/"
+        url = f"http://localhost:5173/reset-password?token={self.password_reset_token}"
         html = render_to_string(
             "emails/password_reset.html", {"user": self, "reset_url": url}
         )
