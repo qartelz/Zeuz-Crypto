@@ -186,28 +186,28 @@ class UserListView(generics.ListAPIView):
     ordering_fields = ['date_joined', 'last_login', 'email']
     ordering = ['-date_joined']
 
-    # def get_queryset(self):
-    #     user = self.request.user
-    #     if user.role == 'admin':
-    #         return User.objects.all().select_related('profile', 'wallet', 'batch', 'created_by')
-    #     elif user.role == 'b2b_admin':
-    #         return User.objects.filter(created_by=user).select_related('profile', 'wallet', 'batch')
-    #     return User.objects.none()
     def get_queryset(self):
         user = self.request.user
-
-        # Define the roles you want to return
-        allowed_roles = ['b2b_user', 'b2c_user']
-
         if user.role == 'admin':
-            return User.objects.filter(role__in=allowed_roles).select_related('profile', 'wallet', 'batch',
-                                                                              'created_by')
-
+            return User.objects.all().select_related('profile', 'wallet', 'batch', 'created_by')
         elif user.role == 'b2b_admin':
-            return User.objects.filter(role__in=allowed_roles, created_by=user).select_related('profile', 'wallet',
-                                                                                               'batch')
-
+            return User.objects.filter(created_by=user).select_related('profile', 'wallet', 'batch')
         return User.objects.none()
+    # def get_queryset(self):
+    #     user = self.request.user
+    #
+    #     # Define the roles you want to return
+    #     allowed_roles = ['b2b_user', 'b2c_user']
+    #
+    #     if user.role == 'admin':
+    #         return User.objects.filter(role__in=allowed_roles).select_related('profile', 'wallet', 'batch',
+    #                                                                           'created_by')
+    #
+    #     elif user.role == 'b2b_admin':
+    #         return User.objects.filter(role__in=allowed_roles, created_by=user).select_related('profile', 'wallet',
+    #                                                                                            'batch')
+    #
+    #     return User.objects.none()
 
 
 class CurrentUserView(APIView):
