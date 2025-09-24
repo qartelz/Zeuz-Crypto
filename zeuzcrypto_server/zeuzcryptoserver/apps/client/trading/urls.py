@@ -1,0 +1,32 @@
+# urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+
+router = DefaultRouter()
+router.register(r'trades', views.TradeViewSet, basename='trades')
+router.register(r'portfolio', views.PortfolioViewSet, basename='portfolio')
+
+urlpatterns = [
+    path('api/trading/', include(router.urls)),
+    
+    # Trading endpoints
+    path('api/trading/place-order/', views.PlaceOrderView.as_view(), name='place-order'),
+    path('api/trading/close-trade/<uuid:trade_id>/', views.CloseTradeView.as_view(), name='close-trade'),
+    path('api/trading/partial-close/<uuid:trade_id>/', views.PartialCloseView.as_view(), name='partial-close'),
+    
+    # Portfolio endpoints
+    path('api/trading/portfolio/summary/', views.PortfolioSummaryView.as_view(), name='portfolio-summary'),
+    path('api/trading/portfolio/positions/', views.ActivePositionsView.as_view(), name='active-positions'),
+    path('api/trading/portfolio/pnl/', views.PnLReportView.as_view(), name='pnl-report'),
+    
+    # Trade history
+    path('api/trading/history/', views.TradeHistoryView.as_view(), name='trade-history'),
+    path('api/trading/trades/<uuid:trade_id>/history/', views.TradeDetailHistoryView.as_view(), name='trade-detail-history'),
+    
+    # Market data
+    path('api/trading/update-prices/', views.UpdatePricesView.as_view(), name='update-prices'),
+    
+    # Risk management
+    path('api/trading/risk-check/', views.RiskCheckView.as_view(), name='risk-check'),
+]

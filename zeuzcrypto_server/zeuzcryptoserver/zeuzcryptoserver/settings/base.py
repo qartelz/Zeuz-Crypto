@@ -4,6 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 from decouple import config
 import os
+from celery.schedules import crontab
 
 # BASE_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,17 +27,16 @@ AUTH_USER_MODEL = "accounts.User"
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
     # Local apps
-    "apps.account",   
-    "apps.accounts",  
+    "apps.account",
+    "apps.accounts",
     "apps.admin.subscriptions",
-
+    "apps.client.trading",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
-
     # Django contrib apps
     "django.contrib.sites",
     "django.contrib.admin",
@@ -68,6 +68,22 @@ ROOT_URLCONF = "zeuzcryptoserver.urls"
 WSGI_APPLICATION = "zeuzcryptoserver.wsgi.application"
 
 # -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"  # or your Redis/RabbitMQ URL
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Kolkata"
+# -----------------------------------------------------------------------------
 # Templates
 # -----------------------------------------------------------------------------
 TEMPLATES = [
@@ -90,7 +106,9 @@ TEMPLATES = [
 # Password Validators
 # -----------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {"min_length": 8},
@@ -233,7 +251,107 @@ SECURITY_SETTINGS = {
 }
 
 
+# -----------------------------------------------------------------------------
+# Trading System
+# -----------------------------------------------------------------------------
+# settings.py additions
 
+
+# Trading System Settings
+TRADING_SETTINGS = {
+    # Risk Management
+    "MAX_LEVERAGE": {
+        "SPOT": 1,
+        "FUTURES": 10,
+        "OPTIONS": 1,
+    },
+    # Position Limits
+    "MAX_POSITION_CONCENTRATION": 30,  # Max 30% in single asset
+    "MAX_DAILY_TRADES": 50,
+    "MAX_OPEN_POSITIONS": 100,
+    # Margin Requirements
+    "MARGIN_CALL_THRESHOLD": 80,  # 80% of initial margin
+    "LIQUIDATION_THRESHOLD": 90,  # 90% of initial margin
+    # Fee Structure
+    "TRADING_FEES": {
+        "SPOT": 0.001,  # 0.1%
+        "FUTURES": 0.0005,  # 0.05%
+        "OPTIONS": 0.002,  # 0.2%
+    },
+    # Market Hours (for validation)
+    "MARKET_HOURS": {
+        "CRYPTO": {"open": True, "hours": "24/7"},
+        "EQUITY": {
+            "open_time": "09:30",
+            "close_time": "16:00",
+            "timezone": "America/New_York",
+            "weekends": False,
+        },
+    },
+    # Price Update Settings
+    "PRICE_UPDATE_INTERVAL": 5,  # seconds
+    "BATCH_SIZE": 100,  # trades to update in one batch
+    # Webhook Settings
+    "WEBHOOK_TIMEOUT": 30,  # seconds
+    "WEBHOOK_RETRY_ATTEMPTS": 3,
+}
+
+# Celery Settings for Background Tasks
+CELERY_BEAT_SCHEDULE = {
+    'update-unrealized-pnl': {
+        'task': 'apps.client.trading.tasks.update_unrealized_pnl',
+        'schedule': 30.0,  # Every 30 seconds
+    },
+    'update-portfolio-metrics': {
+        'task': 'apps.client.trading.tasks.update_portfolio_metrics',
+        'schedule': 60.0,  # Every minute
+    },
+    'check-options-expiry': {
+        'task': 'apps.client.trading.tasks.check_options_expiry',
+        'schedule': crontab(hour=16, minute=0),  # 4 PM daily
+    },
+    'check-futures-expiry': {
+        'task': 'apps.client.trading.tasks.check_futures_expiry',
+        'schedule': crontab(hour=16, minute=15),  # 4:15 PM daily
+    },
+    'daily-portfolio-snapshot': {
+        'task': 'apps.client.trading.tasks.daily_portfolio_snapshot',
+        'schedule': crontab(hour=23, minute=59),  # End of day
+    },
+}
+
+# Logging Configuration
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "trading_file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "logs/trading.log",
+            "formatter": "verbose",
+        },
+        "trading_errors": {
+            "level": "ERROR",
+            "class": "logging.FileHandler",
+            "filename": "logs/trading_errors.log",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "trading": {
+            "handlers": ["trading_file", "trading_errors"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+}
 
 
 # # zeuzcryptoserver/settings/base.py

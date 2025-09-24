@@ -95,6 +95,261 @@ class PlanCouponSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
+from rest_framework import serializers
+from django.utils import timezone
+from django.contrib.auth.models import User
+from django.db.models import Q
+from .models import (
+    Plan,
+    Coupon,
+    PlanCoupon,
+    Subscription,
+    SubscriptionHistory,
+    SubscriptionOrder,
+)
+
+
+class SubscriptionOrderSerializer(serializers.ModelSerializer):
+    """Serializer for displaying subscription orders"""
+
+    user_username = serializers.CharField(source="user.username", read_only=True)
+    plan_name = serializers.CharField(source="plan.name", read_only=True)
+    plan_duration = serializers.IntegerField(
+        source="plan.duration_days", read_only=True
+    )
+    coupon_code = serializers.CharField(source="coupon.code", read_only=True)
+    order_type_display = serializers.CharField(
+        source="get_order_type_display", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = SubscriptionOrder
+        fields = [
+            "id",
+            "user_username",
+            "plan_name",
+            "plan_duration",
+            "order_type",
+            "order_type_display",
+            "status",
+            "status_display",
+            "coupon_code",
+            "transaction_id",
+            "amount",
+            "discount",
+            "final_amount",
+            "start_date",
+            "notes",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]
+        read_only_fields = [
+            "id",
+            "amount",
+            "discount",
+            "final_amount",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]
+
+
+class AdminAssignPlanSerializer(serializers.Serializer):
+    """Serializer for admin assigning plans to users"""
+
+    user_id = serializers.IntegerField()
+    plan_id = serializers.UUIDField()
+    coupon_code = serializers.CharField(required=False, allow_blank=True)
+    start_date = serializers.DateTimeField(required=False)
+    notes = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+    def validate_user_id(self, value):
+        try:
+            user = User.objects.get(id=value)
+            return user
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found")
+
+    def validate_plan_id(self, value):
+        try:
+            plan = Plan.objects.get(id=value, is_active=True)
+            return plan
+        except Plan.DoesNotExist:
+            raise serializers.ValidationError("Plan not found or inactive")
+
+    def validate_coupon_code(self, value):
+        if not value:
+            return None
+
+        try:
+            coupon = Coupon.objects.get(code=value.upper(), is_active=True)
+            if not coupon.is_valid():
+                raise serializers.ValidationError("Coupon is not valid or has expired")
+            return coupon
+        except Coupon.DoesNotExist:
+            raise serializers.ValidationError("Invalid coupon code")
+
+    def validate(self, data):
+        user = data.get("user_id")
+        plan = data.get("plan_id")
+        coupon = data.get("coupon_code")
+        start_date = data.get("start_date", timezone.now())
+
+        # Validate coupon is applicable to plan
+        if coupon and plan:
+            if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
+                raise serializers.ValidationError(
+                    "This coupon is not applicable to the selected plan"
+                )
+
+        # Check for overlapping active subscriptions
+        end_date = start_date + timezone.timedelta(days=plan.duration_days)
+        overlapping = Subscription.objects.filter(user=user, status="ACTIVE").filter(
+            Q(start_date__lt=end_date) & Q(end_date__gt=start_date)
+        )
+
+        if overlapping.exists():
+            raise serializers.ValidationError(
+                "User already has an active subscription during this period"
+            )
+
+        return data
+
+    def create(self, validated_data):
+        user = validated_data["user_id"]
+        plan = validated_data["plan_id"]
+        coupon = validated_data.get("coupon_code")
+        start_date = validated_data.get("start_date", timezone.now())
+        notes = validated_data.get("notes", "")
+
+        # Create order
+        order = SubscriptionOrder.objects.create(
+            user=user,
+            plan=plan,
+            coupon=coupon,
+            order_type="ADMIN_ASSIGNED",
+            status="COMPLETED",  # Admin assignments are immediately completed
+            start_date=start_date,
+            notes=notes,
+        )
+
+        # Auto-complete the order to create subscription
+        subscription = order.complete_order()
+
+        return order
+
+
+class UserPurchasePlanSerializer(serializers.Serializer):
+    """Serializer for user purchasing plans (B2C only)"""
+
+    plan_id = serializers.UUIDField()
+    coupon_code = serializers.CharField(required=False, allow_blank=True)
+    start_date = serializers.DateTimeField(required=False)
+
+    def validate_plan_id(self, value):
+        try:
+            plan = Plan.objects.get(id=value, is_active=True)
+            return plan
+        except Plan.DoesNotExist:
+            raise serializers.ValidationError("Plan not found or inactive")
+
+    def validate_coupon_code(self, value):
+        if not value:
+            return None
+
+        try:
+            coupon = Coupon.objects.get(code=value.upper(), is_active=True)
+            if not coupon.is_valid():
+                raise serializers.ValidationError("Coupon is not valid or has expired")
+            return coupon
+        except Coupon.DoesNotExist:
+            raise serializers.ValidationError("Invalid coupon code")
+
+    def validate(self, data):
+        plan = data.get("plan_id")
+        coupon = data.get("coupon_code")
+        start_date = data.get("start_date", timezone.now())
+        user = self.context["request"].user
+
+        # Ensure user is not B2B (assuming user has a profile with user_type)
+        if (
+            hasattr(user, "profile")
+            and getattr(user.profile, "user_type", None) == "B2B"
+        ):
+            raise serializers.ValidationError("B2B users cannot self-purchase plans")
+
+        # Validate coupon is applicable to plan
+        if coupon and plan:
+            if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
+                raise serializers.ValidationError(
+                    "This coupon is not applicable to the selected plan"
+                )
+
+        # Check for overlapping active subscriptions
+        end_date = start_date + timezone.timedelta(days=plan.duration_days)
+        overlapping = Subscription.objects.filter(user=user, status="ACTIVE").filter(
+            Q(start_date__lt=end_date) & Q(end_date__gt=start_date)
+        )
+
+        if overlapping.exists():
+            raise serializers.ValidationError(
+                "You already have an active subscription during this period"
+            )
+
+        return data
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        plan = validated_data["plan_id"]
+        coupon = validated_data.get("coupon_code")
+        start_date = validated_data.get("start_date", timezone.now())
+
+        # Create order with PENDING status (will be completed after payment)
+        order = SubscriptionOrder.objects.create(
+            user=user,
+            plan=plan,
+            coupon=coupon,
+            order_type="SELF_PURCHASED",
+            status="PENDING",
+            start_date=start_date,
+        )
+
+        return order
+
+
+class OrderCompletionSerializer(serializers.Serializer):
+    """Serializer for completing pending orders (payment confirmation)"""
+
+    transaction_id = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+    def update(self, instance, validated_data):
+        # Update transaction details
+        instance.transaction_id = validated_data.get(
+            "transaction_id", instance.transaction_id
+        )
+        if validated_data.get("notes"):
+            instance.notes += f"\n{validated_data['notes']}"
+
+        # Complete the order
+        subscription = instance.complete_order()
+
+        return {"order": instance, "subscription": subscription}
+
+
+class OrderCancellationSerializer(serializers.Serializer):
+    """Serializer for cancelling orders"""
+
+    reason = serializers.CharField(required=True, max_length=500)
+
+    def update(self, instance, validated_data):
+        reason = validated_data["reason"]
+        instance.cancel_order(reason)
+        return instance
+
+
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating subscriptions"""
 
@@ -348,4 +603,11 @@ class PlanWithCouponsSerializer(PlanSerializer):
 class CreateSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = ["name", "description", "price", "duration", "features", "is_active"]
+        fields = [
+            "plan",
+            "coupon",
+            "subscription_source",
+            "start_date",
+            "end_date",
+            "status",
+        ]
