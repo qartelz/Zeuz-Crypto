@@ -4,7 +4,8 @@ const HeroSection = () => {
   const [hover, setHover] = useState(false);
 
   return (
-    <div className="flex items-center justify-center min-h-[70vh]">
+    <div className="flex flex-1 items-center justify-center min-h-[calc(100vh-80px)] px-4">
+      {/* Adjust padding as needed for responsiveness */}
       <div className="text-center">
         <h1 className="text-7xl font-bold bg-gradient-to-r from-[#FF1CF7] to-[#00F0FF] bg-clip-text text-transparent">
           Learn to Trade
@@ -19,7 +20,7 @@ const HeroSection = () => {
         </p>
 
         <button
-          className="mt-6 px-6 py-3 text-white text-lg rounded-full border-1  border-[#FF3BD4] transition duration-300 cursor-pointer select-text"
+          className="mt-6 px-6 py-3 text-white text-lg rounded-full border border-[#FF3BD4] transition duration-300 cursor-pointer"
           style={{
             background: hover
               ? 'linear-gradient(to bottom, rgba(90, 35, 161, 1), rgba(224, 43, 191, 1))'
@@ -27,7 +28,6 @@ const HeroSection = () => {
           }}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
-         
         >
           Start Trading with Beetle Coins
         </button>

@@ -10,16 +10,18 @@ import Footer from '../components/Footer';
 export default function Home() {
   return (
     <div >
-      <div 
-        style={{
-          backgroundImage: `url(${HeroBgImg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <Header />
-        <HeroSection />
-      </div>
+     <div 
+  style={{
+    backgroundImage: `url(${HeroBgImg})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    minHeight: '100vh', // This ensures full screen height
+  }}
+>
+  <Header />
+  <HeroSection />
+</div>
+
       <WhyChooseUs />
       <TradingJourney/>
       <TradingHeroSection/>

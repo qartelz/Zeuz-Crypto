@@ -238,6 +238,7 @@ const Trading = () => {
                   {fmt(ticker?.c, 2)} {selected.quoteAsset}
                 </div>
               </div>
+              
 
               <div>
                 <div className="text-[#A489F5] text-xs">24h Change</div>
