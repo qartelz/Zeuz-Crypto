@@ -133,3 +133,20 @@ INFO 2025-09-30 17:12:41,476 basehttp 18513 123145705594880 "GET /admin/accounts
 INFO 2025-09-30 17:12:42,263 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
 INFO 2025-09-30 17:12:45,507 basehttp 18513 123145705594880 "GET /admin/accounts/userwallet/f21e5272-41da-47cb-b84b-4c71abab3eed/change/ HTTP/1.1" 200 19117
 INFO 2025-09-30 17:12:49,842 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-10-02 12:08:46,598 autoreload 23074 4567340544 Watching for file changes with StatReloader
+WARNING 2025-10-02 12:08:55,386 log 23074 123145572036608 Unauthorized: /api/v1/trading/api/trading/
+WARNING 2025-10-02 12:08:55,386 basehttp 23074 123145572036608 "GET //api/v1/trading/api/trading/ HTTP/1.1" 401 172
+WARNING 2025-10-02 12:09:01,822 log 23074 123145572036608 Unauthorized: /api/v1/trading/api/trading/
+WARNING 2025-10-02 12:09:01,823 basehttp 23074 123145572036608 "GET //api/v1/trading/api/trading/ HTTP/1.1" 401 58
+INFO 2025-10-02 12:09:12,186 basehttp 23074 123145572036608 "POST //api/v1/account/login/ HTTP/1.1" 200 1025
+INFO 2025-10-02 12:09:41,593 basehttp 23074 123145572036608 "GET //api/v1/trading/api/trading/ HTTP/1.1" 200 143
+WARNING 2025-10-02 12:09:47,474 log 23074 123145572036608 Unauthorized: /api/v1/trading/api/trading/portfolio/
+WARNING 2025-10-02 12:09:47,474 basehttp 23074 123145572036608 "GET /api/v1/trading/api/trading/portfolio/ HTTP/1.1" 401 58
+INFO 2025-10-02 12:09:59,704 basehttp 23074 123145572036608 "GET /api/v1/trading/api/trading/portfolio/ HTTP/1.1" 200 481
+INFO 2025-10-02 12:19:00,502 basehttp 23074 123145588826112 "GET /api/v1/trading/api/trading/trades/ HTTP/1.1" 200 5408
+INFO 2025-10-02 12:25:05,385 autoreload 23074 4567340544 /Users/macbookpro/Desktop/cryptozeuz/Zeuz-Crypto/zeuzcrypto_server/zeuzcryptoserver/apps/client/trading/urls.py changed, reloading.
+INFO 2025-10-02 12:25:06,014 autoreload 23309 4741944832 Watching for file changes with StatReloader
+INFO 2025-10-02 12:25:08,436 autoreload 23309 4741944832 /Users/macbookpro/Desktop/cryptozeuz/Zeuz-Crypto/zeuzcrypto_server/zeuzcryptoserver/apps/client/trading/urls.py changed, reloading.
+INFO 2025-10-02 12:25:09,069 autoreload 23317 4475168256 Watching for file changes with StatReloader
+INFO 2025-10-02 12:25:12,619 autoreload 23317 4475168256 /Users/macbookpro/Desktop/cryptozeuz/Zeuz-Crypto/zeuzcrypto_server/zeuzcryptoserver/apps/client/trading/urls.py changed, reloading.
+INFO 2025-10-02 12:25:13,245 autoreload 23322 4375864832 Watching for file changes with StatReloader
