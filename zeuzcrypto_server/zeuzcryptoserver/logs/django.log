@@ -1,0 +1,135 @@
+INFO 2025-09-30 12:43:16,551 autoreload 18513 4712355328 Watching for file changes with StatReloader
+INFO 2025-09-30 12:43:38,884 basehttp 18513 123145588068352 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-09-30 12:43:39,422 basehttp 18513 123145588068352 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4186
+INFO 2025-09-30 12:43:39,480 basehttp 18513 123145621647360 "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+INFO 2025-09-30 12:43:39,481 basehttp 18513 123145588068352 "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-09-30 12:43:39,482 basehttp 18513 123145655226368 "GET /static/admin/css/login.css HTTP/1.1" 200 951
+INFO 2025-09-30 12:43:39,482 basehttp 18513 123145638436864 "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-09-30 12:43:39,482 basehttp 18513 123145672015872 "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-09-30 12:43:39,483 basehttp 18513 123145604857856 "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-09-30 12:43:39,600 basehttp 18513 123145672015872 "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+WARNING 2025-09-30 12:43:39,674 log 18513 123145672015872 Not Found: /favicon.ico
+WARNING 2025-09-30 12:43:39,674 basehttp 18513 123145672015872 "GET /favicon.ico HTTP/1.1" 404 2365
+INFO 2025-09-30 12:43:51,463 basehttp 18513 123145672015872 "POST /admin/login/?next=/admin/ HTTP/1.1" 302 0
+INFO 2025-09-30 12:43:52,236 basehttp 18513 123145672015872 "GET /admin/ HTTP/1.1" 200 18746
+INFO 2025-09-30 12:43:52,268 basehttp 18513 123145672015872 "GET /static/admin/css/dashboard.css HTTP/1.1" 200 441
+INFO 2025-09-30 12:43:52,277 basehttp 18513 123145672015872 "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+INFO 2025-09-30 12:43:52,277 basehttp 18513 123145604857856 "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 200 380
+INFO 2025-09-30 12:43:52,278 basehttp 18513 123145655226368 "GET /static/admin/img/icon-viewlink.svg HTTP/1.1" 200 581
+INFO 2025-09-30 12:43:58,121 basehttp 18513 123145655226368 "GET /admin/trading/trade/ HTTP/1.1" 200 23062
+INFO 2025-09-30 12:43:58,159 basehttp 18513 123145672015872 "GET /static/admin/css/changelists.css HTTP/1.1" 200 6878
+INFO 2025-09-30 12:43:58,162 basehttp 18513 123145621647360 "GET /static/admin/js/core.js HTTP/1.1" 200 6208
+INFO 2025-09-30 12:43:58,164 basehttp 18513 123145588068352 "GET /static/admin/js/jquery.init.js HTTP/1.1" 200 347
+INFO 2025-09-30 12:43:58,169 basehttp 18513 123145672015872 "GET /static/admin/js/admin/RelatedObjectLookups.js HTTP/1.1" 200 9777
+INFO 2025-09-30 12:43:58,170 basehttp 18513 123145621647360 "GET /static/admin/js/actions.js HTTP/1.1" 200 8076
+INFO 2025-09-30 12:43:58,171 basehttp 18513 123145588068352 "GET /static/admin/js/urlify.js HTTP/1.1" 200 7887
+INFO 2025-09-30 12:43:58,175 basehttp 18513 123145588068352 "GET /static/admin/img/search.svg HTTP/1.1" 200 458
+INFO 2025-09-30 12:43:58,176 basehttp 18513 123145672015872 "GET /static/admin/js/prepopulate.js HTTP/1.1" 200 1531
+INFO 2025-09-30 12:43:58,183 basehttp 18513 123145655226368 "GET /static/admin/js/vendor/jquery/jquery.js HTTP/1.1" 200 285314
+INFO 2025-09-30 12:43:58,184 basehttp 18513 123145604857856 "GET /static/admin/js/vendor/xregexp/xregexp.js HTTP/1.1" 200 325171
+INFO 2025-09-30 12:43:58,191 basehttp 18513 123145604857856 "GET /static/admin/js/filters.js HTTP/1.1" 200 978
+INFO 2025-09-30 12:44:01,733 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:44:01,769 basehttp 18513 123145638436864 "GET /static/admin/img/tooltag-add.svg HTTP/1.1" 200 331
+INFO 2025-09-30 12:44:16,323 basehttp 18513 123145638436864 "GET /admin/trading/trade/c60e2904-aa8a-4ed4-a5e3-7b1b8529b9c9/change/ HTTP/1.1" 200 45926
+INFO 2025-09-30 12:44:16,363 basehttp 18513 123145588068352 "GET /static/admin/js/admin/DateTimeShortcuts.js HTTP/1.1" 200 19319
+INFO 2025-09-30 12:44:16,366 basehttp 18513 123145604857856 "GET /static/admin/css/forms.css HTTP/1.1" 200 8525
+INFO 2025-09-30 12:44:16,368 basehttp 18513 123145672015872 "GET /static/admin/js/inlines.js HTTP/1.1" 200 15628
+INFO 2025-09-30 12:44:16,369 basehttp 18513 123145655226368 "GET /static/admin/js/calendar.js HTTP/1.1" 200 9141
+INFO 2025-09-30 12:44:16,370 basehttp 18513 123145621647360 "GET /static/admin/js/prepopulate_init.js HTTP/1.1" 200 586
+INFO 2025-09-30 12:44:16,372 basehttp 18513 123145655226368 "GET /static/admin/css/widgets.css HTTP/1.1" 200 11991
+INFO 2025-09-30 12:44:16,382 basehttp 18513 123145655226368 "GET /static/admin/js/change_form.js HTTP/1.1" 200 606
+INFO 2025-09-30 12:44:17,042 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:44:17,136 basehttp 18513 123145655226368 "GET /static/admin/img/icon-clock.svg HTTP/1.1" 200 677
+INFO 2025-09-30 12:44:17,136 basehttp 18513 123145638436864 "GET /static/admin/img/icon-calendar.svg HTTP/1.1" 200 1086
+INFO 2025-09-30 12:45:03,138 basehttp 18513 123145655226368 "GET /admin/trading/tradehistory/ HTTP/1.1" 200 22067
+INFO 2025-09-30 12:45:06,542 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:45:32,962 basehttp 18513 123145655226368 "GET /admin/trading/tradehistory/ef684682-4202-4e59-a86a-3efdd0d9508f/change/ HTTP/1.1" 200 28337
+INFO 2025-09-30 12:45:33,738 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:45:51,423 basehttp 18513 123145655226368 "GET /admin/trading/trade/ HTTP/1.1" 200 23062
+INFO 2025-09-30 12:45:52,136 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:45:59,883 basehttp 18513 123145655226368 "GET /admin/trading/trade/c60e2904-aa8a-4ed4-a5e3-7b1b8529b9c9/change/ HTTP/1.1" 200 45926
+INFO 2025-09-30 12:46:00,665 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:46:28,164 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 205
+INFO 2025-09-30 12:46:36,557 basehttp 18513 123145655226368 "GET /admin/trading/tradehistory/ HTTP/1.1" 200 22782
+INFO 2025-09-30 12:46:39,952 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:46:59,378 basehttp 18513 123145655226368 "GET /admin/trading/trade/ HTTP/1.1" 200 23062
+INFO 2025-09-30 12:47:02,536 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 12:47:06,275 basehttp 18513 123145655226368 "GET /admin/trading/trade/c60e2904-aa8a-4ed4-a5e3-7b1b8529b9c9/change/ HTTP/1.1" 200 45926
+INFO 2025-09-30 12:47:09,586 basehttp 18513 123145655226368 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+WARNING 2025-09-30 13:02:44,293 log 18513 123145588068352 Unauthorized: /api/v1/trading/api/trading/place-order/
+WARNING 2025-09-30 13:02:44,293 basehttp 18513 123145588068352 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 401 172
+INFO 2025-09-30 13:02:51,302 basehttp 18513 123145588068352 "POST //api/v1/account/login/ HTTP/1.1" 200 1025
+WARNING 2025-09-30 13:03:07,305 log 18513 123145588068352 Bad Request: /api/v1/trading/api/trading/place-order/
+WARNING 2025-09-30 13:03:07,305 basehttp 18513 123145588068352 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 400 69
+WARNING 2025-09-30 13:10:17,318 log 18513 123145604857856 Bad Request: /api/v1/trading/api/trading/place-order/
+WARNING 2025-09-30 13:10:17,319 basehttp 18513 123145604857856 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 400 69
+INFO 2025-09-30 13:11:45,841 basehttp 18513 123145621647360 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 205
+INFO 2025-09-30 13:15:42,108 basehttp 18513 123145638436864 "GET /admin/trading/trade/c60e2904-aa8a-4ed4-a5e3-7b1b8529b9c9/change/ HTTP/1.1" 200 45925
+INFO 2025-09-30 13:15:42,933 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:15:53,941 basehttp 18513 123145638436864 "GET /admin/accounts/userwallet/ HTTP/1.1" 200 31143
+INFO 2025-09-30 13:15:57,228 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:16:07,810 basehttp 18513 123145638436864 "GET /admin/accounts/userwallet/78000608-526e-48d7-8e23-cd5be2132d7c/change/ HTTP/1.1" 200 19077
+INFO 2025-09-30 13:16:12,023 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:16:25,743 basehttp 18513 123145638436864 "GET /admin/accounts/userprofile/ HTTP/1.1" 200 30595
+INFO 2025-09-30 13:16:25,783 basehttp 18513 123145655226368 "GET /static/admin/img/icon-no.svg HTTP/1.1" 200 560
+INFO 2025-09-30 13:16:26,600 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:16:43,560 basehttp 18513 123145638436864 "GET /admin/trading/portfolio/ HTTP/1.1" 200 19337
+INFO 2025-09-30 13:16:44,296 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:16:49,422 basehttp 18513 123145638436864 "GET /admin/trading/portfolio/8/change/ HTTP/1.1" 200 33248
+INFO 2025-09-30 13:16:53,436 basehttp 18513 123145638436864 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 13:17:06,170 basehttp 18513 123145638436864 "GET /admin/ HTTP/1.1" 200 18746
+WARNING 2025-09-30 13:56:32,442 log 18513 123145638436864 Unauthorized: /api/v1/trading/api/trading/portfolio/summary/
+WARNING 2025-09-30 13:56:32,443 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/portfolio/summary/ HTTP/1.1" 401 172
+INFO 2025-09-30 13:56:38,509 basehttp 18513 123145638436864 "POST //api/v1/account/login/ HTTP/1.1" 200 1025
+WARNING 2025-09-30 13:56:58,915 log 18513 123145638436864 Not Found: /api/v1/trading/api/trading/portfolio/summary/
+WARNING 2025-09-30 13:56:58,916 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/portfolio/summary/ HTTP/1.1" 404 23
+WARNING 2025-09-30 13:57:12,201 log 18513 123145638436864 Not Found: /api/v1/trading/api/trading/portfolio/positions/
+WARNING 2025-09-30 13:57:12,201 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/portfolio/positions/ HTTP/1.1" 404 23
+WARNING 2025-09-30 13:57:49,105 log 18513 123145638436864 Not Found: /api/v1/trading/api/trading/portfolio/positions/
+WARNING 2025-09-30 13:57:49,106 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/portfolio/positions/ HTTP/1.1" 404 23
+WARNING 2025-09-30 13:57:56,516 log 18513 123145638436864 Unauthorized: /api/v1/trading/api/trading/history/
+WARNING 2025-09-30 13:57:56,516 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/history/ HTTP/1.1" 401 172
+INFO 2025-09-30 13:58:01,991 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/history/ HTTP/1.1" 200 743
+WARNING 2025-09-30 13:58:31,164 log 18513 123145638436864 Not Found: /api/v1/trading/api/trading/trades/<uuid:trade_id>/history/
+WARNING 2025-09-30 13:58:31,164 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/trades/%3Cuuid:trade_id%3E/history/ HTTP/1.1" 404 14949
+WARNING 2025-09-30 13:58:57,882 log 18513 123145638436864 Not Found: /api/v1/trading/api/trading/portfolio/positions/
+WARNING 2025-09-30 13:58:57,882 basehttp 18513 123145638436864 "GET //api/v1/trading/api/trading/portfolio/positions/ HTTP/1.1" 404 23
+WARNING 2025-09-30 16:55:21,988 log 18513 123145655226368 Unauthorized: /api/v1/account/login/
+WARNING 2025-09-30 16:55:21,989 basehttp 18513 123145655226368 "POST //api/v1/account/login/ HTTP/1.1" 401 172
+INFO 2025-09-30 16:55:28,377 basehttp 18513 123145655226368 "POST //api/v1/account/login/ HTTP/1.1" 200 1025
+WARNING 2025-09-30 16:56:33,250 log 18513 123145672015872 Unauthorized: /api/v1/trading/api/trading/place-order/
+WARNING 2025-09-30 16:56:33,251 basehttp 18513 123145672015872 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 401 172
+INFO 2025-09-30 16:57:15,174 basehttp 18513 123145672015872 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 176
+INFO 2025-09-30 17:00:33,233 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 176
+INFO 2025-09-30 17:00:44,182 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 184
+INFO 2025-09-30 17:00:53,635 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 132
+WARNING 2025-09-30 17:01:03,787 log 18513 123145688805376 Bad Request: /api/v1/trading/api/trading/place-order/
+WARNING 2025-09-30 17:01:03,787 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 400 51
+INFO 2025-09-30 17:01:17,419 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 184
+INFO 2025-09-30 17:01:36,921 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 176
+INFO 2025-09-30 17:01:50,112 basehttp 18513 123145688805376 "POST //api/v1/trading/api/trading/place-order/ HTTP/1.1" 201 188
+INFO 2025-09-30 17:02:00,569 basehttp 18513 123145705594880 "GET /admin/accounts/userprofile/ HTTP/1.1" 302 0
+INFO 2025-09-30 17:02:00,577 basehttp 18513 123145705594880 "GET /admin/login/?next=/admin/accounts/userprofile/ HTTP/1.1" 200 4228
+WARNING 2025-09-30 17:02:00,657 log 18513 123145705594880 Not Found: /favicon.ico
+WARNING 2025-09-30 17:02:00,657 basehttp 18513 123145705594880 "GET /favicon.ico HTTP/1.1" 404 2365
+INFO 2025-09-30 17:02:19,285 basehttp 18513 123145739173888 "GET /admin/trading/trade/ HTTP/1.1" 200 26027
+INFO 2025-09-30 17:02:20,772 basehttp 18513 123145739173888 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:02:59,104 basehttp 18513 123145739173888 "GET /admin/trading/trade/ HTTP/1.1" 200 26027
+INFO 2025-09-30 17:03:02,735 basehttp 18513 123145739173888 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:03:24,856 basehttp 18513 123145739173888 "GET /admin/trading/tradehistory/ HTTP/1.1" 200 28499
+INFO 2025-09-30 17:03:28,951 basehttp 18513 123145739173888 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:10:25,073 basehttp 18513 123145705594880 "GET /admin/trading/trade/ HTTP/1.1" 200 26027
+INFO 2025-09-30 17:10:25,856 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:10:33,317 basehttp 18513 123145705594880 "GET /admin/trading/portfolio/ HTTP/1.1" 200 19338
+INFO 2025-09-30 17:10:37,559 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:10:45,419 basehttp 18513 123145705594880 "GET /admin/trading/portfolio/8/change/ HTTP/1.1" 200 33250
+INFO 2025-09-30 17:10:46,147 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:11:54,306 basehttp 18513 123145705594880 "GET /admin/subscriptions/subscriptionorder/ HTTP/1.1" 200 19451
+INFO 2025-09-30 17:11:57,837 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:12:01,649 basehttp 18513 123145705594880 "GET /admin/subscriptions/subscriptionorder/add/ HTTP/1.1" 200 34748
+INFO 2025-09-30 17:12:01,698 basehttp 18513 123145722384384 "GET /static/admin/img/icon-deletelink.svg HTTP/1.1" 200 392
+INFO 2025-09-30 17:12:05,481 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:12:41,476 basehttp 18513 123145705594880 "GET /admin/accounts/userwallet/ HTTP/1.1" 200 31143
+INFO 2025-09-30 17:12:42,263 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-30 17:12:45,507 basehttp 18513 123145705594880 "GET /admin/accounts/userwallet/f21e5272-41da-47cb-b84b-4c71abab3eed/change/ HTTP/1.1" 200 19117
+INFO 2025-09-30 17:12:49,842 basehttp 18513 123145705594880 "GET /admin/jsi18n/ HTTP/1.1" 200 3342

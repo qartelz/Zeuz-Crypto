@@ -1,9 +1,11 @@
+from decimal import Decimal
+from venv import logger
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views import View
 import json
-
+from .models import Trade, TradeHistory
 
 @method_decorator(csrf_exempt, name='dispatch')
 class MarketDataWebhookView(View):
@@ -116,23 +118,23 @@ class OrderExecutionWebhookView(View):
         return True
 
 
-# management/commands/setup_trading.py
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
-from trading.models import Portfolio
+# # management/commands/setup_trading.py
+# from django.core.management.base import BaseCommand
+# from django.contrib.auth.models import User
+# from trading.models import Portfolio
 
 
-class Command(BaseCommand):
-    help = 'Setup trading system - create portfolios for existing users'
+# class Command(BaseCommand):
+#     help = 'Setup trading system - create portfolios for existing users'
     
-    def handle(self, *args, **options):
-        users_without_portfolio = User.objects.filter(portfolio__isnull=True)
-        created_count = 0
+#     def handle(self, *args, **options):
+#         users_without_portfolio = User.objects.filter(portfolio__isnull=True)
+#         created_count = 0
         
-        for user in users_without_portfolio:
-            Portfolio.objects.create(user=user)
-            created_count += 1
+#         for user in users_without_portfolio:
+#             Portfolio.objects.create(user=user)
+#             created_count += 1
         
-        self.stdout.write(
-            self.style.SUCCESS(f'Successfully created {created_count} portfolios')
-        )
+#         self.stdout.write(
+#             self.style.SUCCESS(f'Successfully created {created_count} portfolios')
+#         )

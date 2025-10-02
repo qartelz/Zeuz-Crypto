@@ -321,34 +321,63 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # Logging Configuration
+LOGS_DIR = BASE_DIR / 'logs'
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "simple"
+        },
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOGS_DIR, "django.log"),
+            "formatter": "verbose",
+        },
         "trading_file": {
             "level": "INFO",
             "class": "logging.FileHandler",
-            "filename": "logs/trading.log",
+            "filename": os.path.join(LOGS_DIR, "trading.log"),
             "formatter": "verbose",
         },
         "trading_errors": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": "logs/trading_errors.log",
+            "filename": os.path.join(LOGS_DIR, "trading_errors.log"),
             "formatter": "verbose",
         },
     },
     "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": True,
+        },
         "trading": {
             "handlers": ["trading_file", "trading_errors"],
             "level": "INFO",
             "propagate": True,
         },
-    },
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
+        "apps.client.trading": {
+            "handlers": ["trading_file", "trading_errors"],
+            "level": "INFO",
+            "propagate": True,
         },
     },
 }
