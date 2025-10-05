@@ -3,8 +3,8 @@
 from .base import *
 
 DEBUG = True
-ALLOWED_HOSTS = ["zeuzcrypto.com", "www.zeuzcrypto.com", "13.51.47.77"]
-# ALLOWED_HOSTS = ["*"]
+# ALLOWED_HOSTS = ["zeuzcrypto.com", "www.zeuzcrypto.com", "13.51.47.77"]
+ALLOWED_HOSTS = []
 # ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # DATABASES = {
