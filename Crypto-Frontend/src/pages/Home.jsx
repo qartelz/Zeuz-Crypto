@@ -9,13 +9,13 @@ import Footer from '../components/Footer';
 
 export default function Home() {
   return (
-    <div >
+    <div className='bg-[#070710]' >
      <div 
   style={{
     backgroundImage: `url(${HeroBgImg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    minHeight: '100vh', // This ensures full screen height
+    // minHeight: '100vh', 
   }}
 >
   <Header />

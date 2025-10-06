@@ -100,7 +100,7 @@ const B2bAdminsListPage = () => {
 
   return (
     <div className="bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 rounded-xl shadow-lg border border-white/20 max-w-7xl mx-auto mt-10">
-      <h2 className="text-lg font-semibold text-white mb-4">B2B Admins</h2>
+      <h2 className="text-3xl font-bold  text-white mb-4">B2B Admins</h2>
 
       {/* Filter Tabs */}
       <div className="flex space-x-4 mb-6">
@@ -153,20 +153,27 @@ const B2bAdminsListPage = () => {
                     <td className="p-3">{u.mobile || "-"}</td>
 
                     <td className="p-3 capitalize">
-                      {isPending ? (
-                        <button
-                          onClick={() => handleApprove(u.id)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-sm"
-                        >
-                          Approve
-                        </button>
-                      ) : (
-                        <span className="flex items-center text-green-400 font-medium">
-                          <CheckCircle size={16} className="mr-1" />
-                          Approved
-                        </span>
-                      )}
-                    </td>
+  {admin.status === "pending" ? (
+    <button
+      onClick={() => handleApprove(u.id)}
+      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-sm"
+    >
+      Approve
+    </button>
+  ) : admin.status === "approved" ? (
+    <span className="flex items-center text-green-400 font-medium">
+      <CheckCircle size={16} className="mr-1" />
+      Approved
+    </span>
+  ) : admin.status === "rejected" ? (
+    <span className="flex items-center text-red-400 font-medium">
+      ❌ Rejected
+    </span>
+  ) : (
+    <span className="text-gray-400">Unknown</span>
+  )}
+</td>
+
                     <td className="p-3 flex space-x-2">
                       <button
                         className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition"

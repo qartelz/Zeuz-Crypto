@@ -26,8 +26,7 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
-     "corsheaders",
-    # Local apps
+    
     "apps.account",
     "apps.accounts",
     "apps.admin.subscriptions",

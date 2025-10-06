@@ -36,7 +36,7 @@ function App() {
           <Route path="/reset-password" element={<PasswordReset />} />
 
           {/*Protected Routes - User */}
-          <Route element={<PrivateRoute allowedRoles={["user"]} />}>
+          <Route element={<PrivateRoute allowedRoles={["b2c_user"]} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/trading" element={<Trading />} />
               <Route path="/settings" element={<Settings />} />
