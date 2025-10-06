@@ -6,6 +6,9 @@ __pycache__/
 *.sqlite3
 .env
 *.log
+logs/
+**/logs/
+zeuzcrypto_server/zeuzcryptoserver/logs/
 /staticfiles/
 /media/
 /venv/
