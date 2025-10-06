@@ -26,6 +26,7 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
+     "corsheaders",
     # Local apps
     "apps.account",
     "apps.accounts",
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
 # Middleware
 # -----------------------------------------------------------------------------
 MIDDLEWARE = [
+    
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -71,9 +73,9 @@ WSGI_APPLICATION = "zeuzcryptoserver.wsgi.application"
 # Database
 # -----------------------------------------------------------------------------
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -176,6 +178,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5173",
     # "https://yourdomain.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -298,30 +301,30 @@ TRADING_SETTINGS = {
 
 # Celery Settings for Background Tasks
 CELERY_BEAT_SCHEDULE = {
-    'update-unrealized-pnl': {
-        'task': 'apps.client.trading.tasks.update_unrealized_pnl',
-        'schedule': 30.0,  # Every 30 seconds
+    "update-unrealized-pnl": {
+        "task": "apps.client.trading.tasks.update_unrealized_pnl",
+        "schedule": 30.0,  # Every 30 seconds
     },
-    'update-portfolio-metrics': {
-        'task': 'apps.client.trading.tasks.update_portfolio_metrics',
-        'schedule': 60.0,  # Every minute
+    "update-portfolio-metrics": {
+        "task": "apps.client.trading.tasks.update_portfolio_metrics",
+        "schedule": 60.0,  # Every minute
     },
-    'check-options-expiry': {
-        'task': 'apps.client.trading.tasks.check_options_expiry',
-        'schedule': crontab(hour=16, minute=0),  # 4 PM daily
+    "check-options-expiry": {
+        "task": "apps.client.trading.tasks.check_options_expiry",
+        "schedule": crontab(hour=16, minute=0),  # 4 PM daily
     },
-    'check-futures-expiry': {
-        'task': 'apps.client.trading.tasks.check_futures_expiry',
-        'schedule': crontab(hour=16, minute=15),  # 4:15 PM daily
+    "check-futures-expiry": {
+        "task": "apps.client.trading.tasks.check_futures_expiry",
+        "schedule": crontab(hour=16, minute=15),  # 4:15 PM daily
     },
-    'daily-portfolio-snapshot': {
-        'task': 'apps.client.trading.tasks.daily_portfolio_snapshot',
-        'schedule': crontab(hour=23, minute=59),  # End of day
+    "daily-portfolio-snapshot": {
+        "task": "apps.client.trading.tasks.daily_portfolio_snapshot",
+        "schedule": crontab(hour=23, minute=59),  # End of day
     },
 }
 
 # Logging Configuration
-LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR = BASE_DIR / "logs"
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
 
@@ -342,7 +345,7 @@ LOGGING = {
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
-            "formatter": "simple"
+            "formatter": "simple",
         },
         "file": {
             "level": "INFO",
