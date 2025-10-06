@@ -319,3 +319,9 @@ WARNING 2025-10-04 11:44:41,150 basehttp 30592 11492 "POST //api/v1/trading/plac
 INFO 2025-10-04 11:44:53,496 basehttp 30592 11492 "POST //api/v1/account/login/ HTTP/1.1" 200 1025
 INFO 2025-10-04 11:47:13,351 basehttp 30592 11492 "POST //api/v1/trading/place-order/ HTTP/1.1" 201 171
 INFO 2025-10-05 20:07:51,081 autoreload 3600 27012 Watching for file changes with StatReloader
+INFO 2025-10-05 20:39:59,212 autoreload 11148 30552 Watching for file changes with StatReloader
+INFO 2025-10-06 11:12:03,969 autoreload 11148 30552 D:\Zeuz-Crypto\zeuzcrypto_server\zeuzcryptoserver\zeuzcryptoserver\settings\dev.py changed, reloading.
+INFO 2025-10-06 11:12:05,218 autoreload 12092 20252 Watching for file changes with StatReloader
+INFO 2025-10-06 11:21:28,844 autoreload 12092 20252 D:\Zeuz-Crypto\zeuzcrypto_server\zeuzcryptoserver\zeuzcryptoserver\settings\dev.py changed, reloading.
+INFO 2025-10-06 11:21:30,631 autoreload 32332 14760 Watching for file changes with StatReloader
+INFO 2025-10-06 11:23:24,963 autoreload 32332 14760 D:\Zeuz-Crypto\zeuzcrypto_server\zeuzcryptoserver\zeuzcryptoserver\settings\dev.py changed, reloading.
