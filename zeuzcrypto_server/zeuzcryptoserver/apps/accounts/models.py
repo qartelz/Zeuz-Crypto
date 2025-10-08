@@ -17,6 +17,17 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.contrib.sites.models import Site
 
+# import uuid
+# from decimal import Decimal
+# from django.db import models
+# from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+# from django.core.validators import RegexValidator
+# from django.utils import timezone
+# from datetime import timedelta
+
+
+# # Your existing User, UserBatch, and UserWallet models stay the same...
+
 
 def default_session_expiry():
     return timezone.now() + timedelta(days=1)
@@ -234,6 +245,41 @@ class UserWallet(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.balance} coins"
 
+
+
+class WalletTransaction(models.Model):
+    """Track all wallet transactions for audit trail"""
+    TRANSACTION_TYPES = [
+        ('CREDIT', 'Credit'),
+        ('DEBIT', 'Debit'),
+        ('BLOCK', 'Block'),
+        ('UNBLOCK', 'Unblock'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='wallet_transactions')
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    description = models.CharField(max_length=255)
+    balance_before = models.DecimalField(max_digits=15, decimal_places=2)
+    balance_after = models.DecimalField(max_digits=15, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Link to trade if applicable (optional)
+    # Uncomment if you want to link wallet transactions to trades
+    # trade_id = models.UUIDField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'account_wallet_transactions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['transaction_type', 'created_at']),
+            models.Index(fields=['user', 'transaction_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.transaction_type} - {self.amount}"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")

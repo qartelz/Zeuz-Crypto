@@ -9,6 +9,8 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 from decimal import Decimal
 from datetime import datetime, timedelta
+from .wallet_services import WalletService
+from django.core.exceptions import ValidationError
 import uuid
 import logging
 
@@ -91,12 +93,94 @@ class PlaceOrderView(APIView):
         else:
             return self._handle_spot_sell(user, data, existing_trade)
     
+
+    
+
+    # this works for now
+    # def _handle_spot_buy(self, user, data, existing_trade):
+    #     """Handle spot buy orders"""
+    #     quantity = data['quantity']
+    #     price = data['price']
+    #     amount = quantity * price
+        
+    #     if existing_trade:
+    #         # Add to existing position (average price)
+    #         old_value = existing_trade.remaining_quantity * existing_trade.average_price
+    #         new_value = quantity * price
+    #         total_quantity = existing_trade.remaining_quantity + quantity
+            
+    #         existing_trade.average_price = (old_value + new_value) / total_quantity
+    #         existing_trade.remaining_quantity = total_quantity
+    #         existing_trade.total_quantity += quantity
+    #         existing_trade.total_invested += amount
+    #         existing_trade.save()
+            
+    #         trade = existing_trade
+    #     else:
+    #         # Create new trade
+    #         trade = Trade.objects.create(
+    #             user=user,
+    #             asset_symbol=data['asset_symbol'],
+    #             asset_name=data.get('asset_name', ''),
+    #             asset_exchange=data.get('asset_exchange', ''),
+    #             trade_type='SPOT',
+    #             direction='BUY',
+    #             status='OPEN',
+    #             holding_type=data['holding_type'],
+    #             total_quantity=quantity,
+    #             remaining_quantity=quantity,
+    #             average_price=price,
+    #             total_invested=amount
+    #         )
+        
+    #     # Record trade history
+    #     TradeHistory.objects.create(
+    #         trade=trade,
+    #         user=user,
+    #         action='BUY',
+    #         order_type=data.get('order_type', 'MARKET'),
+    #         quantity=quantity,
+    #         price=price,
+    #         amount=amount
+    #     )
+        
+    #     # Update portfolio
+    #     self._update_portfolio(user)
+        
+    #     return {
+    #         'trade_id': str(trade.id),
+    #         'action': 'BUY' if not existing_trade else 'ADD_TO_POSITION',
+    #         'quantity': str(quantity),
+    #         'price': str(price),
+    #         'total_quantity': str(trade.total_quantity),
+    #         'average_price': str(trade.average_price)
+    #     }
+
+
+    # ============================================================================
+    # UPDATED METHOD 1: _handle_spot_buy (BUY orders - DEDUCT coins)
+    # ============================================================================
     def _handle_spot_buy(self, user, data, existing_trade):
         """Handle spot buy orders"""
         quantity = data['quantity']
         price = data['price']
-        amount = quantity * price
+        amount = quantity * price  # Total cost in coins
         
+        # ✅ WALLET INTEGRATION - CHECK BALANCE
+        if not WalletService.check_balance(user, amount):
+            current_balance = WalletService.get_balance(user)
+            raise ValidationError(
+                f"Insufficient coins. Need: {amount}, You have: {current_balance}"
+            )
+        
+        # ✅ WALLET INTEGRATION - DEDUCT COINS
+        WalletService.deduct_coins(
+            user=user,
+            amount=amount,
+            description=f"Buy {quantity} {data['asset_symbol']} @ {price}"
+        )
+        
+        # Rest of your existing code remains the same
         if existing_trade:
             # Add to existing position (average price)
             old_value = existing_trade.remaining_quantity * existing_trade.average_price
@@ -141,15 +225,83 @@ class PlaceOrderView(APIView):
         # Update portfolio
         self._update_portfolio(user)
         
+        # ✅ GET UPDATED BALANCE
+        new_balance = WalletService.get_balance(user)
+        
         return {
             'trade_id': str(trade.id),
             'action': 'BUY' if not existing_trade else 'ADD_TO_POSITION',
             'quantity': str(quantity),
             'price': str(price),
             'total_quantity': str(trade.total_quantity),
-            'average_price': str(trade.average_price)
+            'average_price': str(trade.average_price),
+            'coins_paid': str(amount),  # ✅ New field
+            'wallet_balance': str(new_balance)  # ✅ New field
         }
+
     
+    # =======================thos works for now =====================================================
+    # def _handle_spot_sell(self, user, data, existing_trade):
+    #     """Handle spot sell orders"""
+    #     if not existing_trade:
+    #         # For intraday, allow short selling
+    #         if data['holding_type'] == 'INTRADAY':
+    #             return self._create_short_position(user, data)
+    #         else:
+    #             raise ValueError("No existing position to sell for long-term trades")
+        
+    #     quantity = data['quantity']
+    #     price = data['price']
+        
+    #     if quantity > existing_trade.remaining_quantity:
+    #         raise ValueError("Cannot sell more than available quantity")
+        
+    #     # Calculate P&L for this sell
+    #     cost_basis = existing_trade.average_price * quantity
+    #     sell_value = price * quantity
+    #     realized_pnl = sell_value - cost_basis
+        
+    #     # Update trade
+    #     existing_trade.remaining_quantity -= quantity
+    #     existing_trade.realized_pnl += realized_pnl
+        
+    #     if existing_trade.remaining_quantity == 0:
+    #         existing_trade.status = 'CLOSED'
+    #         existing_trade.closed_at = timezone.now()
+    #     elif existing_trade.remaining_quantity < existing_trade.total_quantity:
+    #         existing_trade.status = 'PARTIALLY_CLOSED'
+        
+    #     existing_trade.save()
+        
+    #     # Record trade history
+    #     TradeHistory.objects.create(
+    #         trade=existing_trade,
+    #         user=user,
+    #         action='SELL' if existing_trade.remaining_quantity == 0 else 'PARTIAL_SELL',
+    #         order_type=data.get('order_type', 'MARKET'),
+    #         quantity=quantity,
+    #         price=price,
+    #         amount=sell_value,
+    #         realized_pnl=realized_pnl
+    #     )
+        
+    #     # Update portfolio
+    #     self._update_portfolio(user)
+        
+    #     return {
+    #         'trade_id': str(existing_trade.id),
+    #         'action': 'SELL',
+    #         'quantity': str(quantity),
+    #         'price': str(price),
+    #         'realized_pnl': str(realized_pnl),
+    #         'remaining_quantity': str(existing_trade.remaining_quantity),
+    #         'status': existing_trade.status
+    #     }
+
+    
+    # ============================================================================
+    # UPDATED METHOD 2: _handle_spot_sell (SELL orders - CREDIT coins)
+    # ============================================================================
     def _handle_spot_sell(self, user, data, existing_trade):
         """Handle spot sell orders"""
         if not existing_trade:
@@ -167,8 +319,15 @@ class PlaceOrderView(APIView):
         
         # Calculate P&L for this sell
         cost_basis = existing_trade.average_price * quantity
-        sell_value = price * quantity
+        sell_value = price * quantity  # Amount to credit to wallet
         realized_pnl = sell_value - cost_basis
+        
+        # ✅ WALLET INTEGRATION - CREDIT COINS
+        WalletService.credit_coins(
+            user=user,
+            amount=sell_value,
+            description=f"Sell {quantity} {existing_trade.asset_symbol} @ {price}"
+        )
         
         # Update trade
         existing_trade.remaining_quantity -= quantity
@@ -197,6 +356,9 @@ class PlaceOrderView(APIView):
         # Update portfolio
         self._update_portfolio(user)
         
+        # ✅ GET UPDATED BALANCE
+        new_balance = WalletService.get_balance(user)
+        
         return {
             'trade_id': str(existing_trade.id),
             'action': 'SELL',
@@ -204,7 +366,9 @@ class PlaceOrderView(APIView):
             'price': str(price),
             'realized_pnl': str(realized_pnl),
             'remaining_quantity': str(existing_trade.remaining_quantity),
-            'status': existing_trade.status
+            'status': existing_trade.status,
+            'coins_received': str(sell_value),  # ✅ New field
+            'wallet_balance': str(new_balance)  # ✅ New field
         }
     
     def _create_short_position(self, user, data):
@@ -329,6 +493,69 @@ class PlaceOrderView(APIView):
             'remaining_quantity': str(existing_trade.remaining_quantity)
         }
     
+    # def _create_new_futures_position(self, user, data):
+    #     """Create new futures position"""
+    #     quantity = data['quantity']
+    #     price = data['price']
+    #     leverage = data.get('leverage', Decimal('1'))
+        
+    #     # Calculate margin
+    #     position_value = quantity * price
+    #     margin_required = position_value / leverage
+        
+    #     # Create trade
+    #     trade = Trade.objects.create(
+    #         user=user,
+    #         asset_symbol=data['asset_symbol'],
+    #         asset_name=data.get('asset_name', ''),
+    #         asset_exchange=data.get('asset_exchange', ''),
+    #         trade_type='FUTURES',
+    #         direction=data['direction'],
+    #         status='OPEN',
+    #         holding_type=data.get('holding_type', 'INTRADAY'),
+    #         total_quantity=quantity,
+    #         remaining_quantity=quantity,
+    #         average_price=price,
+    #         total_invested=margin_required
+    #     )
+        
+    #     # Create futures details
+    #     FuturesDetails.objects.create(
+    #         trade=trade,
+    #         leverage=leverage,
+    #         margin_required=margin_required,
+    #         margin_used=margin_required,
+    #         expiry_date=data['expiry_date'],
+    #         contract_size=data.get('contract_size', Decimal('1')),
+    #         is_hedged=data.get('is_hedged', False)
+    #     )
+        
+    #     # Record trade history
+    #     TradeHistory.objects.create(
+    #         trade=trade,
+    #         user=user,
+    #         action=data['direction'],
+    #         order_type=data.get('order_type', 'MARKET'),
+    #         quantity=quantity,
+    #         price=price,
+    #         amount=position_value
+    #     )
+        
+    #     self._update_portfolio(user)
+        
+    #     return {
+    #         'trade_id': str(trade.id),
+    #         'action': 'CREATE_FUTURES_POSITION',
+    #         'direction': data['direction'],
+    #         'quantity': str(quantity),
+    #         'price': str(price),
+    #         'leverage': str(leverage),
+    #         'margin_required': str(margin_required)
+    #     }
+
+    # ============================================================================
+    # UPDATED METHOD 3: _create_new_futures_position (BLOCK margin)
+    # ============================================================================
     def _create_new_futures_position(self, user, data):
         """Create new futures position"""
         quantity = data['quantity']
@@ -338,6 +565,20 @@ class PlaceOrderView(APIView):
         # Calculate margin
         position_value = quantity * price
         margin_required = position_value / leverage
+        
+        # ✅ WALLET INTEGRATION - CHECK BALANCE FOR MARGIN
+        if not WalletService.check_balance(user, margin_required):
+            current_balance = WalletService.get_balance(user)
+            raise ValidationError(
+                f"Insufficient coins for margin. Need: {margin_required}, You have: {current_balance}"
+            )
+        
+        # ✅ WALLET INTEGRATION - BLOCK MARGIN
+        WalletService.block_coins(
+            user=user,
+            amount=margin_required,
+            description=f"Margin for {quantity} {data['asset_symbol']} Futures ({leverage}x)"
+        )
         
         # Create trade
         trade = Trade.objects.create(
@@ -379,6 +620,9 @@ class PlaceOrderView(APIView):
         
         self._update_portfolio(user)
         
+        # ✅ GET UPDATED BALANCE
+        new_balance = WalletService.get_balance(user)
+        
         return {
             'trade_id': str(trade.id),
             'action': 'CREATE_FUTURES_POSITION',
@@ -386,8 +630,12 @@ class PlaceOrderView(APIView):
             'quantity': str(quantity),
             'price': str(price),
             'leverage': str(leverage),
-            'margin_required': str(margin_required)
+            'margin_required': str(margin_required),
+            'margin_blocked': str(margin_required),  # ✅ New field
+            'wallet_balance': str(new_balance)  # ✅ New field
         }
+
+
     
     def _process_options_order(self, user, data):
         """Handle options trading logic"""
@@ -647,6 +895,19 @@ class PortfolioViewSet(viewsets.ReadOnlyModelViewSet):
         return Portfolio.objects.filter(user=self.request.user)
 
 
+# class PortfolioSummaryView(APIView):
+#     permission_classes = [IsAuthenticated]
+    
+#     def get(self, request):
+#         portfolio, created = Portfolio.objects.get_or_create(user=request.user)
+#         portfolio.update_portfolio_metrics()
+        
+#         serializer = PortfolioSerializer(portfolio)
+#         return Response(serializer.data)
+
+# ============================================================================
+# UPDATED METHOD 5: PortfolioSummaryView (Show wallet balance)
+# ============================================================================
 class PortfolioSummaryView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -655,7 +916,15 @@ class PortfolioSummaryView(APIView):
         portfolio.update_portfolio_metrics()
         
         serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
+        
+        # ✅ ADD WALLET BALANCE TO RESPONSE
+        wallet_balance = WalletService.get_balance(request.user)
+        
+        response_data = serializer.data
+        response_data['wallet_balance'] = str(wallet_balance)
+        response_data['total_net_worth'] = str(wallet_balance + portfolio.total_value)
+        
+        return Response(response_data)
 
 
 class ActivePositionsView(APIView):
