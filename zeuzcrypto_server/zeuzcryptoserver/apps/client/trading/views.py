@@ -20,10 +20,16 @@ logger = logging.getLogger(__name__)
 
 from .models import Trade, FuturesDetails, OptionsDetails, TradeHistory, Portfolio
 from .serializers import (
-    TradeSerializer, PlaceOrderSerializer, PartialCloseSerializer, 
-    CloseTradeSerializer, PortfolioSerializer, ActivePositionSerializer,
-    PnLReportSerializer, RiskCheckSerializer, UpdatePricesSerializer,
-    TradeHistorySerializer
+    TradeSerializer,
+    PlaceOrderSerializer,
+    PartialCloseSerializer,
+    CloseTradeSerializer,
+    PortfolioSerializer,
+    ActivePositionSerializer,
+    PnLReportSerializer,
+    RiskCheckSerializer,
+    UpdatePricesSerializer,
+    TradeHistorySerializer,
 )
 from .wallet_services import WalletService
 
@@ -31,52 +37,53 @@ from .wallet_services import WalletService
 class TradeViewSet(viewsets.ModelViewSet):
     serializer_class = TradeSerializer
     permission_classes = [IsAuthenticated]
-    
-    def get_queryset(self):
-        return Trade.objects.filter(user=self.request.user).order_by('-opened_at')
 
-    @action(detail=True, methods=['post'])
+    def get_queryset(self):
+        return Trade.objects.filter(user=self.request.user).order_by("-opened_at")
+
+    @action(detail=True, methods=["post"])
     def update_pnl(self, request, pk=None):
         trade = self.get_object()
-        current_price = request.data.get('current_price')
+        current_price = request.data.get("current_price")
         if current_price:
             pnl = trade.calculate_unrealized_pnl(Decimal(current_price))
-            return Response({'unrealized_pnl': str(pnl)})
-        return Response({'error': 'Current price is required'}, status=400)
+            return Response({"unrealized_pnl": str(pnl)})
+        return Response({"error": "Current price is required"}, status=400)
 
 
 class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         serializer = PlaceOrderSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 with transaction.atomic():
-                    result = self._process_order(request.user, serializer.validated_data)
+                    result = self._process_order(
+                        request.user, serializer.validated_data
+                    )
                     return Response(result, status=status.HTTP_201_CREATED)
             except ValidationError as e:
                 logger.error(f"Validation error: {str(e)}")
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 logger.error(f"Error processing order: {str(e)}", exc_info=True)
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def _process_order(self, user, data):
         """Main order processing logic"""
-        trade_type = data['trade_type']
-        
-        if trade_type == 'SPOT':
+        trade_type = data["trade_type"]
+
+        if trade_type == "SPOT":
             return self._process_spot_order(user, data)
-        elif trade_type == 'FUTURES':
+        elif trade_type == "FUTURES":
             return self._process_futures_order(user, data)
-        elif trade_type == 'OPTIONS':
+        elif trade_type == "OPTIONS":
             return self._process_options_order(user, data)
         else:
             raise ValueError(f"Unsupported trade type: {trade_type}")
-        
-        
+
     # def _process_spot_order(self, user, data):
     #     """Handle spot trading logic"""
     #     asset_symbol = data['asset_symbol']
@@ -84,7 +91,7 @@ class PlaceOrderView(APIView):
     #     quantity = data['quantity']
     #     price = data['price']
     #     holding_type = data['holding_type']
-        
+
     #     # Find existing trade for this asset and holding type
     #     existing_trade = Trade.objects.filter(
     #         user=user,
@@ -93,38 +100,37 @@ class PlaceOrderView(APIView):
     #         holding_type=holding_type,
     #         status__in=['OPEN', 'PARTIALLY_CLOSED']
     #     ).first()
-        
+
     #     if direction == 'BUY':
     #         return self._handle_spot_buy(user, data, existing_trade)
     #     else:
     #         return self._handle_spot_sell(user, data, existing_trade)
     def _process_spot_order(self, user, data):
         """Handle spot trading logic - CORRECTED"""
-        asset_symbol = data['asset_symbol']
-        direction = data['direction']
-        quantity = data['quantity']
-        price = data['price']
-        holding_type = data['holding_type']
-        
+        asset_symbol = data["asset_symbol"]
+        direction = data["direction"]
+        quantity = data["quantity"]
+        price = data["price"]
+        holding_type = data["holding_type"]
+
         # FIND EXISTING POSITIONS (only same holding_type and same direction)
         existing_trade = Trade.objects.filter(
             user=user,
             asset_symbol=asset_symbol,
-            trade_type='SPOT',
+            trade_type="SPOT",
             holding_type=holding_type,
-            status__in=['OPEN', 'PARTIALLY_CLOSED']
+            status__in=["OPEN", "PARTIALLY_CLOSED"],
         ).first()
-        
-        if direction == 'BUY':
+
+        if direction == "BUY":
             return self._handle_spot_buy(user, data, existing_trade)
         else:  # direction == 'SELL'
             return self._handle_spot_sell(user, data, existing_trade, holding_type)
 
-
     def _handle_spot_buy(self, user, data, existing_trade):
         """
         Handle SPOT BUY orders
-        
+
         Scenarios:
         1. LONGTERM BUY - First buy of asset
         2. LONGTERM BUY - Add to existing LONGTERM BUY position (average price)
@@ -132,125 +138,126 @@ class PlaceOrderView(APIView):
         4. INTRADAY BUY - Add to existing INTRADAY BUY position
         5. INTRADAY BUY - Close existing INTRADAY SHORT position
         """
-        quantity = data['quantity']
-        price = data['price']
+        quantity = data["quantity"]
+        price = data["price"]
         amount = quantity * price
-        holding_type = data['holding_type']
-        
+        holding_type = data["holding_type"]
+
         # CHECK WALLET BALANCE
         if not WalletService.check_balance(user, amount):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
                 f"Insufficient coins. Need: {amount}, You have: {current_balance}"
             )
-        
+
         # DEDUCT COINS FROM WALLET
         WalletService.deduct_coins(
             user=user,
             amount=amount,
-            description=f"Buy {quantity} {data['asset_symbol']} @ {price} ({holding_type})"
+            description=f"Buy {quantity} {data['asset_symbol']} @ {price} ({holding_type})",
         )
-        
+
         # SCENARIO 1 & 2: If existing BUY position (same direction, same holding_type)
-        if existing_trade and existing_trade.direction == 'BUY':
+        if existing_trade and existing_trade.direction == "BUY":
             # Add to existing position (average price)
             old_value = existing_trade.remaining_quantity * existing_trade.average_price
             new_value = quantity * price
             total_quantity = existing_trade.remaining_quantity + quantity
-            
+
             existing_trade.average_price = (old_value + new_value) / total_quantity
             existing_trade.remaining_quantity = total_quantity
             existing_trade.total_quantity += quantity
             existing_trade.total_invested += amount
             existing_trade.save()
-            
+
             trade = existing_trade
-            action = 'ADD_TO_POSITION'
-        
+            action = "ADD_TO_POSITION"
+
         # SCENARIO 3 & 4: New BUY position or no existing position
         elif not existing_trade:
             # Create new BUY trade
             trade = Trade.objects.create(
                 user=user,
-                asset_symbol=data['asset_symbol'],
-                asset_name=data.get('asset_name', ''),
-                asset_exchange=data.get('asset_exchange', ''),
-                trade_type='SPOT',
-                direction='BUY',
-                status='OPEN',
+                asset_symbol=data["asset_symbol"],
+                asset_name=data.get("asset_name", ""),
+                asset_exchange=data.get("asset_exchange", ""),
+                trade_type="SPOT",
+                direction="BUY",
+                status="OPEN",
                 holding_type=holding_type,
                 total_quantity=quantity,
                 remaining_quantity=quantity,
                 average_price=price,
-                total_invested=amount
+                total_invested=amount,
             )
-            action = 'BUY'
-        
+            action = "BUY"
+
         # SCENARIO 5: INTRADAY BUY can close existing SHORT position
         # (But this is already handled in _handle_spot_sell when SELL creates SHORT)
         # This shouldn't happen here because we filtered by direction=BUY
-        
+
         # Record trade history
         TradeHistory.objects.create(
             trade=trade,
             user=user,
-            action='BUY',
-            order_type=data.get('order_type', 'MARKET'),
+            action="BUY",
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
-            amount=amount
+            amount=amount,
         )
-        
+
         # Update portfolio
         self._update_portfolio(user)
-        
+
         # GET UPDATED BALANCE
         new_balance = WalletService.get_balance(user)
-    
+
         return {
-            'trade_id': str(trade.id),
-            'action': action,
-            'direction': 'BUY',
-            'holding_type': holding_type,
-            'quantity': str(quantity),
-            'price': str(price),
-            'total_quantity': str(trade.total_quantity),
-            'average_price': str(trade.average_price),
-            'coins_paid': str(amount),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "action": action,
+            "direction": "BUY",
+            "holding_type": holding_type,
+            "quantity": str(quantity),
+            "price": str(price),
+            "total_quantity": str(trade.total_quantity),
+            "average_price": str(trade.average_price),
+            "coins_paid": str(amount),
+            "wallet_balance": str(new_balance),
         }
+
     # def _handle_spot_buy(self, user, data, existing_trade):
     #     """Handle spot buy orders - WITH WALLET INTEGRATION"""
     #     quantity = data['quantity']
     #     price = data['price']
     #     amount = quantity * price
-        
+
     #     # ✅ CHECK WALLET BALANCE
     #     if not WalletService.check_balance(user, amount):
     #         current_balance = WalletService.get_balance(user)
     #         raise ValidationError(
     #             f"Insufficient coins. Need: {amount}, You have: {current_balance}"
     #         )
-        
+
     #     # ✅ DEDUCT COINS FROM WALLET
     #     WalletService.deduct_coins(
     #         user=user,
     #         amount=amount,
     #         description=f"Buy {quantity} {data['asset_symbol']} @ {price}"
     #     )
-        
+
     #     if existing_trade:
     #         # Add to existing position (average price)
     #         old_value = existing_trade.remaining_quantity * existing_trade.average_price
     #         new_value = quantity * price
     #         total_quantity = existing_trade.remaining_quantity + quantity
-            
+
     #         existing_trade.average_price = (old_value + new_value) / total_quantity
     #         existing_trade.remaining_quantity = total_quantity
     #         existing_trade.total_quantity += quantity
     #         existing_trade.total_invested += amount
     #         existing_trade.save()
-            
+
     #         trade = existing_trade
     #     else:
     #         # Create new trade
@@ -268,7 +275,7 @@ class PlaceOrderView(APIView):
     #             average_price=price,
     #             total_invested=amount
     #         )
-        
+
     #     # Record trade history
     #     TradeHistory.objects.create(
     #         trade=trade,
@@ -279,13 +286,13 @@ class PlaceOrderView(APIView):
     #         price=price,
     #         amount=amount
     #     )
-        
+
     #     # Update portfolio
     #     self._update_portfolio(user)
-        
+
     #     # ✅ GET UPDATED BALANCE
     #     new_balance = WalletService.get_balance(user)
-        
+
     #     return {
     #         'trade_id': str(trade.id),
     #         'action': 'BUY' if not existing_trade else 'ADD_TO_POSITION',
@@ -296,11 +303,11 @@ class PlaceOrderView(APIView):
     #         'coins_paid': str(amount),
     #         'wallet_balance': str(new_balance)
     #     }
-        
+
     def _handle_spot_sell(self, user, data, existing_trade, holding_type):
         """
         Handle SPOT SELL orders - CORRECTED
-        
+
         Scenarios:
         1. LONGTERM SELL - Close existing LONGTERM BUY position (full or partial)
         2. LONGTERM SELL - Error if no BUY position exists
@@ -308,21 +315,21 @@ class PlaceOrderView(APIView):
         4. INTRADAY SELL - Close existing SHORT position
         5. INTRADAY SELL - Close existing BUY position
         """
-        quantity = data['quantity']
-        price = data['price']
-        
+        quantity = data["quantity"]
+        price = data["price"]
+
         # SCENARIO 2: Long-term SELL must have existing BUY position
-        if holding_type == 'LONGTERM':
+        if holding_type == "LONGTERM":
             if not existing_trade:
                 raise ValidationError(
                     "Cannot SELL in LONGTERM - no existing BUY position to close"
                 )
-            
+
             # SCENARIO 1: Close LONGTERM BUY position
             return self._close_longterm_position(user, data, existing_trade)
-        
+
         # SCENARIO 3, 4, 5: Intraday handling
-        elif holding_type == 'INTRADAY':
+        elif holding_type == "INTRADAY":
             # Check if there's an existing INTRADAY position
             if existing_trade:
                 # SCENARIO 4 & 5: Close existing INTRADAY position
@@ -340,37 +347,37 @@ class PlaceOrderView(APIView):
     #             return self._create_short_position(user, data)
     #         else:
     #             raise ValueError("No existing position to sell for long-term trades")
-        
+
     #     quantity = data['quantity']
     #     price = data['price']
-        
+
     #     if quantity > existing_trade.remaining_quantity:
     #         raise ValueError("Cannot sell more than available quantity")
-        
+
     #     # Calculate P&L for this sell
     #     cost_basis = existing_trade.average_price * quantity
     #     sell_value = price * quantity
     #     realized_pnl = sell_value - cost_basis
-        
+
     #     # ✅ CREDIT COINS TO WALLET
     #     WalletService.credit_coins(
     #         user=user,
     #         amount=sell_value,
     #         description=f"Sell {quantity} {existing_trade.asset_symbol} @ {price}"
     #     )
-        
+
     #     # Update trade
     #     existing_trade.remaining_quantity -= quantity
     #     existing_trade.realized_pnl += realized_pnl
-        
+
     #     if existing_trade.remaining_quantity == 0:
     #         existing_trade.status = 'CLOSED'
     #         existing_trade.closed_at = timezone.now()
     #     elif existing_trade.remaining_quantity < existing_trade.total_quantity:
     #         existing_trade.status = 'PARTIALLY_CLOSED'
-        
+
     #     existing_trade.save()
-        
+
     #     # Record trade history
     #     TradeHistory.objects.create(
     #         trade=existing_trade,
@@ -382,13 +389,13 @@ class PlaceOrderView(APIView):
     #         amount=sell_value,
     #         realized_pnl=realized_pnl
     #     )
-        
+
     #     # Update portfolio
     #     self._update_portfolio(user)
-        
+
     #     # ✅ GET UPDATED BALANCE
     #     new_balance = WalletService.get_balance(user)
-        
+
     #     return {
     #         'trade_id': str(existing_trade.id),
     #         'action': 'SELL',
@@ -400,13 +407,13 @@ class PlaceOrderView(APIView):
     #         'coins_received': str(sell_value),
     #         'wallet_balance': str(new_balance)
     #     }
-    
+
     def _create_short_position(self, user, data):
         """Create short position for intraday spot trading - WITH WALLET INTEGRATION"""
-        quantity = data['quantity']
-        price = data['price']
+        quantity = data["quantity"]
+        price = data["price"]
         amount = quantity * price
-        
+
         # For short selling, we typically need collateral
         # Here we'll use a simple model: block the equivalent amount
         if not WalletService.check_balance(user, amount):
@@ -414,90 +421,90 @@ class PlaceOrderView(APIView):
             raise ValidationError(
                 f"Insufficient coins for short position. Need: {amount}, You have: {current_balance}"
             )
-        
+
         # Block coins as collateral for short position
         WalletService.block_coins(
             user=user,
             amount=amount,
-            description=f"Short sell {quantity} {data['asset_symbol']} @ {price}"
+            description=f"Short sell {quantity} {data['asset_symbol']} @ {price}",
         )
-        
+
         trade = Trade.objects.create(
             user=user,
-            asset_symbol=data['asset_symbol'],
-            asset_name=data.get('asset_name', ''),
-            asset_exchange=data.get('asset_exchange', ''),
-            trade_type='SPOT',
-            direction='SELL',
-            status='OPEN',
-            holding_type='INTRADAY',
+            asset_symbol=data["asset_symbol"],
+            asset_name=data.get("asset_name", ""),
+            asset_exchange=data.get("asset_exchange", ""),
+            trade_type="SPOT",
+            direction="SELL",
+            status="OPEN",
+            holding_type="INTRADAY",
             total_quantity=quantity,
             remaining_quantity=quantity,
             average_price=price,
-            total_invested=amount
+            total_invested=amount,
         )
-        
+
         TradeHistory.objects.create(
             trade=trade,
             user=user,
-            action='SELL',
-            order_type=data.get('order_type', 'MARKET'),
+            action="SELL",
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
-            amount=amount
+            amount=amount,
         )
-        
+
         self._update_portfolio(user)
-        
+
         new_balance = WalletService.get_balance(user)
-        
+
         return {
-            'trade_id': str(trade.id),
-            'action': 'CREATE_SHORT_POSITION',
-            'quantity': str(quantity),
-            'price': str(price),
-            'collateral_blocked': str(amount),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "action": "CREATE_SHORT_POSITION",
+            "quantity": str(quantity),
+            "price": str(price),
+            "collateral_blocked": str(amount),
+            "wallet_balance": str(new_balance),
         }
-    
+
     def _process_futures_order(self, user, data):
         """Handle futures trading logic"""
-        asset_symbol = data['asset_symbol']
-        direction = data['direction']
-        quantity = data['quantity']
-        price = data['price']
-        
+        asset_symbol = data["asset_symbol"]
+        direction = data["direction"]
+        quantity = data["quantity"]
+        price = data["price"]
+
         # Find existing futures position
         existing_trade = Trade.objects.filter(
             user=user,
             asset_symbol=asset_symbol,
-            trade_type='FUTURES',
-            status__in=['OPEN', 'PARTIALLY_CLOSED']
+            trade_type="FUTURES",
+            status__in=["OPEN", "PARTIALLY_CLOSED"],
         ).first()
-        
+
         if existing_trade:
             return self._handle_existing_futures_position(user, data, existing_trade)
         else:
             return self._create_new_futures_position(user, data)
-    
+
     def _handle_existing_futures_position(self, user, data, existing_trade):
         """Handle futures position modification"""
-        direction = data['direction']
-        quantity = data['quantity']
-        price = data['price']
-        
+        direction = data["direction"]
+        quantity = data["quantity"]
+        price = data["price"]
+
         if existing_trade.direction == direction:
             # Same direction - increase position
             old_value = existing_trade.remaining_quantity * existing_trade.average_price
             new_value = quantity * price
             total_quantity = existing_trade.remaining_quantity + quantity
-            
+
             existing_trade.average_price = (old_value + new_value) / total_quantity
             existing_trade.remaining_quantity = total_quantity
             existing_trade.total_quantity += quantity
             existing_trade.save()
-            
-            action = 'INCREASE_POSITION'
+
+            action = "INCREASE_POSITION"
         else:
             # Opposite direction - reduce position
             if quantity > existing_trade.remaining_quantity:
@@ -506,270 +513,270 @@ class PlaceOrderView(APIView):
                 existing_trade.remaining_quantity = remaining_qty
                 existing_trade.direction = direction
                 existing_trade.average_price = price
-                action = 'FLIP_POSITION'
+                action = "FLIP_POSITION"
             elif quantity == existing_trade.remaining_quantity:
                 # Close position
-                existing_trade.remaining_quantity = Decimal('0')
-                existing_trade.status = 'CLOSED'
+                existing_trade.remaining_quantity = Decimal("0")
+                existing_trade.status = "CLOSED"
                 existing_trade.closed_at = timezone.now()
-                action = 'CLOSE_POSITION'
+                action = "CLOSE_POSITION"
             else:
                 # Reduce position
                 existing_trade.remaining_quantity -= quantity
-                action = 'REDUCE_POSITION'
-            
+                action = "REDUCE_POSITION"
+
             existing_trade.save()
-        
+
         # Record trade history
         TradeHistory.objects.create(
             trade=existing_trade,
             user=user,
             action=direction,
-            order_type=data.get('order_type', 'MARKET'),
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
-            amount=quantity * price
+            amount=quantity * price,
         )
-        
+
         self._update_portfolio(user)
-        
+
         new_balance = WalletService.get_balance(user)
-        
+
         return {
-            'trade_id': str(existing_trade.id),
-            'action': action,
-            'direction': direction,
-            'quantity': str(quantity),
-            'price': str(price),
-            'remaining_quantity': str(existing_trade.remaining_quantity),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(existing_trade.id),
+            "action": action,
+            "direction": direction,
+            "quantity": str(quantity),
+            "price": str(price),
+            "remaining_quantity": str(existing_trade.remaining_quantity),
+            "wallet_balance": str(new_balance),
         }
-    
+
     def _create_new_futures_position(self, user, data):
         """Create new futures position - WITH WALLET INTEGRATION"""
-        quantity = data['quantity']
-        price = data['price']
-        leverage = data.get('leverage', Decimal('1'))
-        
+        quantity = data["quantity"]
+        price = data["price"]
+        leverage = data.get("leverage", Decimal("1"))
+
         # Calculate margin
         position_value = quantity * price
         margin_required = position_value / leverage
-        
+
         # ✅ CHECK WALLET BALANCE FOR MARGIN
         if not WalletService.check_balance(user, margin_required):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
                 f"Insufficient coins for margin. Need: {margin_required}, You have: {current_balance}"
             )
-        
+
         # ✅ BLOCK MARGIN COINS
         WalletService.block_coins(
             user=user,
             amount=margin_required,
-            description=f"Margin for {quantity} {data['asset_symbol']} Futures ({leverage}x)"
+            description=f"Margin for {quantity} {data['asset_symbol']} Futures ({leverage}x)",
         )
-        
+
         # Create trade
         trade = Trade.objects.create(
             user=user,
-            asset_symbol=data['asset_symbol'],
-            asset_name=data.get('asset_name', ''),
-            asset_exchange=data.get('asset_exchange', ''),
-            trade_type='FUTURES',
-            direction=data['direction'],
-            status='OPEN',
-            holding_type=data.get('holding_type', 'INTRADAY'),
+            asset_symbol=data["asset_symbol"],
+            asset_name=data.get("asset_name", ""),
+            asset_exchange=data.get("asset_exchange", ""),
+            trade_type="FUTURES",
+            direction=data["direction"],
+            status="OPEN",
+            holding_type=data.get("holding_type", "INTRADAY"),
             total_quantity=quantity,
             remaining_quantity=quantity,
             average_price=price,
-            total_invested=margin_required
+            total_invested=margin_required,
         )
-        
+
         # Create futures details
         FuturesDetails.objects.create(
             trade=trade,
             leverage=leverage,
             margin_required=margin_required,
             margin_used=margin_required,
-            expiry_date=data['expiry_date'],
-            contract_size=data.get('contract_size', Decimal('1')),
-            is_hedged=data.get('is_hedged', False)
+            expiry_date=data["expiry_date"],
+            contract_size=data.get("contract_size", Decimal("1")),
+            is_hedged=data.get("is_hedged", False),
         )
-        
+
         # Record trade history
         TradeHistory.objects.create(
             trade=trade,
             user=user,
-            action=data['direction'],
-            order_type=data.get('order_type', 'MARKET'),
+            action=data["direction"],
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
-            amount=position_value
+            amount=position_value,
         )
-        
+
         self._update_portfolio(user)
-        
+
         # ✅ GET UPDATED BALANCE
         new_balance = WalletService.get_balance(user)
-        
+
         return {
-            'trade_id': str(trade.id),
-            'action': 'CREATE_FUTURES_POSITION',
-            'direction': data['direction'],
-            'quantity': str(quantity),
-            'price': str(price),
-            'leverage': str(leverage),
-            'margin_required': str(margin_required),
-            'margin_blocked': str(margin_required),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "action": "CREATE_FUTURES_POSITION",
+            "direction": data["direction"],
+            "quantity": str(quantity),
+            "price": str(price),
+            "leverage": str(leverage),
+            "margin_required": str(margin_required),
+            "margin_blocked": str(margin_required),
+            "wallet_balance": str(new_balance),
         }
-    
+
     def _process_options_order(self, user, data):
         """Handle options trading logic"""
-        asset_symbol = data['asset_symbol']
-        option_type = data['option_type']
-        strike_price = data['strike_price']
-        expiry_date = data['expiry_date']
-        
+        asset_symbol = data["asset_symbol"]
+        option_type = data["option_type"]
+        strike_price = data["strike_price"]
+        expiry_date = data["expiry_date"]
+
         # Find existing option position
         existing_trade = Trade.objects.filter(
             user=user,
             asset_symbol=asset_symbol,
-            trade_type='OPTIONS',
-            status__in=['OPEN', 'PARTIALLY_CLOSED'],
+            trade_type="OPTIONS",
+            status__in=["OPEN", "PARTIALLY_CLOSED"],
             options_details__option_type=option_type,
             options_details__strike_price=strike_price,
-            options_details__expiry_date=expiry_date
+            options_details__expiry_date=expiry_date,
         ).first()
-        
+
         if existing_trade:
             return self._handle_existing_options_position(user, data, existing_trade)
         else:
             return self._create_new_options_position(user, data)
-    
+
     def _handle_existing_options_position(self, user, data, existing_trade):
         """Handle existing options position - WITH WALLET INTEGRATION"""
-        quantity = data['quantity']
-        premium = data['premium']
+        quantity = data["quantity"]
+        premium = data["premium"]
         position_cost = quantity * premium
-        
+
         # ✅ CHECK AND DEDUCT FOR ADDITIONAL OPTIONS
         if not WalletService.check_balance(user, position_cost):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
                 f"Insufficient coins. Need: {position_cost}, You have: {current_balance}"
             )
-        
+
         WalletService.deduct_coins(
             user=user,
             amount=position_cost,
-            description=f"Add {quantity} {data['asset_symbol']} Options"
+            description=f"Add {quantity} {data['asset_symbol']} Options",
         )
-        
+
         # Increase position
         old_value = existing_trade.remaining_quantity * existing_trade.average_price
         new_value = quantity * premium
         total_quantity = existing_trade.remaining_quantity + quantity
-        
+
         existing_trade.average_price = (old_value + new_value) / total_quantity
         existing_trade.remaining_quantity = total_quantity
         existing_trade.total_quantity += quantity
         existing_trade.total_invested += position_cost
         existing_trade.save()
-        
+
         TradeHistory.objects.create(
             trade=existing_trade,
             user=user,
-            action=data['direction'],
-            order_type=data.get('order_type', 'MARKET'),
+            action=data["direction"],
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=premium,
-            amount=position_cost
+            amount=position_cost,
         )
-        
+
         self._update_portfolio(user)
-        
+
         new_balance = WalletService.get_balance(user)
-        
+
         return {
-            'trade_id': str(existing_trade.id),
-            'action': 'INCREASE_OPTIONS_POSITION',
-            'quantity': str(quantity),
-            'premium': str(premium),
-            'coins_paid': str(position_cost),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(existing_trade.id),
+            "action": "INCREASE_OPTIONS_POSITION",
+            "quantity": str(quantity),
+            "premium": str(premium),
+            "coins_paid": str(position_cost),
+            "wallet_balance": str(new_balance),
         }
-    
+
     def _create_new_options_position(self, user, data):
         """Create new options position - WITH WALLET INTEGRATION"""
-        quantity = data['quantity']
-        premium = data['premium']
+        quantity = data["quantity"]
+        premium = data["premium"]
         position_cost = quantity * premium
-        
+
         # ✅ CHECK AND DEDUCT PREMIUM
         if not WalletService.check_balance(user, position_cost):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
                 f"Insufficient coins for options premium. Need: {position_cost}, You have: {current_balance}"
             )
-        
+
         WalletService.deduct_coins(
             user=user,
             amount=position_cost,
-            description=f"Buy {quantity} {data['asset_symbol']} {data['option_type']} Options"
+            description=f"Buy {quantity} {data['asset_symbol']} {data['option_type']} Options",
         )
-        
+
         trade = Trade.objects.create(
             user=user,
-            asset_symbol=data['asset_symbol'],
-            asset_name=data.get('asset_name', ''),
-            asset_exchange=data.get('asset_exchange', ''),
-            trade_type='OPTIONS',
-            direction=data['direction'],
-            status='OPEN',
-            holding_type=data.get('holding_type', 'INTRADAY'),
+            asset_symbol=data["asset_symbol"],
+            asset_name=data.get("asset_name", ""),
+            asset_exchange=data.get("asset_exchange", ""),
+            trade_type="OPTIONS",
+            direction=data["direction"],
+            status="OPEN",
+            holding_type=data.get("holding_type", "INTRADAY"),
             total_quantity=quantity,
             remaining_quantity=quantity,
             average_price=premium,
-            total_invested=position_cost
+            total_invested=position_cost,
         )
-        
+
         # Create options details
         OptionsDetails.objects.create(
             trade=trade,
-            option_type=data['option_type'],
-            position=data['option_position'],
-            strike_price=data['strike_price'],
-            expiry_date=data['expiry_date'],
-            premium=premium
+            option_type=data["option_type"],
+            position=data["option_position"],
+            strike_price=data["strike_price"],
+            expiry_date=data["expiry_date"],
+            premium=premium,
         )
-        
+
         # Record trade history
         TradeHistory.objects.create(
             trade=trade,
             user=user,
-            action=data['direction'],
-            order_type=data.get('order_type', 'MARKET'),
+            action=data["direction"],
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=premium,
-            amount=position_cost
+            amount=position_cost,
         )
-        
+
         self._update_portfolio(user)
-        
+
         new_balance = WalletService.get_balance(user)
-        
+
         return {
-            'trade_id': str(trade.id),
-            'action': 'CREATE_OPTIONS_POSITION',
-            'option_type': data['option_type'],
-            'strike_price': str(data['strike_price']),
-            'premium': str(premium),
-            'quantity': str(quantity),
-            'coins_paid': str(position_cost),
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "action": "CREATE_OPTIONS_POSITION",
+            "option_type": data["option_type"],
+            "strike_price": str(data["strike_price"]),
+            "premium": str(premium),
+            "quantity": str(quantity),
+            "coins_paid": str(position_cost),
+            "wallet_balance": str(new_balance),
         }
-    
+
     def _update_portfolio(self, user):
         """Update user portfolio metrics"""
         portfolio, created = Portfolio.objects.get_or_create(user=user)
@@ -778,14 +785,14 @@ class PlaceOrderView(APIView):
 
 class PartialCloseView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request, trade_id):
         try:
             trade = Trade.objects.get(id=trade_id, user=request.user)
         except Trade.DoesNotExist:
-            return Response({'error': 'Trade not found'}, status=404)
-        
-        serializer = PartialCloseSerializer(data=request.data, context={'trade': trade})
+            return Response({"error": "Trade not found"}, status=404)
+
+        serializer = PartialCloseSerializer(data=request.data, context={"trade": trade})
         if serializer.is_valid():
             try:
                 with transaction.atomic():
@@ -793,131 +800,131 @@ class PartialCloseView(APIView):
                     return Response(result)
             except ValidationError as e:
                 logger.error(f"Validation error: {str(e)}")
-                return Response({'error': str(e)}, status=400)
+                return Response({"error": str(e)}, status=400)
             except Exception as e:
                 logger.error(f"Error partial closing trade: {str(e)}", exc_info=True)
-                return Response({'error': str(e)}, status=400)
+                return Response({"error": str(e)}, status=400)
         return Response(serializer.errors, status=400)
-    
+
     def _partial_close_trade(self, trade, data):
         """Handle partial closing of trades - WITH WALLET INTEGRATION"""
-        quantity = data['quantity']
-        price = data.get('price', trade.average_price)
-        
+        quantity = data["quantity"]
+        price = data.get("price", trade.average_price)
+
         if quantity > trade.remaining_quantity:
             raise ValueError("Cannot close more than remaining quantity")
-        
+
         # Calculate P&L
-        if trade.direction == 'BUY':
+        if trade.direction == "BUY":
             realized_pnl = (price - trade.average_price) * quantity
         else:
             realized_pnl = (trade.average_price - price) * quantity
-        
+
         # ✅ HANDLE WALLET BASED ON TRADE TYPE
-        if trade.trade_type == 'SPOT':
+        if trade.trade_type == "SPOT":
             # Credit sell value
             sell_value = price * quantity
             WalletService.credit_coins(
                 user=trade.user,
                 amount=sell_value,
-                description=f"Partial close {quantity} {trade.asset_symbol} @ {price}"
+                description=f"Partial close {quantity} {trade.asset_symbol} @ {price}",
             )
-        elif trade.trade_type == 'FUTURES':
+        elif trade.trade_type == "FUTURES":
             # Return proportional margin + P&L
             margin_per_unit = trade.total_invested / trade.total_quantity
             margin_to_return = margin_per_unit * quantity
             total_return = margin_to_return + realized_pnl
-            
+
             if total_return > 0:
                 WalletService.unblock_coins(
                     user=trade.user,
                     amount=total_return,
-                    description=f"Partial close Futures {trade.asset_symbol}"
+                    description=f"Partial close Futures {trade.asset_symbol}",
                 )
-        
+
         # Update trade
         trade.remaining_quantity -= quantity
         trade.realized_pnl += realized_pnl
-        
+
         if trade.remaining_quantity == 0:
-            trade.status = 'CLOSED'
+            trade.status = "CLOSED"
             trade.closed_at = timezone.now()
         else:
-            trade.status = 'PARTIALLY_CLOSED'
-        
+            trade.status = "PARTIALLY_CLOSED"
+
         trade.save()
-        
+
         # Record history
         TradeHistory.objects.create(
             trade=trade,
             user=trade.user,
-            action='PARTIAL_SELL',
-            order_type=data.get('order_type', 'MARKET'),
+            action="PARTIAL_SELL",
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
             amount=quantity * price,
-            realized_pnl=realized_pnl
+            realized_pnl=realized_pnl,
         )
-        
+
         # Update portfolio
         portfolio = Portfolio.objects.get(user=trade.user)
         portfolio.update_portfolio_metrics()
-        
+
         new_balance = WalletService.get_balance(trade.user)
-        
+
         return {
-            'trade_id': str(trade.id),
-            'closed_quantity': str(quantity),
-            'realized_pnl': str(realized_pnl),
-            'remaining_quantity': str(trade.remaining_quantity),
-            'status': trade.status,
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "closed_quantity": str(quantity),
+            "realized_pnl": str(realized_pnl),
+            "remaining_quantity": str(trade.remaining_quantity),
+            "status": trade.status,
+            "wallet_balance": str(new_balance),
         }
 
 
 class CloseTradeView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request, trade_id):
         try:
             trade = Trade.objects.get(id=trade_id, user=request.user)
         except Trade.DoesNotExist:
-            return Response({'error': 'Trade not found'}, status=404)
-        
+            return Response({"error": "Trade not found"}, status=404)
+
+        if trade.remaining_quantity == 0:
+            return Response({"error": "Trade is already fully closed."}, status=400)
+
         serializer = CloseTradeSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 with transaction.atomic():
                     result = self._close_trade(trade, serializer.validated_data)
                     return Response(result)
-            except ValidationError as e:
-                logger.error(f"Validation error: {str(e)}")
-                return Response({'error': str(e)}, status=400)
             except Exception as e:
                 logger.error(f"Error closing trade: {str(e)}", exc_info=True)
-                return Response({'error': str(e)}, status=400)
+                return Response({"error": str(e)}, status=400)
         return Response(serializer.errors, status=400)
-    
+
     def _close_trade(self, trade, data):
         """Handle complete closing of trades - WITH WALLET INTEGRATION"""
-        price = data.get('price', trade.average_price)
+        price = data.get("price", trade.average_price)
         quantity = trade.remaining_quantity
-        
+
         # Calculate P&L
-        if trade.direction == 'BUY':
+        if trade.direction == "BUY":
             realized_pnl = (price - trade.average_price) * quantity
         else:
             realized_pnl = (trade.average_price - price) * quantity
-        
+
         # ✅ HANDLE WALLET BASED ON TRADE TYPE
-        if trade.trade_type == 'SPOT':
-            if trade.direction == 'BUY':
+        if trade.trade_type == "SPOT":
+            if trade.direction == "BUY":
                 # Normal long position - credit sell value
                 sell_value = price * quantity
                 WalletService.credit_coins(
                     user=trade.user,
                     amount=sell_value,
-                    description=f"Close {quantity} {trade.asset_symbol} @ {price}"
+                    description=f"Close {quantity} {trade.asset_symbol} @ {price}",
                 )
             else:
                 # Short position - return collateral with P&L
@@ -927,332 +934,440 @@ class CloseTradeView(APIView):
                     WalletService.unblock_coins(
                         user=trade.user,
                         amount=total_return,
-                        description=f"Close short {trade.asset_symbol}"
+                        description=f"Close short {trade.asset_symbol}",
                     )
-        
-        elif trade.trade_type == 'FUTURES':
+
+        elif trade.trade_type == "FUTURES":
             # Return margin + P&L
             margin_blocked = trade.total_invested
             total_return = margin_blocked + realized_pnl
-            
+
             if total_return > 0:
                 WalletService.unblock_coins(
                     user=trade.user,
                     amount=total_return,
-                    description=f"Close Futures {trade.asset_symbol} - Margin+P&L"
+                    description=f"Close Futures {trade.asset_symbol} - Margin+P&L",
                 )
             # If total_return <= 0, margin is lost
-        
-        elif trade.trade_type == 'OPTIONS':
+
+        elif trade.trade_type == "OPTIONS":
             # Options: if profitable, credit profit
             if realized_pnl > 0:
                 WalletService.credit_coins(
                     user=trade.user,
                     amount=realized_pnl,
-                    description=f"Options profit {trade.asset_symbol}"
+                    description=f"Options profit {trade.asset_symbol}",
                 )
             # Premium was already paid, so if loss, nothing to return
-        
+
         # Update trade
-        trade.remaining_quantity = Decimal('0')
+        trade.remaining_quantity = Decimal("0")
         trade.realized_pnl += realized_pnl
-        trade.status = 'CLOSED'
+        trade.status = "CLOSED"
         trade.closed_at = timezone.now()
         trade.save()
-        
+
         # Record history
         TradeHistory.objects.create(
             trade=trade,
             user=trade.user,
-            action='SELL',
-            order_type=data.get('order_type', 'MARKET'),
+            action="SELL",
+            order_type=data.get("order_type", "MARKET"),
             quantity=quantity,
             price=price,
             amount=quantity * price,
-            realized_pnl=realized_pnl
+            realized_pnl=realized_pnl,
         )
-        
+
         # Update portfolio
         portfolio = Portfolio.objects.get(user=trade.user)
         portfolio.update_portfolio_metrics()
-        
+
         new_balance = WalletService.get_balance(trade.user)
-        
+
         return {
-            'trade_id': str(trade.id),
-            'closed_quantity': str(quantity),
-            'realized_pnl': str(realized_pnl),
-            'status': trade.status,
-            'wallet_balance': str(new_balance)
+            "trade_id": str(trade.id),
+            "closed_quantity": str(quantity),
+            "realized_pnl": str(realized_pnl),
+            "status": trade.status,
+            "wallet_balance": str(new_balance),
         }
 
 
 class PortfolioViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PortfolioSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         return Portfolio.objects.filter(user=self.request.user)
 
 
 class PortfolioSummaryView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
-        print(request.user,"user")
+        print(request.user, "user")
         portfolio, created = Portfolio.objects.get_or_create(user=request.user)
         portfolio.update_portfolio_metrics()
-        
+
         serializer = PortfolioSerializer(portfolio)
-        
+
         # ✅ ADD WALLET BALANCE TO RESPONSE
         wallet_balance = WalletService.get_balance(request.user)
-        
+
         response_data = serializer.data
-        response_data['wallet_balance'] = str(wallet_balance)
-        response_data['total_net_worth'] = str(wallet_balance + portfolio.total_value)
-        
+        response_data["wallet_balance"] = str(wallet_balance)
+        response_data["total_net_worth"] = str(wallet_balance + portfolio.total_value)
+
         return Response(response_data)
 
 
 class ActivePositionsView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         trades = Trade.objects.filter(
-            user=request.user,
-            status__in=['OPEN', 'PARTIALLY_CLOSED']
-        ).order_by('-opened_at')
-        
+            user=request.user, status__in=["OPEN", "PARTIALLY_CLOSED"]
+        ).order_by("-opened_at")
+
         serializer = ActivePositionSerializer(trades, many=True)
         return Response(serializer.data)
 
 
 class PnLReportView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         serializer = PnLReportSerializer(data=request.query_params)
         if serializer.is_valid():
-            period = serializer.validated_data.get('period', 'today')
-            trade_type = serializer.validated_data.get('trade_type')
-            asset_symbol = serializer.validated_data.get('asset_symbol')
-            
+            period = serializer.validated_data.get("period", "today")
+            trade_type = serializer.validated_data.get("trade_type")
+            asset_symbol = serializer.validated_data.get("asset_symbol")
+
             # Calculate date range
             now = timezone.now()
-            if period == 'today':
+            if period == "today":
                 start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            elif period == 'week':
+            elif period == "week":
                 start_date = now - timedelta(days=7)
-            elif period == 'month':
+            elif period == "month":
                 start_date = now - timedelta(days=30)
-            elif period == 'year':
+            elif period == "year":
                 start_date = now - timedelta(days=365)
-            
+
             # Build query
             query = Q(user=request.user, updated_at__gte=start_date)
             if trade_type:
                 query &= Q(trade_type=trade_type)
             if asset_symbol:
                 query &= Q(asset_symbol=asset_symbol)
-            
+
             trades = Trade.objects.filter(query)
-            
+
             # Calculate metrics
-            total_realized_pnl = trades.aggregate(
-                Sum('realized_pnl'))['realized_pnl__sum'] or Decimal('0')
+            total_realized_pnl = trades.aggregate(Sum("realized_pnl"))[
+                "realized_pnl__sum"
+            ] or Decimal("0")
             total_unrealized_pnl = trades.filter(
-                status__in=['OPEN', 'PARTIALLY_CLOSED']).aggregate(
-                Sum('unrealized_pnl'))['unrealized_pnl__sum'] or Decimal('0')
-            
+                status__in=["OPEN", "PARTIALLY_CLOSED"]
+            ).aggregate(Sum("unrealized_pnl"))["unrealized_pnl__sum"] or Decimal("0")
+
             # Get trade history for the period
             history = TradeHistory.objects.filter(
-                user=request.user,
-                created_at__gte=start_date
-            ).order_by('-created_at')
-            
+                user=request.user, created_at__gte=start_date
+            ).order_by("-created_at")
+
             if trade_type:
                 history = history.filter(trade__trade_type=trade_type)
             if asset_symbol:
                 history = history.filter(trade__asset_symbol=asset_symbol)
-            
-            return Response({
-                'period': period,
-                'start_date': str(start_date),
-                'total_realized_pnl': str(total_realized_pnl),
-                'total_unrealized_pnl': str(total_unrealized_pnl),
-                'total_pnl': str(total_realized_pnl + total_unrealized_pnl),
-                'trade_count': trades.count(),
-                'recent_trades': TradeHistorySerializer(history[:10], many=True).data
-            })
-        
+
+            return Response(
+                {
+                    "period": period,
+                    "start_date": str(start_date),
+                    "total_realized_pnl": str(total_realized_pnl),
+                    "total_unrealized_pnl": str(total_unrealized_pnl),
+                    "total_pnl": str(total_realized_pnl + total_unrealized_pnl),
+                    "trade_count": trades.count(),
+                    "recent_trades": TradeHistorySerializer(
+                        history[:10], many=True
+                    ).data,
+                }
+            )
+
         return Response(serializer.errors, status=400)
 
 
 class TradeHistoryView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
-        history = TradeHistory.objects.filter(
-            user=request.user
-        ).order_by('-created_at')
-        
+        history = TradeHistory.objects.filter(user=request.user).order_by("-created_at")
+
         # Filter by trade type if provided
-        trade_type = request.query_params.get('trade_type')
+        trade_type = request.query_params.get("trade_type")
         if trade_type:
             history = history.filter(trade__trade_type=trade_type)
-        
+
         # Filter by asset if provided
-        asset_symbol = request.query_params.get('asset_symbol')
+        asset_symbol = request.query_params.get("asset_symbol")
         if asset_symbol:
             history = history.filter(trade__asset_symbol=asset_symbol)
-        
+
         # Pagination
-        page_size = int(request.query_params.get('page_size', 20))
-        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get("page_size", 20))
+        page = int(request.query_params.get("page", 1))
         start = (page - 1) * page_size
         end = start + page_size
-        
+
         paginated_history = history[start:end]
         serializer = TradeHistorySerializer(paginated_history, many=True)
-        
-        return Response({
-            'results': serializer.data,
-            'count': history.count(),
-            'page': page,
-            'page_size': page_size
-        })
+
+        return Response(
+            {
+                "results": serializer.data,
+                "count": history.count(),
+                "page": page,
+                "page_size": page_size,
+            }
+        )
 
 
 class TradeDetailHistoryView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request, trade_id):
         try:
             trade = Trade.objects.get(id=trade_id, user=request.user)
         except Trade.DoesNotExist:
-            return Response({'error': 'Trade not found'}, status=404)
-        
-        history = TradeHistory.objects.filter(trade=trade).order_by('-created_at')
+            return Response({"error": "Trade not found"}, status=404)
+
+        history = TradeHistory.objects.filter(trade=trade).order_by("-created_at")
         serializer = TradeHistorySerializer(history, many=True)
-        
-        return Response({
-            'trade_id': str(trade.id),
-            'asset_symbol': trade.asset_symbol,
-            'trade_type': trade.trade_type,
-            'history': serializer.data
-        })
+
+        return Response(
+            {
+                "trade_id": str(trade.id),
+                "asset_symbol": trade.asset_symbol,
+                "trade_type": trade.trade_type,
+                "history": serializer.data,
+            }
+        )
 
 
 class UpdatePricesView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         serializer = UpdatePricesSerializer(data=request.data)
         if serializer.is_valid():
-            prices = serializer.validated_data['prices']
-            
+            prices = serializer.validated_data["prices"]
+
             updated_trades = []
             for symbol, price in prices.items():
                 trades = Trade.objects.filter(
                     user=request.user,
                     asset_symbol=symbol,
-                    status__in=['OPEN', 'PARTIALLY_CLOSED']
+                    status__in=["OPEN", "PARTIALLY_CLOSED"],
                 )
-                
+
                 for trade in trades:
                     old_pnl = trade.unrealized_pnl
                     new_pnl = trade.calculate_unrealized_pnl(price)
-                    updated_trades.append({
-                        'trade_id': str(trade.id),
-                        'symbol': symbol,
-                        'old_pnl': str(old_pnl),
-                        'new_pnl': str(new_pnl),
-                        'price': str(price)
-                    })
-            
+                    updated_trades.append(
+                        {
+                            "trade_id": str(trade.id),
+                            "symbol": symbol,
+                            "old_pnl": str(old_pnl),
+                            "new_pnl": str(new_pnl),
+                            "price": str(price),
+                        }
+                    )
+
             # Update portfolio
             portfolio, created = Portfolio.objects.get_or_create(user=request.user)
             portfolio.update_portfolio_metrics()
-            
+
             wallet_balance = WalletService.get_balance(request.user)
-            
-            return Response({
-                'updated_trades': updated_trades,
-                'portfolio_value': str(portfolio.total_value),
-                'wallet_balance': str(wallet_balance)
-            })
-        
+
+            return Response(
+                {
+                    "updated_trades": updated_trades,
+                    "portfolio_value": str(portfolio.total_value),
+                    "wallet_balance": str(wallet_balance),
+                }
+            )
+
         return Response(serializer.errors, status=400)
 
 
 class RiskCheckView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         serializer = RiskCheckSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            
+
             # Get user portfolio
             portfolio, created = Portfolio.objects.get_or_create(user=request.user)
-            
+
             # Calculate position value
-            position_value = data['quantity'] * data['price']
-            leverage = data.get('leverage', Decimal('1'))
+            position_value = data["quantity"] * data["price"]
+            leverage = data.get("leverage", Decimal("1"))
             margin_required = position_value / leverage
-            
+
             # ✅ CHECK WALLET BALANCE
             wallet_balance = WalletService.get_balance(request.user)
-            
+
             # Risk checks
             risks = []
             warnings = []
-            
+
             # Check balance
             if margin_required > wallet_balance:
-                risks.append(f"Insufficient balance. Need: {margin_required}, Available: {wallet_balance}")
-            
+                risks.append(
+                    f"Insufficient balance. Need: {margin_required}, Available: {wallet_balance}"
+                )
+
             # Check position concentration
             existing_exposure = Trade.objects.filter(
                 user=request.user,
-                asset_symbol=data['asset_symbol'],
-                status__in=['OPEN', 'PARTIALLY_CLOSED']
-            ).aggregate(Sum('total_invested'))['total_invested__sum'] or Decimal('0')
-            
+                asset_symbol=data["asset_symbol"],
+                status__in=["OPEN", "PARTIALLY_CLOSED"],
+            ).aggregate(Sum("total_invested"))["total_invested__sum"] or Decimal("0")
+
             new_total_exposure = existing_exposure + margin_required
-            concentration_pct = Decimal('0')
-            
+            concentration_pct = Decimal("0")
+
             if portfolio.total_value > 0:
                 concentration_pct = (new_total_exposure / portfolio.total_value) * 100
                 if concentration_pct > 25:
-                    warnings.append(f"High concentration: {concentration_pct:.1f}% in {data['asset_symbol']}")
-            
+                    warnings.append(
+                        f"High concentration: {concentration_pct:.1f}% in {data['asset_symbol']}"
+                    )
+
             # Check leverage limits
             if leverage > 10:
                 risks.append(f"Leverage {leverage}x exceeds maximum allowed (10x)")
-            
+
             # Check daily trade limit
             today_trades = TradeHistory.objects.filter(
                 user=request.user,
-                created_at__gte=timezone.now().replace(hour=0, minute=0, second=0)
+                created_at__gte=timezone.now().replace(hour=0, minute=0, second=0),
             ).count()
-            
+
             if today_trades >= 50:
                 warnings.append("Approaching daily trade limit")
-            
-            return Response({
-                'allowed': len(risks) == 0,
-                'risks': risks,
-                'warnings': warnings,
-                'position_value': str(position_value),
-                'margin_required': str(margin_required),
-                'concentration_percentage': str(concentration_pct),
-                'wallet_balance': str(wallet_balance)
-            })
-        
+
+            return Response(
+                {
+                    "allowed": len(risks) == 0,
+                    "risks": risks,
+                    "warnings": warnings,
+                    "position_value": str(position_value),
+                    "margin_required": str(margin_required),
+                    "concentration_percentage": str(concentration_pct),
+                    "wallet_balance": str(wallet_balance),
+                }
+            )
+
         return Response(serializer.errors, status=400)
-    
+
+
+"""
+this below is the api for fetchng the trades quatity while placing the order in the chart page 
+"""
+
+
+class GetOpenTradeBySymbol(APIView):
+    """
+    API View to get a specific open trade by asset_symbol for authenticated user.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        POST: Check if user has an open trade for given asset_symbol
+        Body: {"asset_symbol": "abhjj"}
+        """
+        asset_symbol = request.data.get("asset_symbol")
+
+        if not asset_symbol:
+            return Response(
+                {
+                    "error": "asset_symbol is required",
+                    "message": "Please provide asset_symbol in request body",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the open trade for this symbol
+        trade = Trade.objects.filter(
+            user=request.user, asset_symbol=asset_symbol, status="OPEN"
+        ).first()
+
+        if not trade:
+            return Response(
+                {
+                    "message": f"No open trade found for {asset_symbol}",
+                    "asset_symbol": asset_symbol,
+                    "status": "not_found",
+                    "is_open": False,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = TradeSerializer(trade)
+        return Response(
+            {
+                "message": f"Open trade found for {asset_symbol}",
+                "asset_symbol": asset_symbol,
+                "status": "found",
+                "is_open": True,
+                "trade": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def get(self, request):
+        """
+        GET: Check using query parameter
+        URL: /api/trade/open/?asset_symbol=abhjj
+        """
+        asset_symbol = request.query_params.get("asset_symbol")
+
+        if not asset_symbol:
+            return Response(
+                {"error": "asset_symbol query parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        trade = Trade.objects.filter(
+            user=request.user, asset_symbol=asset_symbol, status="OPEN"
+        ).first()
+
+        if not trade:
+            return Response(
+                {
+                    "message": f"No open trade found for {asset_symbol}",
+                    "asset_symbol": asset_symbol,
+                    "is_open": False,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = TradeSerializer(trade)
+        return Response(
+            {
+                "message": f"Open trade found for {asset_symbol}",
+                "is_open": True,
+                "trade": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 # # views.py
@@ -1270,7 +1385,7 @@ class RiskCheckView(APIView):
 
 # from .models import Trade, FuturesDetails, OptionsDetails, TradeHistory, Portfolio
 # from .serializers import (
-#     TradeSerializer, PlaceOrderSerializer, PartialCloseSerializer, 
+#     TradeSerializer, PlaceOrderSerializer, PartialCloseSerializer,
 #     CloseTradeSerializer, PortfolioSerializer, ActivePositionSerializer,
 #     PnLReportSerializer, RiskCheckSerializer, UpdatePricesSerializer,
 #     TradeHistorySerializer
@@ -1280,7 +1395,7 @@ class RiskCheckView(APIView):
 # class TradeViewSet(viewsets.ModelViewSet):
 #     serializer_class = TradeSerializer
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get_queryset(self):
 #         return Trade.objects.filter(user=self.request.user).order_by('-opened_at')
 
@@ -1296,7 +1411,7 @@ class RiskCheckView(APIView):
 
 # class PlaceOrderView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def post(self, request):
 #         serializer = PlaceOrderSerializer(data=request.data)
 #         if serializer.is_valid():
@@ -1307,11 +1422,11 @@ class RiskCheckView(APIView):
 #             except Exception as e:
 #                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 #     def _process_order(self, user, data):
 #         """Main order processing logic"""
 #         trade_type = data['trade_type']
-        
+
 #         if trade_type == 'SPOT':
 #             return self._process_spot_order(user, data)
 #         elif trade_type == 'FUTURES':
@@ -1320,7 +1435,7 @@ class RiskCheckView(APIView):
 #             return self._process_options_order(user, data)
 #         else:
 #             raise ValueError(f"Unsupported trade type: {trade_type}")
-    
+
 #     def _process_spot_order(self, user, data):
 #         """Handle spot trading logic"""
 #         asset_symbol = data['asset_symbol']
@@ -1328,7 +1443,7 @@ class RiskCheckView(APIView):
 #         quantity = data['quantity']
 #         price = data['price']
 #         holding_type = data['holding_type']
-        
+
 #         # Find existing trade for this asset and holding type
 #         existing_trade = Trade.objects.filter(
 #             user=user,
@@ -1337,30 +1452,30 @@ class RiskCheckView(APIView):
 #             holding_type=holding_type,
 #             status__in=['OPEN', 'PARTIALLY_CLOSED']
 #         ).first()
-        
+
 #         if direction == 'BUY':
 #             return self._handle_spot_buy(user, data, existing_trade)
 #         else:
 #             return self._handle_spot_sell(user, data, existing_trade)
-    
+
 #     def _handle_spot_buy(self, user, data, existing_trade):
 #         """Handle spot buy orders"""
 #         quantity = data['quantity']
 #         price = data['price']
 #         amount = quantity * price
-        
+
 #         if existing_trade:
 #             # Add to existing position (average price)
 #             old_value = existing_trade.remaining_quantity * existing_trade.average_price
 #             new_value = quantity * price
 #             total_quantity = existing_trade.remaining_quantity + quantity
-            
+
 #             existing_trade.average_price = (old_value + new_value) / total_quantity
 #             existing_trade.remaining_quantity = total_quantity
 #             existing_trade.total_quantity += quantity
 #             existing_trade.total_invested += amount
 #             existing_trade.save()
-            
+
 #             trade = existing_trade
 #         else:
 #             # Create new trade
@@ -1378,7 +1493,7 @@ class RiskCheckView(APIView):
 #                 average_price=price,
 #                 total_invested=amount
 #             )
-        
+
 #         # Record trade history
 #         TradeHistory.objects.create(
 #             trade=trade,
@@ -1389,10 +1504,10 @@ class RiskCheckView(APIView):
 #             price=price,
 #             amount=amount
 #         )
-        
+
 #         # Update portfolio
 #         self._update_portfolio(user)
-        
+
 #         return {
 #             'trade_id': trade.id,
 #             'action': 'BUY' if not existing_trade else 'ADD_TO_POSITION',
@@ -1401,7 +1516,7 @@ class RiskCheckView(APIView):
 #             'total_quantity': trade.total_quantity,
 #             'average_price': trade.average_price
 #         }
-    
+
 #     def _handle_spot_sell(self, user, data, existing_trade):
 #         """Handle spot sell orders"""
 #         if not existing_trade:
@@ -1410,30 +1525,30 @@ class RiskCheckView(APIView):
 #                 return self._create_short_position(user, data)
 #             else:
 #                 raise ValueError("No existing position to sell for long-term trades")
-        
+
 #         quantity = data['quantity']
 #         price = data['price']
-        
+
 #         if quantity > existing_trade.remaining_quantity:
 #             raise ValueError("Cannot sell more than available quantity")
-        
+
 #         # Calculate P&L for this sell
 #         cost_basis = existing_trade.average_price * quantity
 #         sell_value = price * quantity
 #         realized_pnl = sell_value - cost_basis
-        
+
 #         # Update trade
 #         existing_trade.remaining_quantity -= quantity
 #         existing_trade.realized_pnl += realized_pnl
-        
+
 #         if existing_trade.remaining_quantity == 0:
 #             existing_trade.status = 'CLOSED'
 #             existing_trade.closed_at = timezone.now()
 #         elif existing_trade.remaining_quantity < existing_trade.total_quantity:
 #             existing_trade.status = 'PARTIALLY_CLOSED'
-        
+
 #         existing_trade.save()
-        
+
 #         # Record trade history
 #         TradeHistory.objects.create(
 #             trade=existing_trade,
@@ -1445,10 +1560,10 @@ class RiskCheckView(APIView):
 #             amount=sell_value,
 #             realized_pnl=realized_pnl
 #         )
-        
+
 #         # Update portfolio
 #         self._update_portfolio(user)
-        
+
 #         return {
 #             'trade_id': existing_trade.id,
 #             'action': 'SELL',
@@ -1458,14 +1573,14 @@ class RiskCheckView(APIView):
 #             'remaining_quantity': existing_trade.remaining_quantity,
 #             'status': existing_trade.status
 #         }
-    
+
 #     def _process_futures_order(self, user, data):
 #         """Handle futures trading logic"""
 #         asset_symbol = data['asset_symbol']
 #         direction = data['direction']
 #         quantity = data['quantity']
 #         price = data['price']
-        
+
 #         # Find existing futures position
 #         existing_trade = Trade.objects.filter(
 #             user=user,
@@ -1473,29 +1588,29 @@ class RiskCheckView(APIView):
 #             trade_type='FUTURES',
 #             status__in=['OPEN', 'PARTIALLY_CLOSED']
 #         ).first()
-        
+
 #         if existing_trade:
 #             return self._handle_existing_futures_position(user, data, existing_trade)
 #         else:
 #             return self._create_new_futures_position(user, data)
-    
+
 #     def _handle_existing_futures_position(self, user, data, existing_trade):
 #         """Handle futures position modification"""
 #         direction = data['direction']
 #         quantity = data['quantity']
 #         price = data['price']
-        
+
 #         if existing_trade.direction == direction:
 #             # Same direction - increase position
 #             old_value = existing_trade.remaining_quantity * existing_trade.average_price
 #             new_value = quantity * price
 #             total_quantity = existing_trade.remaining_quantity + quantity
-            
+
 #             existing_trade.average_price = (old_value + new_value) / total_quantity
 #             existing_trade.remaining_quantity = total_quantity
 #             existing_trade.total_quantity += quantity
 #             existing_trade.save()
-            
+
 #             action = 'INCREASE_POSITION'
 #         else:
 #             # Opposite direction - reduce position
@@ -1516,9 +1631,9 @@ class RiskCheckView(APIView):
 #                 # Reduce position
 #                 existing_trade.remaining_quantity -= quantity
 #                 action = 'REDUCE_POSITION'
-            
+
 #             existing_trade.save()
-        
+
 #         # Record trade history
 #         TradeHistory.objects.create(
 #             trade=existing_trade,
@@ -1529,9 +1644,9 @@ class RiskCheckView(APIView):
 #             price=price,
 #             amount=quantity * price
 #         )
-        
+
 #         self._update_portfolio(user)
-        
+
 #         return {
 #             'trade_id': existing_trade.id,
 #             'action': action,
@@ -1540,17 +1655,17 @@ class RiskCheckView(APIView):
 #             'price': price,
 #             'remaining_quantity': existing_trade.remaining_quantity
 #         }
-    
+
 #     def _create_new_futures_position(self, user, data):
 #         """Create new futures position"""
 #         quantity = data['quantity']
 #         price = data['price']
 #         leverage = data.get('leverage', Decimal('1'))
-        
+
 #         # Calculate margin
 #         position_value = quantity * price
 #         margin_required = position_value / leverage
-        
+
 #         # Create trade
 #         trade = Trade.objects.create(
 #             user=user,
@@ -1566,7 +1681,7 @@ class RiskCheckView(APIView):
 #             average_price=price,
 #             total_invested=margin_required
 #         )
-        
+
 #         # Create futures details
 #         FuturesDetails.objects.create(
 #             trade=trade,
@@ -1577,7 +1692,7 @@ class RiskCheckView(APIView):
 #             contract_size=data.get('contract_size', Decimal('1')),
 #             is_hedged=data.get('is_hedged', False)
 #         )
-        
+
 #         # Record trade history
 #         TradeHistory.objects.create(
 #             trade=trade,
@@ -1588,9 +1703,9 @@ class RiskCheckView(APIView):
 #             price=price,
 #             amount=position_value
 #         )
-        
+
 #         self._update_portfolio(user)
-        
+
 #         return {
 #             'trade_id': trade.id,
 #             'action': 'CREATE_FUTURES_POSITION',
@@ -1600,7 +1715,7 @@ class RiskCheckView(APIView):
 #             'leverage': leverage,
 #             'margin_required': margin_required
 #         }
-    
+
 #     def _process_options_order(self, user, data):
 #         """Handle options trading logic"""
 #         # Options logic similar to futures but with strike price, premium, expiry
@@ -1608,7 +1723,7 @@ class RiskCheckView(APIView):
 #         option_type = data['option_type']
 #         strike_price = data['strike_price']
 #         expiry_date = data['expiry_date']
-        
+
 #         # Find existing option position
 #         existing_trade = Trade.objects.filter(
 #             user=user,
@@ -1619,18 +1734,18 @@ class RiskCheckView(APIView):
 #             options_details__strike_price=strike_price,
 #             options_details__expiry_date=expiry_date
 #         ).first()
-        
+
 #         if existing_trade:
 #             return self._handle_existing_options_position(user, data, existing_trade)
 #         else:
 #             return self._create_new_options_position(user, data)
-    
+
 #     def _create_new_options_position(self, user, data):
 #         """Create new options position"""
 #         quantity = data['quantity']
 #         premium = data['premium']
 #         position_cost = quantity * premium
-        
+
 #         trade = Trade.objects.create(
 #             user=user,
 #             asset_symbol=data['asset_symbol'],
@@ -1645,7 +1760,7 @@ class RiskCheckView(APIView):
 #             average_price=premium,
 #             total_invested=position_cost
 #         )
-        
+
 #         # Create options details
 #         OptionsDetails.objects.create(
 #             trade=trade,
@@ -1655,7 +1770,7 @@ class RiskCheckView(APIView):
 #             expiry_date=data['expiry_date'],
 #             premium=premium
 #         )
-        
+
 #         # Record trade history
 #         TradeHistory.objects.create(
 #             trade=trade,
@@ -1666,9 +1781,9 @@ class RiskCheckView(APIView):
 #             price=premium,
 #             amount=position_cost
 #         )
-        
+
 #         self._update_portfolio(user)
-        
+
 #         return {
 #             'trade_id': trade.id,
 #             'action': 'CREATE_OPTIONS_POSITION',
@@ -1677,7 +1792,7 @@ class RiskCheckView(APIView):
 #             'premium': premium,
 #             'quantity': quantity
 #         }
-    
+
 #     def _update_portfolio(self, user):
 #         """Update user portfolio metrics"""
 #         portfolio, created = Portfolio.objects.get_or_create(user=user)
@@ -1686,13 +1801,13 @@ class RiskCheckView(APIView):
 
 # class PartialCloseView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def post(self, request, trade_id):
 #         try:
 #             trade = Trade.objects.get(id=trade_id, user=request.user)
 #         except Trade.DoesNotExist:
 #             return Response({'error': 'Trade not found'}, status=404)
-        
+
 #         serializer = PartialCloseSerializer(data=request.data, context={'trade': trade})
 #         if serializer.is_valid():
 #             try:
@@ -1702,33 +1817,33 @@ class RiskCheckView(APIView):
 #             except Exception as e:
 #                 return Response({'error': str(e)}, status=400)
 #         return Response(serializer.errors, status=400)
-    
+
 #     def _partial_close_trade(self, trade, data):
 #         """Handle partial closing of trades"""
 #         quantity = data['quantity']
 #         price = data.get('price', trade.average_price)
-        
+
 #         if quantity > trade.remaining_quantity:
 #             raise ValueError("Cannot close more than remaining quantity")
-        
+
 #         # Calculate P&L
 #         if trade.direction == 'BUY':
 #             realized_pnl = (price - trade.average_price) * quantity
 #         else:
 #             realized_pnl = (trade.average_price - price) * quantity
-        
+
 #         # Update trade
 #         trade.remaining_quantity -= quantity
 #         trade.realized_pnl += realized_pnl
-        
+
 #         if trade.remaining_quantity == 0:
 #             trade.status = 'CLOSED'
 #             trade.closed_at = timezone.now()
 #         else:
 #             trade.status = 'PARTIALLY_CLOSED'
-        
+
 #         trade.save()
-        
+
 #         # Record history
 #         TradeHistory.objects.create(
 #             trade=trade,
@@ -1740,11 +1855,11 @@ class RiskCheckView(APIView):
 #             amount=quantity * price,
 #             realized_pnl=realized_pnl
 #         )
-        
+
 #         # Update portfolio
 #         portfolio = Portfolio.objects.get(user=trade.user)
 #         portfolio.update_portfolio_metrics()
-        
+
 #         return {
 #             'trade_id': trade.id,
 #             'closed_quantity': quantity,
@@ -1756,13 +1871,16 @@ class RiskCheckView(APIView):
 
 # class CloseTradeView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def post(self, request, trade_id):
 #         try:
 #             trade = Trade.objects.get(id=trade_id, user=request.user)
 #         except Trade.DoesNotExist:
 #             return Response({'error': 'Trade not found'}, status=404)
-        
+
+#         if trade.remaining_quantity == 0:
+#             return Response({'error': 'Trade is already fully closed.'}, status=400)
+
 #         serializer = CloseTradeSerializer(data=request.data)
 #         if serializer.is_valid():
 #             try:
@@ -1772,25 +1890,25 @@ class RiskCheckView(APIView):
 #             except Exception as e:
 #                 return Response({'error': str(e)}, status=400)
 #         return Response(serializer.errors, status=400)
-    
+
 #     def _close_trade(self, trade, data):
 #         """Handle complete closing of trades"""
 #         price = data.get('price', trade.average_price)
 #         quantity = trade.remaining_quantity
-        
+
 #         # Calculate P&L
 #         if trade.direction == 'BUY':
 #             realized_pnl = (price - trade.average_price) * quantity
 #         else:
 #             realized_pnl = (trade.average_price - price) * quantity
-        
+
 #         # Update trade
 #         trade.remaining_quantity = 0
 #         trade.realized_pnl += realized_pnl
 #         trade.status = 'CLOSED'
 #         trade.closed_at = timezone.now()
 #         trade.save()
-        
+
 #         # Record history
 #         TradeHistory.objects.create(
 #             trade=trade,
@@ -1802,11 +1920,11 @@ class RiskCheckView(APIView):
 #             amount=quantity * price,
 #             realized_pnl=realized_pnl
 #         )
-        
+
 #         # Update portfolio
 #         portfolio = Portfolio.objects.get(user=trade.user)
 #         portfolio.update_portfolio_metrics()
-        
+
 #         return {
 #             'trade_id': trade.id,
 #             'closed_quantity': quantity,
@@ -1818,45 +1936,45 @@ class RiskCheckView(APIView):
 # class PortfolioViewSet(viewsets.ReadOnlyModelViewSet):
 #     serializer_class = PortfolioSerializer
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get_queryset(self):
 #         return Portfolio.objects.filter(user=self.request.user)
 
 
 # class PortfolioSummaryView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get(self, request):
 #         portfolio, created = Portfolio.objects.get_or_create(user=request.user)
 #         portfolio.update_portfolio_metrics()
-        
+
 #         serializer = PortfolioSerializer(portfolio)
 #         return Response(serializer.data)
 
 
 # class ActivePositionsView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get(self, request):
 #         trades = Trade.objects.filter(
 #             user=request.user,
 #             status__in=['OPEN', 'PARTIALLY_CLOSED']
 #         ).order_by('-opened_at')
-        
+
 #         serializer = ActivePositionSerializer(trades, many=True)
 #         return Response(serializer.data)
 
 
 # class PnLReportView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get(self, request):
 #         serializer = PnLReportSerializer(data=request.query_params)
 #         if serializer.is_valid():
 #             period = serializer.validated_data.get('period', 'today')
 #             trade_type = serializer.validated_data.get('trade_type')
 #             asset_symbol = serializer.validated_data.get('asset_symbol')
-            
+
 #             # Calculate date range
 #             now = timezone.now()
 #             if period == 'today':
@@ -1867,34 +1985,34 @@ class RiskCheckView(APIView):
 #                 start_date = now - timedelta(days=30)
 #             elif period == 'year':
 #                 start_date = now - timedelta(days=365)
-            
+
 #             # Build query
 #             query = Q(user=request.user, updated_at__gte=start_date)
 #             if trade_type:
 #                 query &= Q(trade_type=trade_type)
 #             if asset_symbol:
 #                 query &= Q(asset_symbol=asset_symbol)
-            
+
 #             trades = Trade.objects.filter(query)
-            
+
 #             # Calculate metrics
 #             total_realized_pnl = trades.aggregate(
 #                 Sum('realized_pnl'))['realized_pnl__sum'] or Decimal('0')
 #             total_unrealized_pnl = trades.filter(
 #                 status__in=['OPEN', 'PARTIALLY_CLOSED']).aggregate(
 #                 Sum('unrealized_pnl'))['unrealized_pnl__sum'] or Decimal('0')
-            
+
 #             # Get trade history for the period
 #             history = TradeHistory.objects.filter(
 #                 user=request.user,
 #                 created_at__gte=start_date
 #             ).order_by('-created_at')
-            
+
 #             if trade_type:
 #                 history = history.filter(trade__trade_type=trade_type)
 #             if asset_symbol:
 #                 history = history.filter(trade__asset_symbol=asset_symbol)
-            
+
 #             return Response({
 #                 'period': period,
 #                 'start_date': start_date,
@@ -1904,37 +2022,37 @@ class RiskCheckView(APIView):
 #                 'trade_count': trades.count(),
 #                 'recent_trades': TradeHistorySerializer(history[:10], many=True).data
 #             })
-        
+
 #         return Response(serializer.errors, status=400)
 
 
 # class TradeHistoryView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get(self, request):
 #         history = TradeHistory.objects.filter(
 #             user=request.user
 #         ).order_by('-created_at')
-        
+
 #         # Filter by trade type if provided
 #         trade_type = request.query_params.get('trade_type')
 #         if trade_type:
 #             history = history.filter(trade__trade_type=trade_type)
-        
+
 #         # Filter by asset if provided
 #         asset_symbol = request.query_params.get('asset_symbol')
 #         if asset_symbol:
 #             history = history.filter(trade__asset_symbol=asset_symbol)
-        
+
 #         # Pagination
 #         page_size = int(request.query_params.get('page_size', 20))
 #         page = int(request.query_params.get('page', 1))
 #         start = (page - 1) * page_size
 #         end = start + page_size
-        
+
 #         paginated_history = history[start:end]
 #         serializer = TradeHistorySerializer(paginated_history, many=True)
-        
+
 #         return Response({
 #             'results': serializer.data,
 #             'count': history.count(),
@@ -1945,16 +2063,16 @@ class RiskCheckView(APIView):
 
 # class TradeDetailHistoryView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def get(self, request, trade_id):
 #         try:
 #             trade = Trade.objects.get(id=trade_id, user=request.user)
 #         except Trade.DoesNotExist:
 #             return Response({'error': 'Trade not found'}, status=404)
-        
+
 #         history = TradeHistory.objects.filter(trade=trade).order_by('-created_at')
 #         serializer = TradeHistorySerializer(history, many=True)
-        
+
 #         return Response({
 #             'trade_id': trade.id,
 #             'asset_symbol': trade.asset_symbol,
@@ -1965,12 +2083,12 @@ class RiskCheckView(APIView):
 
 # class UpdatePricesView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def post(self, request):
 #         serializer = UpdatePricesSerializer(data=request.data)
 #         if serializer.is_valid():
 #             prices = serializer.validated_data['prices']
-            
+
 #             updated_trades = []
 #             for symbol, price in prices.items():
 #                 trades = Trade.objects.filter(
@@ -1978,7 +2096,7 @@ class RiskCheckView(APIView):
 #                     asset_symbol=symbol,
 #                     status__in=['OPEN', 'PARTIALLY_CLOSED']
 #                 )
-                
+
 #                 for trade in trades:
 #                     old_pnl = trade.unrealized_pnl
 #                     new_pnl = trade.calculate_unrealized_pnl(price)
@@ -1989,70 +2107,70 @@ class RiskCheckView(APIView):
 #                         'new_pnl': new_pnl,
 #                         'price': price
 #                     })
-            
+
 #             # Update portfolio
 #             portfolio = Portfolio.objects.get(user=request.user)
 #             portfolio.update_portfolio_metrics()
-            
+
 #             return Response({
 #                 'updated_trades': updated_trades,
 #                 'portfolio_value': portfolio.total_value
 #             })
-        
+
 #         return Response(serializer.errors, status=400)
 
 
 # class RiskCheckView(APIView):
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def post(self, request):
 #         serializer = RiskCheckSerializer(data=request.data)
 #         if serializer.is_valid():
 #             data = serializer.validated_data
-            
+
 #             # Get user portfolio
 #             portfolio, created = Portfolio.objects.get_or_create(user=request.user)
-            
+
 #             # Calculate position value
 #             position_value = data['quantity'] * data['price']
 #             leverage = data.get('leverage', Decimal('1'))
 #             margin_required = position_value / leverage
-            
+
 #             # Risk checks
 #             risks = []
 #             warnings = []
-            
+
 #             # Check available balance (simplified - you'd integrate with your wallet/balance system)
 #             # available_balance = get_user_balance(request.user)  # Implement this
 #             # if margin_required > available_balance:
 #             #     risks.append("Insufficient balance for this trade")
-            
+
 #             # Check position concentration
 #             existing_exposure = Trade.objects.filter(
 #                 user=request.user,
 #                 asset_symbol=data['asset_symbol'],
 #                 status__in=['OPEN', 'PARTIALLY_CLOSED']
 #             ).aggregate(Sum('total_invested'))['total_invested__sum'] or Decimal('0')
-            
+
 #             new_total_exposure = existing_exposure + margin_required
 #             if portfolio.total_value > 0:
 #                 concentration_pct = (new_total_exposure / portfolio.total_value) * 100
 #                 if concentration_pct > 25:  # 25% concentration limit
 #                     warnings.append(f"High concentration: {concentration_pct:.1f}% in {data['asset_symbol']}")
-            
+
 #             # Check leverage limits
 #             if leverage > 10:  # Max 10x leverage
 #                 risks.append(f"Leverage {leverage}x exceeds maximum allowed (10x)")
-            
+
 #             # Check daily trade limit
 #             today_trades = TradeHistory.objects.filter(
 #                 user=request.user,
 #                 created_at__gte=timezone.now().replace(hour=0, minute=0, second=0)
 #             ).count()
-            
+
 #             if today_trades >= 50:  # Daily trade limit
 #                 warnings.append("Approaching daily trade limit")
-            
+
 #             return Response({
 #                 'allowed': len(risks) == 0,
 #                 'risks': risks,
@@ -2061,7 +2179,7 @@ class RiskCheckView(APIView):
 #                 'margin_required': margin_required,
 #                 'concentration_percentage': concentration_pct if 'concentration_pct' in locals() else 0
 #             })
-        
+
 #         return Response(serializer.errors, status=400)
 
 
@@ -2071,7 +2189,7 @@ class RiskCheckView(APIView):
 #     quantity = data['quantity']
 #     price = data['price']
 #     amount = quantity * price
-    
+
 #     trade = Trade.objects.create(
 #         user=user,
 #         asset_symbol=data['asset_symbol'],
@@ -2086,7 +2204,7 @@ class RiskCheckView(APIView):
 #         average_price=price,
 #         total_invested=amount
 #     )
-    
+
 #     # Record trade history
 #     TradeHistory.objects.create(
 #         trade=trade,
@@ -2097,7 +2215,7 @@ class RiskCheckView(APIView):
 #         price=price,
 #         amount=amount
 #     )
-    
+
 #     return {
 #         'trade_id': trade.id,
 #         'action': 'CREATE_SHORT_POSITION',

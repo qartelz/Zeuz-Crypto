@@ -2,6 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from .views import GetOpenTradeBySymbol
 
 router = DefaultRouter()
 router.register(r'trades', views.TradeViewSet, basename='trades')
@@ -29,4 +30,12 @@ urlpatterns = [
     
     # Risk management
     path('risk-check/', views.RiskCheckView.as_view(), name='risk-check'),
+    # URL patterns (add to your urls.py)
+
+
+
+
+    path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
+
+
 ]
