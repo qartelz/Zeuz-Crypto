@@ -15,7 +15,7 @@ export default function Home() {
     backgroundImage: `url(${HeroBgImg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    // minHeight: '100vh', 
+    
   }}
 >
   <Header />

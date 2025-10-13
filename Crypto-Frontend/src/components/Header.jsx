@@ -11,7 +11,7 @@ const Header = () => {
   const handleAuthAction = () => {
     if (isLoggedIn) {
       logoutUser();
-      navigate('/login');
+    
     } else {
       navigate('/login');
     }

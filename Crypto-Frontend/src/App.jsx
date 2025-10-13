@@ -21,10 +21,14 @@ import B2bAdminsListPage from "./pages/admin/B2bAdminsListPage";
 import PlansManagement from "./pages/admin/PlansManagement";
 import PlanDetails from "./pages/admin/PlanDetails";
 import CouponsManagement from "./pages/admin/CouponsManagement";
+import OrderHistory from "./pages/OrderHistory";
+import 'react-toastify/dist/ReactToastify.css';
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
     <Router>
+        <Toaster position="top-right" reverseOrder={false} />
       <AuthProvider>
         <Routes>
           {/* Public Routes */}
@@ -36,10 +40,11 @@ function App() {
           <Route path="/reset-password" element={<PasswordReset />} />
 
           {/*Protected Routes - User */}
-          <Route element={<PrivateRoute allowedRoles={["b2c_user"]} />}>
+          <Route element={<PrivateRoute allowedRoles={["b2c_user","b2b_user"]} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/trading" element={<Trading />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/history" element={<OrderHistory />} />
               <Route path="/challenge" element={<Challenges />} />
             </Route>
           </Route>

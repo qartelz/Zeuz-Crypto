@@ -24,7 +24,7 @@ const DashboardLayout = () => {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Desktop Sidebar */}
-          <div className="relative hidden sm:block w-[90px] backdrop-blur-md before:content-[''] before:absolute before:top-0 before:right-0 before:w-[1px] before:h-full before:bg-gradient-to-b before:from-transparent before:via-white/30 before:to-transparent">
+          <div className="relative hidden sm:block w-[90px] ">
             <Sidebar />
           </div>
 

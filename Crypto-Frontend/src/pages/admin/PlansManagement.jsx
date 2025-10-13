@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const baseURL = "http://127.0.0.1:8000/api/v1/admin/subscriptions/plans";
 
@@ -6,43 +8,19 @@ const PlansManagement = () => {
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [plansError, setPlansError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     duration_days: "",
     price: "",
-    user_type: "B2B", // default
+    user_type: "B2B",
     is_active: true,
   });
   const [formErrors, setFormErrors] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [createSuccess, setCreateSuccess] = useState(null);
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  //   const fetchPlans = async () => {
-  //     setLoadingPlans(true);
-  //     setPlansError(null);
-  //     try {
-  //       const response = await fetch(baseURL + "/");
-  //       if (!response.ok) {
-  //         throw new Error(`Failed to load plans: ${response.status} ${response.statusText}`);
-  //       }
-  //       const data = await response.json();
-  //       setPlans(data.results || data);
-  //     } catch (err) {
-  //       setPlansError(err.message || "Unknown error fetching plans");
-  //     } finally {
-  //       setLoadingPlans(false);
-  //     }
-  //   };
-
-  // Inside PlansManagement.jsx
 
   const [filters, setFilters] = useState({
     user_type: "",
@@ -51,7 +29,15 @@ const PlansManagement = () => {
     ordering: "",
   });
 
-  // fetchPlans updated with filters
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [updating, setUpdating] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
   const fetchPlans = async () => {
     setLoadingPlans(true);
     setPlansError(null);
@@ -62,39 +48,30 @@ const PlansManagement = () => {
       if (filters.search) queryParams.append("search", filters.search);
       if (filters.ordering) queryParams.append("ordering", filters.ordering);
 
-      const response = await fetch(`${baseURL}/?${queryParams.toString()}`);
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
+      const response = await fetch(`${baseURL}/?${queryParams.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${tokens?.access}`,
+        },
+      });
+
       if (!response.ok) throw new Error(`Failed to load plans`);
 
       const data = await response.json();
       setPlans(data.results || data);
     } catch (err) {
       setPlansError(err.message);
+      toast.error(`⚠️ ${err.message}`);
     } finally {
       setLoadingPlans(false);
     }
   };
 
-  // New states
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState(null);
-  const [updating, setUpdating] = useState(false);
-  const [updateError, setUpdateError] = useState(null);
-  const [updateSuccess, setUpdateSuccess] = useState(null);
-
-  // Open Edit Modal
   const openEditModal = (plan) => {
-    setEditData({ ...plan }); // prefill form with plan data
-    setUpdateError(null);
-    setUpdateSuccess(null);
+    setEditData({ ...plan });
     setIsEditModalOpen(true);
   };
 
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditData(null);
-  };
-
-  // Handle edit field changes
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
     setEditData((prev) => ({
@@ -103,12 +80,9 @@ const PlansManagement = () => {
     }));
   };
 
-  // Submit updated data (PATCH)
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    setUpdateError(null);
-    setUpdateSuccess(null);
 
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
     try {
@@ -124,33 +98,27 @@ const PlansManagement = () => {
       if (!response.ok) throw new Error("Failed to update plan");
 
       const updatedPlan = await response.json();
-      setUpdateSuccess("Plan updated successfully!");
+      toast.success("✅ Plan updated successfully!");
 
-      // Update local plans state
       setPlans((prev) =>
         prev.map((p) => (p.id === updatedPlan.id ? updatedPlan : p))
       );
 
-      setTimeout(() => {
-        closeEditModal();
-      }, 1200);
+      setIsEditModalOpen(false);
     } catch (err) {
-      setUpdateError(err.message);
+      toast.error(err.message || "❌ Failed to update plan");
     } finally {
       setUpdating(false);
     }
   };
 
-  // Delete Plan
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-
-
   const handleConfirmDelete = async () => {
     const id = confirmDeleteId;
     if (!id) return;
-  
+
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
+    setIsDeleting(true);
+
     try {
       const response = await fetch(`${baseURL}/${id}/`, {
         method: "DELETE",
@@ -158,22 +126,23 @@ const PlansManagement = () => {
           Authorization: `Bearer ${tokens?.access}`,
         },
       });
-  
+
       if (response.status === 204) {
         setPlans((prev) => prev.filter((p) => p.id !== id));
         setConfirmDeleteId(null);
+        toast.success("🗑️ Plan deleted successfully!");
       } else {
         throw new Error("Failed to delete plan");
       }
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "❌ Failed to delete plan");
+    } finally {
+      setIsDeleting(false);
     }
   };
-  
 
   const openModal = () => {
     setFormErrors(null);
-    setCreateSuccess(null);
     setFormData({
       name: "",
       description: "",
@@ -183,10 +152,6 @@ const PlansManagement = () => {
       is_active: true,
     });
     setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
   };
 
   const handleChange = (e) => {
@@ -200,7 +165,6 @@ const PlansManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormErrors(null);
-    setCreateSuccess(null);
     setCreating(true);
 
     if (
@@ -251,490 +215,385 @@ const PlansManagement = () => {
       }
 
       const createdPlan = await response.json();
-      setCreateSuccess("Plan created successfully!");
+      toast.success("✅ Plan created successfully!");
       setPlans((prev) => [createdPlan, ...prev]);
-      setTimeout(() => {
-        closeModal();
-        setCreateSuccess(null);
-      }, 1500);
+      setIsModalOpen(false);
     } catch (err) {
-      setFormErrors(err.message || "Unknown error creating plan");
+      toast.error(err.message || "❌ Failed to create plan");
     } finally {
       setCreating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-8">
-      <div className="max-w-7xl mx-auto text-white">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-extrabold tracking-wide drop-shadow-lg">
-            Plans Management
-          </h1>
-          <button
-            onClick={openModal}
-            className="bg-white text-[#4733A6] font-semibold px-5 py-2 rounded-full shadow-lg hover:bg-gray-200 transition"
-          >
-            + Create New Plan
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        <div className="mb-1">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight">
+                Plans Management
+              </h1>
+              <p className="text-white/70 text-sm md:text-base">
+                Create, manage, and track your subscription plans
+              </p>
+            </div>
+            <button
+              onClick={openModal}
+              className="bg-white text-[#4733A6] px-6 py-3 rounded-xl font-semibold hover:bg-white/90 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 whitespace-nowrap"
+            >
+              + Create Plan
+            </button>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center gap-3 bg-white/5 p-4 rounded-xl shadow">
-          {/* User Type */}
-          <select
-            value={filters.user_type}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, user_type: e.target.value }))
-            }
-            className="px-3 py-2 rounded-lg border border-gray-300 text-white focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All Users</option>
-            <option value="B2B">B2B</option>
-            <option value="B2C">B2C</option>
-          </select>
+        {/* Filters Section */}
+        <div className="mb-8 backdrop-blur-md py-6 rounded-2xl shadow-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <select
+              value={filters.user_type}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, user_type: e.target.value }))
+              }
+              className="px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+            >
+              <option value="" className="bg-[#2b2676]">
+                All User Types
+              </option>
+              <option value="B2B" className="bg-[#2b2676]">
+                B2B
+              </option>
+              <option value="B2C" className="bg-[#2b2676]">
+                B2C
+              </option>
+            </select>
 
-          {/* Status */}
-          <select
-            value={filters.is_active}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, is_active: e.target.value }))
-            }
-            className="px-3 py-2 rounded-lg border border-gray-300 text-white focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All Status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
+            <select
+              value={filters.is_active}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, is_active: e.target.value }))
+              }
+              className="px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+            >
+              <option value="" className="bg-[#2b2676]">
+                All Status
+              </option>
+              <option value="true" className="bg-[#2b2676]">
+                Active
+              </option>
+              <option value="false" className="bg-[#2b2676]">
+                Inactive
+              </option>
+            </select>
 
-          {/* Search */}
+            <input
+              type="text"
+              placeholder="Search by name"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, search: e.target.value }))
+              }
+              className="px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+            />
 
-          {/* Sorting */}
-          <select
-            value={filters.ordering}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, ordering: e.target.value }))
-            }
-            className="px-3 py-2 rounded-lg border border-gray-300 text-white focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Sort By</option>
-            <option value="name">Name</option>
-            <option value="price">Price</option>
-            <option value="duration_days">Duration</option>
-            <option value="created_at">Created Date</option>
-          </select>
+            <select
+              value={filters.ordering}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, ordering: e.target.value }))
+              }
+              className="px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+            >
+              <option value="" className="bg-[#2b2676]">
+                Sort By
+              </option>
+              <option value="name" className="bg-[#2b2676]">
+                Name
+              </option>
+              <option value="price" className="bg-[#2b2676]">
+                Price
+              </option>
+              <option value="duration_days" className="bg-[#2b2676]">
+                Duration
+              </option>
+              <option value="created_at" className="bg-[#2b2676]">
+                Created Date
+              </option>
+            </select>
 
-          {/* Apply Button */}
-          <button
-            onClick={fetchPlans}
-            className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow-md transition"
-          >
-            Apply Filters
-          </button>
+            <button
+              onClick={fetchPlans}
+              className="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-xl text-white font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
 
+        {/* Loading & Error States */}
         {loadingPlans && (
-          <p className="text-center text-lg font-medium">Loading plans...</p>
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white"></div>
+            <p className="text-white mt-4">Loading plans...</p>
+          </div>
         )}
         {plansError && (
-          <p className="text-red-400 text-center mb-6 font-semibold">
+          <div className="bg-red-500/20 border border-red-500 text-red-200 px-6 py-4 rounded-xl mb-6">
             {plansError}
-          </p>
-        )}
-
-        {!loadingPlans && !plansError && plans.length === 0 && (
-          <p className="text-center text-gray-300">No plans found.</p>
-        )}
-
-        {!loadingPlans && !plansError && plans.length > 0 && (
-          <div className="overflow-x-auto rounded-xl shadow-lg border border-white/20 bg-[#1a1a3b]">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-[#2b2676]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    User Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Duration (days)
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {plans.map((plan) => (
-                  <tr
-                  key={plan.id}
-                  className="cursor-pointer hover:bg-[#5546ac]/50 transition"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
-                    {plan.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{plan.user_type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{plan.duration_days}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">${plan.price}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {plan.is_active ? (
-                      <span className="inline-block px-3 py-1 rounded-full bg-green-500 text-green-900 font-semibold text-sm">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-block px-3 py-1 rounded-full bg-red-600 text-red-200 font-semibold text-sm">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                
-                  <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
-                    {/* ✅ Only View button navigates */}
-                    <button
-                      onClick={() => window.location.assign(`/admin/plans/${plan.id}`)}
-                      className="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                    >
-                      View
-                    </button>
-                
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditModal(plan);
-                      }}
-                      className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-sm"
-                    >
-                      Edit
-                    </button>
-                
-                    <button
-  onClick={(e) => {
-    e.stopPropagation();
-    setConfirmDeleteId(plan.id); // open modal for this plan
-  }}
-  className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
->
-  Delete
-</button>
-
-{confirmDeleteId && (
-  <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50 p-4">
-    <div className="bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-8 rounded-2xl shadow-2xl border border-white/30 max-w-sm w-full text-white text-center">
-      <h2 className="text-2xl font-bold mb-4">Confirm Delete</h2>
-      <p className="mb-6 text-gray-300">
-        Are you sure you want to delete this plan? 
-      </p>
-
-      <div className="flex justify-center gap-4">
-        <button
-          onClick={() => setConfirmDeleteId(null)}
-          className="px-6 py-2 rounded-lg bg-gray-500 hover:bg-gray-600 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleConfirmDelete}
-          className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md transition"
-        >
-          Yes, Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-                  </td>
-                </tr>
-                
-                ))}
-              </tbody>
-
-              {isEditModalOpen && editData && (
-                        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-                        <div
-                          className="bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-8 rounded-2xl shadow-2xl border border-white/30 max-w-md w-full text-white relative"
-                          onClick={(e) => e.stopPropagation()} // prevent row click
-                        >
-                          <h2 className="text-3xl font-extrabold mb-6 text-center">
-                            Edit Plan
-                          </h2>
-                      
-                          {updateError && (
-                            <p className="text-red-400 mb-4">{updateError}</p>
-                          )}
-                          {updateSuccess && (
-                            <p className="text-green-400 mb-4">{updateSuccess}</p>
-                          )}
-                      
-                          <form onSubmit={handleEditSubmit} className="space-y-5">
-                            {/* Name */}
-                            <div>
-                              <label className="block mb-1 text-sm font-medium text-gray-200">
-                                Name
-                              </label>
-                              <input
-                                name="name"
-                                type="text"
-                                value={editData.name}
-                                onChange={handleEditChange}
-                                className="w-full rounded-lg px-4 py-2  border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 outline-none"
-                                required
-                              />
-                            </div>
-                      
-                            {/* Description */}
-                            <div>
-                              <label className="block mb-1 text-sm font-medium text-gray-200">
-                                Description
-                              </label>
-                              <textarea
-                                name="description"
-                                rows={3}
-                                value={editData.description}
-                                onChange={handleEditChange}
-                                className="w-full rounded-lg px-4 py-2  border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 outline-none resize-none"
-                                required
-                              />
-                            </div>
-                      
-                            {/* Duration + Price */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-200">
-                                  Duration (days)
-                                </label>
-                                <input
-                                  name="duration_days"
-                                  type="number"
-                                  value={editData.duration_days}
-                                  onChange={handleEditChange}
-                                  className="w-full rounded-lg px-4 py-2  border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 outline-none"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-200">
-                                  Price ($)
-                                </label>
-                                <input
-                                  name="price"
-                                  type="number"
-                                  step="0.01"
-                                  value={editData.price}
-                                  onChange={handleEditChange}
-                                  className="w-full rounded-lg px-4 py-2  border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 outline-none"
-                                  required
-                                />
-                              </div>
-                            </div>
-                      
-                            {/* User Type */}
-                            <div>
-                              <label className="block mb-1 text-sm font-medium text-gray-200">
-                                User Type
-                              </label>
-                              <select
-                                name="user_type"
-                                value={editData.user_type}
-                                onChange={handleEditChange}
-                                className="w-full rounded-lg px-4 py-2  border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 outline-none"
-                              >
-                                <option value="B2B">B2B</option>
-                                <option value="B2C">B2C</option>
-                              </select>
-                            </div>
-                      
-                            {/* Active Checkbox */}
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                name="is_active"
-                                checked={editData.is_active}
-                                onChange={handleEditChange}
-                                className="h-5 w-5 border-gray-300 text-indigo-500 focus:ring-indigo-400"
-                              />
-                              <label className="text-sm">Active</label>
-                            </div>
-                      
-                            {/* Buttons */}
-                            <div className="flex justify-end space-x-4 pt-4">
-                              <button
-                                type="button"
-                                onClick={closeEditModal}
-                                className="px-6 py-2 rounded-lg bg-gray-500 hover:bg-gray-600 transition"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="submit"
-                                disabled={updating}
-                                className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md transition disabled:opacity-50"
-                              >
-                                {updating ? "Updating..." : "Update Plan"}
-                              </button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                      
-                      )}
-            </table>
           </div>
         )}
 
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-8 rounded-2xl shadow-2xl border border-white/30 max-w-md w-full text-white relative">
-              <h2 className="text-3xl font-extrabold mb-6 tracking-wide text-center drop-shadow-lg">
-                Create New Plan
+        {/* Table Section */}
+        {!loadingPlans && !plansError && plans.length > 0 && (
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-white/10">
+                <thead className="bg-[#2b2676]">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      User Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {plans.map((plan) => (
+                    <tr
+                      key={plan.id}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-white font-semibold text-sm">
+                          {plan.name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-white/80 text-sm">
+                          {plan.user_type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-white/80 text-sm font-medium">
+                          {plan.duration_days} days
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-white/80 text-sm font-medium">
+                          ${plan.price}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {plan.is_active ? (
+                          <span className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-semibold border border-green-500/30">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/30">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              window.location.assign(`/admin/plans/${plan.id}`)
+                            }
+                            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => openEditModal(plan)}
+                            className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(plan.id)}
+                            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {!loadingPlans && !plansError && plans.length === 0 && (
+          <div className="text-center py-16 bg-white/5 rounded-2xl border border-white/10">
+            <p className="text-white/70 text-lg">
+              No plans found. Create your first plan!
+            </p>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {confirmDeleteId && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-[#1e1b4b] to-[#312e81] p-8 rounded-2xl shadow-2xl border border-white/20 max-w-md w-full">
+              <h2 className="text-2xl font-bold mb-4 text-white text-center">
+                Confirm Delete
               </h2>
+              <p className="mb-8 text-white/80 text-center">
+                Are you sure you want to delete this plan? This action cannot
+                be undone.
+              </p>
 
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all border border-white/20"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? "Deleting..." : "Yes, Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Plan Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-[#1e1b4b] to-[#312e81] p-8 rounded-2xl shadow-2xl border border-white/20 max-w-lg w-full max-h-[90vh] overflow-y-auto">
               {formErrors && (
-                <p className="mb-4 text-red-400 font-semibold">{formErrors}</p>
+                <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded-xl mb-6">
+                  {formErrors}
+                </div>
               )}
-              {createSuccess && (
-                <p className="mb-4 text-green-400 font-semibold">
-                  {createSuccess}
-                </p>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block font-semibold uppercase tracking-wide text-gray-300 mb-1"
-                  >
-                    Name <span className="text-red-500">*</span>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    Plan Name
                   </label>
                   <input
-                    id="name"
                     name="name"
-                    type="text"
+                    placeholder="e.g., Premium Plan"
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-md px-4 py-2  font-medium border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#8e79e8]"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="description"
-                    className="block font-semibold uppercase tracking-wide text-gray-300 mb-1"
-                  >
-                    Description <span className="text-red-500">*</span>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    Description
                   </label>
                   <textarea
-                    id="description"
                     name="description"
+                    placeholder="Describe the plan features..."
                     value={formData.description}
                     onChange={handleChange}
                     rows={3}
                     required
-                    className="w-full rounded-md px-4 py-2  font-medium border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#8e79e8]"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all resize-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label
-                      htmlFor="duration_days"
-                      className="block font-semibold uppercase tracking-wide text-gray-300 mb-1"
-                    >
-                      Duration (days) <span className="text-red-500">*</span>
+                    <label className="block text-white/90 text-sm font-medium mb-2">
+                      Duration (days)
                     </label>
                     <input
-                      id="duration_days"
                       name="duration_days"
                       type="number"
-                      min="1"
+                      placeholder="e.g., 30"
                       value={formData.duration_days}
                       onChange={handleChange}
                       required
-                      className="w-full rounded-md px-4 py-2     font-medium border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#8e79e8]"
+                      min="1"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label
-                      htmlFor="price"
-                      className="block font-semibold uppercase tracking-wide text-gray-300 mb-1"
-                    >
-                      Price ($) <span className="text-red-500">*</span>
+                    <label className="block text-white/90 text-sm font-medium mb-2">
+                      Price ($)
                     </label>
                     <input
-                      id="price"
                       name="price"
                       type="number"
-                      min="0"
-                      step="0.01"
+                      placeholder="e.g., 29.99"
                       value={formData.price}
                       onChange={handleChange}
                       required
-                      className="w-full rounded-md px-4 py-2  font-medium border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#8e79e8]"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="user_type"
-                    className="block font-semibold uppercase tracking-wide text-gray-300 mb-1"
-                  >
-                    User Type <span className="text-red-500">*</span>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    User Type
                   </label>
                   <select
-                    id="user_type"
                     name="user_type"
                     value={formData.user_type}
                     onChange={handleChange}
-                    className="w-full rounded-md px-4 py-2  font-medium border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#8e79e8]"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
                   >
-                    <option value="B2B">B2B</option>
-                    <option value="B2C">B2C</option>
-                    <option value="Other">Other</option>
+                    <option value="B2B" className="bg-[#2b2676]">
+                      B2B
+                    </option>
+                    <option value="B2C" className="bg-[#2b2676]">
+                      B2C
+                    </option>
                   </select>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <label className="flex items-center space-x-3 text-white cursor-pointer">
                   <input
-                    id="is_active"
-                    name="is_active"
                     type="checkbox"
+                    name="is_active"
                     checked={formData.is_active}
                     onChange={handleChange}
-                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    className="h-5 w-5 rounded bg-white/5 border-white/20 text-indigo-600 focus:ring-2 focus:ring-white/50"
                   />
-                  <label
-                    htmlFor="is_active"
-                    className="font-semibold text-gray-300"
-                  >
-                    Active
-                  </label>
-                </div>
+                  <span className="font-medium">Set as Active</span>
+                </label>
 
-                <div className="flex justify-end space-x-4 mt-6">
+                <div className="flex justify-end gap-4 pt-4">
                   <button
                     type="button"
-                    onClick={closeModal}
-                    className="px-6 py-2 rounded-full bg-gray-600 hover:bg-gray-700 transition font-semibold"
-                    disabled={creating}
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-all border border-white/20"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 transition text-white font-semibold"
                     disabled={creating}
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {creating ? "Creating..." : "Create Plan"}
                   </button>
@@ -743,7 +602,132 @@ const PlansManagement = () => {
             </div>
           </div>
         )}
+
+        {/* Edit Plan Modal */}
+        {isEditModalOpen && editData && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-[#1e1b4b] to-[#312e81] p-8 rounded-2xl shadow-2xl border border-white/20 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <form onSubmit={handleEditSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    Plan Name
+                  </label>
+                  <input
+                    name="name"
+                    value={editData.name}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={editData.description}
+                    onChange={handleEditChange}
+                    rows={3}
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-white/90 text-sm font-medium mb-2">
+                      Duration (days)
+                    </label>
+                    <input
+                      name="duration_days"
+                      type="number"
+                      value={editData.duration_days}
+                      onChange={handleEditChange}
+                      required
+                      min="1"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/90 text-sm font-medium mb-2">
+                      Price ($)
+                    </label>
+                    <input
+                      name="price"
+                      type="number"
+                      value={editData.price}
+                      onChange={handleEditChange}
+                      required
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-white/90 text-sm font-medium mb-2">
+                    User Type
+                  </label>
+                  <select
+                    name="user_type"
+                    value={editData.user_type}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                  >
+                    <option value="B2B" className="bg-[#2b2676]">
+                      B2B
+                    </option>
+                    <option value="B2C" className="bg-[#2b2676]">
+                      B2C
+                    </option>
+                  </select>
+                </div>
+
+                <label className="flex items-center space-x-3 text-white cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={editData.is_active}
+                    onChange={handleEditChange}
+                    className="h-5 w-5 rounded bg-white/5 border-white/20 text-indigo-600 focus:ring-2 focus:ring-white/50"
+                  />
+                  <span className="font-medium">Set as Active</span>
+                </label>
+
+                <div className="flex justify-end gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-all border border-white/20"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl text-white font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updating ? "Updating..." : "Update Plan"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };

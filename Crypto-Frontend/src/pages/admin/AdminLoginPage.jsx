@@ -5,7 +5,7 @@ import logo from '../../assets/svg/logo.svg';
 import bgImage from '../../assets/images/Login-bg.png';
 
 const AdminLoginPage = () => {
-  const { loginUser, user } = useContext(AuthContext);
+  const { loginUser, user ,logoutUser} = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -14,7 +14,10 @@ const AdminLoginPage = () => {
   const [messageType, setMessageType] = useState('');
   const [loading, setLoading] = useState(false);
 
+  
+
   const handleLogin = async () => {
+  
     setLoading(true);
     setMessage('');
     setMessageType('');

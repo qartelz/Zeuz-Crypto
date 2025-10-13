@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
-  Settings,
   Users,
   LogOut,
   Crown,
@@ -10,6 +9,8 @@ import {
 } from "lucide-react";
 import { useContext, useState } from "react";
 import AuthContext from "../../contexts/AuthContext";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 function AdminSidebar() {
   const location = useLocation();
@@ -23,12 +24,24 @@ function AdminSidebar() {
     { to: "/admin/adminspage", label: "Admins", icon: Crown },
     { to: "/admin/plans", label: "Plans", icon: DollarSign },
     { to: "/admin/coupons", label: "Coupons", icon: Tag },
-    { to: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
   const handleLogout = () => {
     setLoggingOut(true);   
-    logoutUser();       
+    logoutUser();
+    setTimeout(() => {
+      navigate("/admin-login");
+      setLoggingOut(false); // Reset state (optional)
+    }, 2000);
+    
+
+    toast.info('👋 Logged out successfully!', {
+      position: 'top-right',
+      autoClose: 2000,
+      hideProgressBar: false,
+      theme: 'dark',
+      style: { borderRadius: '8px', fontWeight: 500 }
+    });
 
     setTimeout(() => {
       navigate("/admin-login"); 
@@ -45,16 +58,15 @@ function AdminSidebar() {
 
       <nav className="flex-1 p-4 space-y-2">
         {links.map(({ to, label, icon: Icon }) => {
-          const isActive = location.pathname === to;
+          const isActive = location.pathname.startsWith(to);
           return (
             <Link
               key={to}
               to={to}
               className={`flex items-center gap-3 px-4 py-2 rounded-lg transition font-medium
-                ${
-                  isActive
-                    ? "bg-indigo-600 text-white shadow-lg"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                ${isActive
+                  ? "bg-indigo-600 text-white shadow-lg"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
                 }`}
             >
               <Icon size={20} />
@@ -75,6 +87,17 @@ function AdminSidebar() {
           {loggingOut ? "Logging out..." : "Logout"}
         </button>
       </div>
+
+      {/* Local ToastContainer */}
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        theme="dark"
+      />
     </aside>
   );
 }
