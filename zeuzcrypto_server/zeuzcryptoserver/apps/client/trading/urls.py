@@ -27,6 +27,7 @@ urlpatterns = [
     
     # Market data
     path('update-prices/', views.UpdatePricesView.as_view(), name='update-prices'),
+    path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
     
     # Risk management
     path('risk-check/', views.RiskCheckView.as_view(), name='risk-check'),
@@ -35,7 +36,7 @@ urlpatterns = [
 
 
 
-    path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
+  
 
 
 ]

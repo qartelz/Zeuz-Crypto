@@ -51,6 +51,24 @@ class TradeViewSet(viewsets.ModelViewSet):
         return Response({"error": "Current price is required"}, status=400)
 
 
+
+class TradeViewSet(viewsets.ModelViewSet):
+    serializer_class = TradeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Trade.objects.filter(user=self.request.user).order_by('-opened_at')
+
+    @action(detail=True, methods=['post'])
+    def update_pnl(self, request, pk=None):
+        trade = self.get_object()
+        current_price = request.data.get('current_price')
+        if current_price:
+            pnl = trade.calculate_unrealized_pnl(Decimal(current_price))
+            return Response({'unrealized_pnl': str(pnl)})
+        return Response({'error': 'Current price is required'}, status=400)
+
+
 class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -84,27 +102,10 @@ class PlaceOrderView(APIView):
         else:
             raise ValueError(f"Unsupported trade type: {trade_type}")
 
-    # def _process_spot_order(self, user, data):
-    #     """Handle spot trading logic"""
-    #     asset_symbol = data['asset_symbol']
-    #     direction = data['direction']
-    #     quantity = data['quantity']
-    #     price = data['price']
-    #     holding_type = data['holding_type']
-
-    #     # Find existing trade for this asset and holding type
-    #     existing_trade = Trade.objects.filter(
-    #         user=user,
-    #         asset_symbol=asset_symbol,
-    #         trade_type='SPOT',
-    #         holding_type=holding_type,
-    #         status__in=['OPEN', 'PARTIALLY_CLOSED']
-    #     ).first()
-
-    #     if direction == 'BUY':
-    #         return self._handle_spot_buy(user, data, existing_trade)
-    #     else:
-    #         return self._handle_spot_sell(user, data, existing_trade)
+    # =====================================================================
+    # SPOT TRADING - CORRECTED
+    # =====================================================================
+    
     def _process_spot_order(self, user, data):
         """Handle spot trading logic - CORRECTED"""
         asset_symbol = data["asset_symbol"]
@@ -119,6 +120,7 @@ class PlaceOrderView(APIView):
             asset_symbol=asset_symbol,
             trade_type="SPOT",
             holding_type=holding_type,
+            direction=direction,
             status__in=["OPEN", "PARTIALLY_CLOSED"],
         ).first()
 
@@ -133,10 +135,9 @@ class PlaceOrderView(APIView):
 
         Scenarios:
         1. LONGTERM BUY - First buy of asset
-        2. LONGTERM BUY - Add to existing LONGTERM BUY position (average price)
+        2. LONGTERM BUY - Add to existing LONGTERM BUY position
         3. INTRADAY BUY - First buy of asset
         4. INTRADAY BUY - Add to existing INTRADAY BUY position
-        5. INTRADAY BUY - Close existing INTRADAY SHORT position
         """
         quantity = data["quantity"]
         price = data["price"]
@@ -157,7 +158,7 @@ class PlaceOrderView(APIView):
             description=f"Buy {quantity} {data['asset_symbol']} @ {price} ({holding_type})",
         )
 
-        # SCENARIO 1 & 2: If existing BUY position (same direction, same holding_type)
+        # SCENARIO 1 & 2: If existing BUY position
         if existing_trade and existing_trade.direction == "BUY":
             # Add to existing position (average price)
             old_value = existing_trade.remaining_quantity * existing_trade.average_price
@@ -173,9 +174,8 @@ class PlaceOrderView(APIView):
             trade = existing_trade
             action = "ADD_TO_POSITION"
 
-        # SCENARIO 3 & 4: New BUY position or no existing position
-        elif not existing_trade:
-            # Create new BUY trade
+        # SCENARIO 3 & 4: New BUY position
+        else:
             trade = Trade.objects.create(
                 user=user,
                 asset_symbol=data["asset_symbol"],
@@ -191,10 +191,6 @@ class PlaceOrderView(APIView):
                 total_invested=amount,
             )
             action = "BUY"
-
-        # SCENARIO 5: INTRADAY BUY can close existing SHORT position
-        # (But this is already handled in _handle_spot_sell when SELL creates SHORT)
-        # This shouldn't happen here because we filtered by direction=BUY
 
         # Record trade history
         TradeHistory.objects.create(
@@ -226,94 +222,16 @@ class PlaceOrderView(APIView):
             "wallet_balance": str(new_balance),
         }
 
-    # def _handle_spot_buy(self, user, data, existing_trade):
-    #     """Handle spot buy orders - WITH WALLET INTEGRATION"""
-    #     quantity = data['quantity']
-    #     price = data['price']
-    #     amount = quantity * price
-
-    #     # ✅ CHECK WALLET BALANCE
-    #     if not WalletService.check_balance(user, amount):
-    #         current_balance = WalletService.get_balance(user)
-    #         raise ValidationError(
-    #             f"Insufficient coins. Need: {amount}, You have: {current_balance}"
-    #         )
-
-    #     # ✅ DEDUCT COINS FROM WALLET
-    #     WalletService.deduct_coins(
-    #         user=user,
-    #         amount=amount,
-    #         description=f"Buy {quantity} {data['asset_symbol']} @ {price}"
-    #     )
-
-    #     if existing_trade:
-    #         # Add to existing position (average price)
-    #         old_value = existing_trade.remaining_quantity * existing_trade.average_price
-    #         new_value = quantity * price
-    #         total_quantity = existing_trade.remaining_quantity + quantity
-
-    #         existing_trade.average_price = (old_value + new_value) / total_quantity
-    #         existing_trade.remaining_quantity = total_quantity
-    #         existing_trade.total_quantity += quantity
-    #         existing_trade.total_invested += amount
-    #         existing_trade.save()
-
-    #         trade = existing_trade
-    #     else:
-    #         # Create new trade
-    #         trade = Trade.objects.create(
-    #             user=user,
-    #             asset_symbol=data['asset_symbol'],
-    #             asset_name=data.get('asset_name', ''),
-    #             asset_exchange=data.get('asset_exchange', ''),
-    #             trade_type='SPOT',
-    #             direction='BUY',
-    #             status='OPEN',
-    #             holding_type=data['holding_type'],
-    #             total_quantity=quantity,
-    #             remaining_quantity=quantity,
-    #             average_price=price,
-    #             total_invested=amount
-    #         )
-
-    #     # Record trade history
-    #     TradeHistory.objects.create(
-    #         trade=trade,
-    #         user=user,
-    #         action='BUY',
-    #         order_type=data.get('order_type', 'MARKET'),
-    #         quantity=quantity,
-    #         price=price,
-    #         amount=amount
-    #     )
-
-    #     # Update portfolio
-    #     self._update_portfolio(user)
-
-    #     # ✅ GET UPDATED BALANCE
-    #     new_balance = WalletService.get_balance(user)
-
-    #     return {
-    #         'trade_id': str(trade.id),
-    #         'action': 'BUY' if not existing_trade else 'ADD_TO_POSITION',
-    #         'quantity': str(quantity),
-    #         'price': str(price),
-    #         'total_quantity': str(trade.total_quantity),
-    #         'average_price': str(trade.average_price),
-    #         'coins_paid': str(amount),
-    #         'wallet_balance': str(new_balance)
-    #     }
-
     def _handle_spot_sell(self, user, data, existing_trade, holding_type):
         """
         Handle SPOT SELL orders - CORRECTED
 
         Scenarios:
-        1. LONGTERM SELL - Close existing LONGTERM BUY position (full or partial)
+        1. LONGTERM SELL - Close existing LONGTERM BUY position
         2. LONGTERM SELL - Error if no BUY position exists
-        3. INTRADAY SELL - Create new SHORT position (short selling)
-        4. INTRADAY SELL - Close existing SHORT position
-        5. INTRADAY SELL - Close existing BUY position
+        3. INTRADAY SELL - Create new SHORT position (if no position)
+        4. INTRADAY SELL - Close existing BUY position
+        5. INTRADAY SELL - Close existing SHORT position
         """
         quantity = data["quantity"]
         price = data["price"]
@@ -330,105 +248,183 @@ class PlaceOrderView(APIView):
 
         # SCENARIO 3, 4, 5: Intraday handling
         elif holding_type == "INTRADAY":
-            # Check if there's an existing INTRADAY position
             if existing_trade:
                 # SCENARIO 4 & 5: Close existing INTRADAY position
-                # Could be closing SHORT (direction=SELL) or BUY position
                 return self._close_intraday_position(user, data, existing_trade)
             else:
                 # SCENARIO 3: Create new SHORT position
                 return self._create_intraday_short_position(user, data)
 
-    # def _handle_spot_sell(self, user, data, existing_trade):
-    #     """Handle spot sell orders - WITH WALLET INTEGRATION"""
-    #     if not existing_trade:
-    #         # For intraday, allow short selling
-    #         if data['holding_type'] == 'INTRADAY':
-    #             return self._create_short_position(user, data)
-    #         else:
-    #             raise ValueError("No existing position to sell for long-term trades")
+    def _close_longterm_position(self, user, data, existing_trade):
+        """SCENARIO 1: Close LONGTERM BUY position"""
+        quantity = data["quantity"]
+        price = data["price"]
 
-    #     quantity = data['quantity']
-    #     price = data['price']
+        if existing_trade.direction != "BUY":
+            raise ValidationError("Invalid position for LONGTERM SELL")
 
-    #     if quantity > existing_trade.remaining_quantity:
-    #         raise ValueError("Cannot sell more than available quantity")
+        if quantity > existing_trade.remaining_quantity:
+            raise ValidationError(
+                f"Cannot sell {quantity}, only {existing_trade.remaining_quantity} available"
+            )
 
-    #     # Calculate P&L for this sell
-    #     cost_basis = existing_trade.average_price * quantity
-    #     sell_value = price * quantity
-    #     realized_pnl = sell_value - cost_basis
+        # Calculate P&L
+        cost_basis = existing_trade.average_price * quantity
+        sell_value = price * quantity
+        realized_pnl = sell_value - cost_basis
 
-    #     # ✅ CREDIT COINS TO WALLET
-    #     WalletService.credit_coins(
-    #         user=user,
-    #         amount=sell_value,
-    #         description=f"Sell {quantity} {existing_trade.asset_symbol} @ {price}"
-    #     )
+        # CREDIT COINS TO WALLET
+        WalletService.credit_coins(
+            user=user,
+            amount=sell_value,
+            description=f"Sell {quantity} {existing_trade.asset_symbol} @ {price} (LONGTERM DELIVERY)",
+        )
 
-    #     # Update trade
-    #     existing_trade.remaining_quantity -= quantity
-    #     existing_trade.realized_pnl += realized_pnl
+        # Update trade
+        existing_trade.remaining_quantity -= quantity
+        existing_trade.realized_pnl += realized_pnl
 
-    #     if existing_trade.remaining_quantity == 0:
-    #         existing_trade.status = 'CLOSED'
-    #         existing_trade.closed_at = timezone.now()
-    #     elif existing_trade.remaining_quantity < existing_trade.total_quantity:
-    #         existing_trade.status = 'PARTIALLY_CLOSED'
+        if existing_trade.remaining_quantity == 0:
+            existing_trade.status = "CLOSED"
+            existing_trade.closed_at = timezone.now()
+        else:
+            existing_trade.status = "PARTIALLY_CLOSED"
 
-    #     existing_trade.save()
+        existing_trade.save()
 
-    #     # Record trade history
-    #     TradeHistory.objects.create(
-    #         trade=existing_trade,
-    #         user=user,
-    #         action='SELL' if existing_trade.remaining_quantity == 0 else 'PARTIAL_SELL',
-    #         order_type=data.get('order_type', 'MARKET'),
-    #         quantity=quantity,
-    #         price=price,
-    #         amount=sell_value,
-    #         realized_pnl=realized_pnl
-    #     )
+        # Record trade history
+        TradeHistory.objects.create(
+            trade=existing_trade,
+            user=user,
+            action="SELL",
+            order_type=data.get("order_type", "MARKET"),
+            quantity=quantity,
+            price=price,
+            amount=sell_value,
+            realized_pnl=realized_pnl,
+        )
 
-    #     # Update portfolio
-    #     self._update_portfolio(user)
+        # Update portfolio
+        self._update_portfolio(user)
 
-    #     # ✅ GET UPDATED BALANCE
-    #     new_balance = WalletService.get_balance(user)
+        new_balance = WalletService.get_balance(user)
 
-    #     return {
-    #         'trade_id': str(existing_trade.id),
-    #         'action': 'SELL',
-    #         'quantity': str(quantity),
-    #         'price': str(price),
-    #         'realized_pnl': str(realized_pnl),
-    #         'remaining_quantity': str(existing_trade.remaining_quantity),
-    #         'status': existing_trade.status,
-    #         'coins_received': str(sell_value),
-    #         'wallet_balance': str(new_balance)
-    #     }
+        return {
+            "trade_id": str(existing_trade.id),
+            "action": "SELL_LONGTERM",
+            "direction": "SELL",
+            "holding_type": "LONGTERM",
+            "quantity": str(quantity),
+            "price": str(price),
+            "realized_pnl": str(realized_pnl),
+            "remaining_quantity": str(existing_trade.remaining_quantity),
+            "status": existing_trade.status,
+            "coins_received": str(sell_value),
+            "wallet_balance": str(new_balance),
+        }
 
-    def _create_short_position(self, user, data):
-        """Create short position for intraday spot trading - WITH WALLET INTEGRATION"""
+    def _close_intraday_position(self, user, data, existing_trade):
+        """SCENARIO 4 & 5: Close INTRADAY position (BUY or SHORT)"""
+        quantity = data["quantity"]
+        price = data["price"]
+
+        if quantity > existing_trade.remaining_quantity:
+            raise ValidationError(
+                f"Cannot close {quantity}, only {existing_trade.remaining_quantity} available"
+            )
+
+        # Calculate P&L
+        if existing_trade.direction == "BUY":
+            realized_pnl = (price - existing_trade.average_price) * quantity
+        else:  # existing_trade.direction == "SELL" (SHORT)
+            realized_pnl = (existing_trade.average_price - price) * quantity
+
+        # Get settlement amount
+        settlement_amount = price * quantity
+
+        # CREDIT/UNBLOCK COINS
+        if existing_trade.direction == "BUY":
+            # Closing BUY: credit the sell value
+            WalletService.credit_coins(
+                user=user,
+                amount=settlement_amount,
+                description=f"Close BUY {quantity} {existing_trade.asset_symbol} @ {price} (INTRADAY)",
+            )
+        else:  # existing_trade.direction == "SELL"
+            # Closing SHORT: unblock collateral + P&L
+            collateral = existing_trade.total_invested
+            total_return = collateral + realized_pnl
+            if total_return > 0:
+                WalletService.unblock_coins(
+                    user=user,
+                    amount=total_return,
+                    description=f"Close SHORT {quantity} {existing_trade.asset_symbol} @ {price} (INTRADAY)",
+                )
+
+        # Update trade
+        existing_trade.remaining_quantity -= quantity
+        existing_trade.realized_pnl += realized_pnl
+
+        if existing_trade.remaining_quantity == 0:
+            existing_trade.status = "CLOSED"
+            existing_trade.closed_at = timezone.now()
+        else:
+            existing_trade.status = "PARTIALLY_CLOSED"
+
+        existing_trade.save()
+
+        # Record trade history
+        TradeHistory.objects.create(
+            trade=existing_trade,
+            user=user,
+            action="SELL",
+            order_type=data.get("order_type", "MARKET"),
+            quantity=quantity,
+            price=price,
+            amount=settlement_amount,
+            realized_pnl=realized_pnl,
+        )
+
+        # Update portfolio
+        self._update_portfolio(user)
+
+        new_balance = WalletService.get_balance(user)
+
+        return {
+            "trade_id": str(existing_trade.id),
+            "action": "CLOSE_INTRADAY",
+            "direction": "SELL",
+            "holding_type": "INTRADAY",
+            "closed_position_type": existing_trade.direction,
+            "quantity": str(quantity),
+            "price": str(price),
+            "realized_pnl": str(realized_pnl),
+            "remaining_quantity": str(existing_trade.remaining_quantity),
+            "status": existing_trade.status,
+            "settlement_amount": str(settlement_amount),
+            "wallet_balance": str(new_balance),
+        }
+
+    def _create_intraday_short_position(self, user, data):
+        """SCENARIO 3: Create INTRADAY SHORT position"""
         quantity = data["quantity"]
         price = data["price"]
         amount = quantity * price
 
-        # For short selling, we typically need collateral
-        # Here we'll use a simple model: block the equivalent amount
+        # Block coins as collateral
         if not WalletService.check_balance(user, amount):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
-                f"Insufficient coins for short position. Need: {amount}, You have: {current_balance}"
+                f"Insufficient coins for short collateral. Need: {amount}, You have: {current_balance}"
             )
 
-        # Block coins as collateral for short position
         WalletService.block_coins(
             user=user,
             amount=amount,
-            description=f"Short sell {quantity} {data['asset_symbol']} @ {price}",
+            description=f"Short sell {quantity} {data['asset_symbol']} @ {price} (INTRADAY)",
         )
 
+        # Create SHORT position
         trade = Trade.objects.create(
             user=user,
             asset_symbol=data["asset_symbol"],
@@ -461,11 +457,17 @@ class PlaceOrderView(APIView):
         return {
             "trade_id": str(trade.id),
             "action": "CREATE_SHORT_POSITION",
+            "direction": "SELL",
+            "holding_type": "INTRADAY",
             "quantity": str(quantity),
             "price": str(price),
             "collateral_blocked": str(amount),
             "wallet_balance": str(new_balance),
         }
+
+    # =====================================================================
+    # FUTURES TRADING - CORRECTED
+    # =====================================================================
 
     def _process_futures_order(self, user, data):
         """Handle futures trading logic"""
@@ -474,7 +476,7 @@ class PlaceOrderView(APIView):
         quantity = data["quantity"]
         price = data["price"]
 
-        # Find existing futures position
+        # Find existing futures position (any direction)
         existing_trade = Trade.objects.filter(
             user=user,
             asset_symbol=asset_symbol,
@@ -492,6 +494,7 @@ class PlaceOrderView(APIView):
         direction = data["direction"]
         quantity = data["quantity"]
         price = data["price"]
+        leverage = data.get("leverage", existing_trade.futures_details.leverage)
 
         if existing_trade.direction == direction:
             # Same direction - increase position
@@ -506,7 +509,7 @@ class PlaceOrderView(APIView):
 
             action = "INCREASE_POSITION"
         else:
-            # Opposite direction - reduce position
+            # Opposite direction - reduce/close/flip position
             if quantity > existing_trade.remaining_quantity:
                 # Flip position
                 remaining_qty = quantity - existing_trade.remaining_quantity
@@ -549,11 +552,12 @@ class PlaceOrderView(APIView):
             "quantity": str(quantity),
             "price": str(price),
             "remaining_quantity": str(existing_trade.remaining_quantity),
+            "status": existing_trade.status,
             "wallet_balance": str(new_balance),
         }
 
     def _create_new_futures_position(self, user, data):
-        """Create new futures position - WITH WALLET INTEGRATION"""
+        """Create new futures position"""
         quantity = data["quantity"]
         price = data["price"]
         leverage = data.get("leverage", Decimal("1"))
@@ -562,14 +566,14 @@ class PlaceOrderView(APIView):
         position_value = quantity * price
         margin_required = position_value / leverage
 
-        # ✅ CHECK WALLET BALANCE FOR MARGIN
+        # CHECK WALLET BALANCE FOR MARGIN
         if not WalletService.check_balance(user, margin_required):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
                 f"Insufficient coins for margin. Need: {margin_required}, You have: {current_balance}"
             )
 
-        # ✅ BLOCK MARGIN COINS
+        # BLOCK MARGIN COINS
         WalletService.block_coins(
             user=user,
             amount=margin_required,
@@ -616,7 +620,6 @@ class PlaceOrderView(APIView):
 
         self._update_portfolio(user)
 
-        # ✅ GET UPDATED BALANCE
         new_balance = WalletService.get_balance(user)
 
         return {
@@ -631,18 +634,24 @@ class PlaceOrderView(APIView):
             "wallet_balance": str(new_balance),
         }
 
+    # =====================================================================
+    # OPTIONS TRADING - CORRECTED
+    # =====================================================================
+
     def _process_options_order(self, user, data):
         """Handle options trading logic"""
         asset_symbol = data["asset_symbol"]
         option_type = data["option_type"]
         strike_price = data["strike_price"]
         expiry_date = data["expiry_date"]
+        direction = data["direction"]
 
-        # Find existing option position
+        # Find existing option position (same direction, option_type, strike, expiry)
         existing_trade = Trade.objects.filter(
             user=user,
             asset_symbol=asset_symbol,
             trade_type="OPTIONS",
+            direction=direction,
             status__in=["OPEN", "PARTIALLY_CLOSED"],
             options_details__option_type=option_type,
             options_details__strike_price=strike_price,
@@ -655,12 +664,12 @@ class PlaceOrderView(APIView):
             return self._create_new_options_position(user, data)
 
     def _handle_existing_options_position(self, user, data, existing_trade):
-        """Handle existing options position - WITH WALLET INTEGRATION"""
+        """Handle existing options position"""
         quantity = data["quantity"]
         premium = data["premium"]
         position_cost = quantity * premium
 
-        # ✅ CHECK AND DEDUCT FOR ADDITIONAL OPTIONS
+        # CHECK AND DEDUCT FOR ADDITIONAL OPTIONS
         if not WalletService.check_balance(user, position_cost):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
@@ -670,7 +679,7 @@ class PlaceOrderView(APIView):
         WalletService.deduct_coins(
             user=user,
             amount=position_cost,
-            description=f"Add {quantity} {data['asset_symbol']} Options",
+            description=f"Add {quantity} {data['asset_symbol']} {data['option_type']} Options",
         )
 
         # Increase position
@@ -701,6 +710,7 @@ class PlaceOrderView(APIView):
         return {
             "trade_id": str(existing_trade.id),
             "action": "INCREASE_OPTIONS_POSITION",
+            "option_type": data["option_type"],
             "quantity": str(quantity),
             "premium": str(premium),
             "coins_paid": str(position_cost),
@@ -708,12 +718,12 @@ class PlaceOrderView(APIView):
         }
 
     def _create_new_options_position(self, user, data):
-        """Create new options position - WITH WALLET INTEGRATION"""
+        """Create new options position"""
         quantity = data["quantity"]
         premium = data["premium"]
         position_cost = quantity * premium
 
-        # ✅ CHECK AND DEDUCT PREMIUM
+        # CHECK AND DEDUCT PREMIUM
         if not WalletService.check_balance(user, position_cost):
             current_balance = WalletService.get_balance(user)
             raise ValidationError(
@@ -783,6 +793,10 @@ class PlaceOrderView(APIView):
         portfolio.update_portfolio_metrics()
 
 
+# =====================================================================
+# PARTIAL CLOSE AND CLOSE VIEWS
+# =====================================================================
+
 class PartialCloseView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -807,7 +821,7 @@ class PartialCloseView(APIView):
         return Response(serializer.errors, status=400)
 
     def _partial_close_trade(self, trade, data):
-        """Handle partial closing of trades - WITH WALLET INTEGRATION"""
+        """Handle partial closing of trades"""
         quantity = data["quantity"]
         price = data.get("price", trade.average_price)
 
@@ -820,9 +834,8 @@ class PartialCloseView(APIView):
         else:
             realized_pnl = (trade.average_price - price) * quantity
 
-        # ✅ HANDLE WALLET BASED ON TRADE TYPE
+        # HANDLE WALLET BASED ON TRADE TYPE
         if trade.trade_type == "SPOT":
-            # Credit sell value
             sell_value = price * quantity
             WalletService.credit_coins(
                 user=trade.user,
@@ -830,7 +843,6 @@ class PartialCloseView(APIView):
                 description=f"Partial close {quantity} {trade.asset_symbol} @ {price}",
             )
         elif trade.trade_type == "FUTURES":
-            # Return proportional margin + P&L
             margin_per_unit = trade.total_invested / trade.total_quantity
             margin_to_return = margin_per_unit * quantity
             total_return = margin_to_return + realized_pnl
@@ -900,13 +912,16 @@ class CloseTradeView(APIView):
                 with transaction.atomic():
                     result = self._close_trade(trade, serializer.validated_data)
                     return Response(result)
+            except ValidationError as e:
+                logger.error(f"Validation error: {str(e)}")
+                return Response({"error": str(e)}, status=400)
             except Exception as e:
                 logger.error(f"Error closing trade: {str(e)}", exc_info=True)
                 return Response({"error": str(e)}, status=400)
         return Response(serializer.errors, status=400)
 
     def _close_trade(self, trade, data):
-        """Handle complete closing of trades - WITH WALLET INTEGRATION"""
+        """Handle complete closing of trades"""
         price = data.get("price", trade.average_price)
         quantity = trade.remaining_quantity
 
@@ -916,7 +931,7 @@ class CloseTradeView(APIView):
         else:
             realized_pnl = (trade.average_price - price) * quantity
 
-        # ✅ HANDLE WALLET BASED ON TRADE TYPE
+        # HANDLE WALLET BASED ON TRADE TYPE
         if trade.trade_type == "SPOT":
             if trade.direction == "BUY":
                 # Normal long position - credit sell value
@@ -948,7 +963,6 @@ class CloseTradeView(APIView):
                     amount=total_return,
                     description=f"Close Futures {trade.asset_symbol} - Margin+P&L",
                 )
-            # If total_return <= 0, margin is lost
 
         elif trade.trade_type == "OPTIONS":
             # Options: if profitable, credit profit
@@ -958,7 +972,6 @@ class CloseTradeView(APIView):
                     amount=realized_pnl,
                     description=f"Options profit {trade.asset_symbol}",
                 )
-            # Premium was already paid, so if loss, nothing to return
 
         # Update trade
         trade.remaining_quantity = Decimal("0")
@@ -992,6 +1005,13 @@ class CloseTradeView(APIView):
             "status": trade.status,
             "wallet_balance": str(new_balance),
         }
+
+
+# =====================================================================
+# PORTFOLIO AND OTHER VIEWS
+# =====================================================================
+
+
 
 
 class PortfolioViewSet(viewsets.ReadOnlyModelViewSet):
