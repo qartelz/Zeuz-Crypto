@@ -52,21 +52,21 @@ class TradeViewSet(viewsets.ModelViewSet):
 
 
 
-class TradeViewSet(viewsets.ModelViewSet):
-    serializer_class = TradeSerializer
-    permission_classes = [IsAuthenticated]
+# class TradeViewSet(viewsets.ModelViewSet):
+#     serializer_class = TradeSerializer
+#     permission_classes = [IsAuthenticated]
     
-    def get_queryset(self):
-        return Trade.objects.filter(user=self.request.user).order_by('-opened_at')
+#     def get_queryset(self):
+#         return Trade.objects.filter(user=self.request.user).order_by('-opened_at')
 
-    @action(detail=True, methods=['post'])
-    def update_pnl(self, request, pk=None):
-        trade = self.get_object()
-        current_price = request.data.get('current_price')
-        if current_price:
-            pnl = trade.calculate_unrealized_pnl(Decimal(current_price))
-            return Response({'unrealized_pnl': str(pnl)})
-        return Response({'error': 'Current price is required'}, status=400)
+#     @action(detail=True, methods=['post'])
+#     def update_pnl(self, request, pk=None):
+#         trade = self.get_object()
+#         current_price = request.data.get('current_price')
+#         if current_price:
+#             pnl = trade.calculate_unrealized_pnl(Decimal(current_price))
+#             return Response({'unrealized_pnl': str(pnl)})
+#         return Response({'error': 'Current price is required'}, status=400)
 
 
 class PlaceOrderView(APIView):
@@ -820,40 +820,168 @@ class PartialCloseView(APIView):
                 return Response({"error": str(e)}, status=400)
         return Response(serializer.errors, status=400)
 
+    # def _partial_close_trade(self, trade, data):
+    #     """Handle partial closing of trades"""
+    #     quantity = data["quantity"]
+    #     price = data.get("price", trade.average_price)
+
+    #     if quantity > trade.remaining_quantity:
+    #         raise ValueError("Cannot close more than remaining quantity")
+
+    #     # Calculate P&L
+    #     if trade.direction == "BUY":
+    #         realized_pnl = (price - trade.average_price) * quantity
+    #     else:
+    #         realized_pnl = (trade.average_price - price) * quantity
+
+    #     # HANDLE WALLET BASED ON TRADE TYPE
+    #     if trade.trade_type == "SPOT":
+    #         sell_value = price * quantity
+    #         WalletService.credit_coins(
+    #             user=trade.user,
+    #             amount=sell_value,
+    #             description=f"Partial close {quantity} {trade.asset_symbol} @ {price}",
+    #         )
+    #     elif trade.trade_type == "FUTURES":
+    #         margin_per_unit = trade.total_invested / trade.total_quantity
+    #         margin_to_return = margin_per_unit * quantity
+    #         total_return = margin_to_return + realized_pnl
+
+    #         if total_return > 0:
+    #             WalletService.unblock_coins(
+    #                 user=trade.user,
+    #                 amount=total_return,
+    #                 description=f"Partial close Futures {trade.asset_symbol}",
+    #             )
+
+    #     # Update trade
+    #     trade.remaining_quantity -= quantity
+    #     trade.realized_pnl += realized_pnl
+
+    #     if trade.remaining_quantity == 0:
+    #         trade.status = "CLOSED"
+    #         trade.closed_at = timezone.now()
+    #     else:
+    #         trade.status = "PARTIALLY_CLOSED"
+
+    #     trade.save()
+
+    #     # Record history
+    #     TradeHistory.objects.create(
+    #         trade=trade,
+    #         user=trade.user,
+    #         action="PARTIAL_SELL",
+    #         order_type=data.get("order_type", "MARKET"),
+    #         quantity=quantity,
+    #         price=price,
+    #         amount=quantity * price,
+    #         realized_pnl=realized_pnl,
+    #     )
+
+    #     # Update portfolio
+    #     portfolio = Portfolio.objects.get(user=trade.user)
+    #     portfolio.update_portfolio_metrics()
+
+    #     new_balance = WalletService.get_balance(trade.user)
+
+    #     return {
+    #         "trade_id": str(trade.id),
+    #         "closed_quantity": str(quantity),
+    #         "realized_pnl": str(realized_pnl),
+    #         "remaining_quantity": str(trade.remaining_quantity),
+    #         "status": trade.status,
+    #         "wallet_balance": str(new_balance),
+    #     }
+
     def _partial_close_trade(self, trade, data):
-        """Handle partial closing of trades"""
+    # """Handle partial closing of trades - CORRECTED FOR FUTURES & OPTIONS"""
         quantity = data["quantity"]
         price = data.get("price", trade.average_price)
 
         if quantity > trade.remaining_quantity:
-            raise ValueError("Cannot close more than remaining quantity")
+            raise ValidationError("Cannot close more than remaining quantity")
 
-        # Calculate P&L
+        # Calculate P&L for this partial close
         if trade.direction == "BUY":
             realized_pnl = (price - trade.average_price) * quantity
         else:
             realized_pnl = (trade.average_price - price) * quantity
 
-        # HANDLE WALLET BASED ON TRADE TYPE
+        logger.info(
+            f"Partial closing trade {trade.id}: type={trade.trade_type}, "
+            f"qty={quantity}, pnl={realized_pnl}"
+        )
+
+        # =====================================================================
+        # SPOT TRADING - PARTIAL CLOSE
+        # =====================================================================
         if trade.trade_type == "SPOT":
             sell_value = price * quantity
             WalletService.credit_coins(
                 user=trade.user,
                 amount=sell_value,
-                description=f"Partial close {quantity} {trade.asset_symbol} @ {price}",
+                description=f"Partial close SPOT {quantity} {trade.asset_symbol} @ {price}",
             )
+
+        # =====================================================================
+        # FUTURES TRADING - PARTIAL CLOSE
+        # =====================================================================
         elif trade.trade_type == "FUTURES":
+            # Calculate proportional margin for this partial close
             margin_per_unit = trade.total_invested / trade.total_quantity
             margin_to_return = margin_per_unit * quantity
+            
+            # Total return includes margin and proportional P&L
             total_return = margin_to_return + realized_pnl
+            
+            logger.info(
+                f"FUTURES partial: margin_per_unit={margin_per_unit}, "
+                f"margin_to_return={margin_to_return}, pnl={realized_pnl}, total={total_return}"
+            )
 
             if total_return > 0:
                 WalletService.unblock_coins(
                     user=trade.user,
                     amount=total_return,
-                    description=f"Partial close Futures {trade.asset_symbol}",
+                    description=f"Partial close FUTURES {trade.asset_symbol} - "
+                            f"Margin+P&L ({quantity} units)",
+                )
+            elif total_return == 0:
+                WalletService.unblock_coins(
+                    user=trade.user,
+                    amount=margin_to_return,
+                    description=f"Partial close FUTURES {trade.asset_symbol} - "
+                            f"Margin (break-even)",
+                )
+            else:
+                # Partial loss - return remaining margin
+                remaining = margin_to_return + realized_pnl
+                if remaining > 0:
+                    WalletService.unblock_coins(
+                        user=trade.user,
+                        amount=remaining,
+                        description=f"Partial close FUTURES {trade.asset_symbol} - "
+                                f"Partial margin (loss={abs(realized_pnl)})",
+                    )
+
+        # =====================================================================
+        # OPTIONS TRADING - PARTIAL CLOSE
+        # =====================================================================
+        elif trade.trade_type == "OPTIONS":
+            # For options, partial close means closing part of the position
+            # Only credit P&L if positive
+            
+            if realized_pnl > 0:
+                WalletService.credit_coins(
+                    user=trade.user,
+                    amount=realized_pnl,
+                    description=f"Partial close OPTIONS {trade.asset_symbol} - Profit",
                 )
 
+        # =====================================================================
+        # UPDATE TRADE RECORD
+        # =====================================================================
+        
         # Update trade
         trade.remaining_quantity -= quantity
         trade.realized_pnl += realized_pnl
@@ -886,14 +1014,13 @@ class PartialCloseView(APIView):
 
         return {
             "trade_id": str(trade.id),
+            "trade_type": trade.trade_type,
             "closed_quantity": str(quantity),
             "realized_pnl": str(realized_pnl),
             "remaining_quantity": str(trade.remaining_quantity),
             "status": trade.status,
             "wallet_balance": str(new_balance),
         }
-
-
 class CloseTradeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -919,9 +1046,9 @@ class CloseTradeView(APIView):
                 logger.error(f"Error closing trade: {str(e)}", exc_info=True)
                 return Response({"error": str(e)}, status=400)
         return Response(serializer.errors, status=400)
-
+    
     def _close_trade(self, trade, data):
-        """Handle complete closing of trades"""
+    # """Handle complete closing of trades - CORRECTED FOR FUTURES & OPTIONS"""
         price = data.get("price", trade.average_price)
         quantity = trade.remaining_quantity
 
@@ -931,48 +1058,117 @@ class CloseTradeView(APIView):
         else:
             realized_pnl = (trade.average_price - price) * quantity
 
-        # HANDLE WALLET BASED ON TRADE TYPE
+        logger.info(
+            f"Closing trade {trade.id}: type={trade.trade_type}, "
+            f"direction={trade.direction}, qty={quantity}, price={price}, pnl={realized_pnl}"
+        )
+
+        # =====================================================================
+        # SPOT TRADING - CLOSING LOGIC
+        # =====================================================================
         if trade.trade_type == "SPOT":
             if trade.direction == "BUY":
                 # Normal long position - credit sell value
                 sell_value = price * quantity
+                logger.info(f"SPOT BUY close: crediting {sell_value}")
                 WalletService.credit_coins(
                     user=trade.user,
                     amount=sell_value,
-                    description=f"Close {quantity} {trade.asset_symbol} @ {price}",
+                    description=f"Close BUY {quantity} {trade.asset_symbol} @ {price}",
                 )
             else:
                 # Short position - return collateral with P&L
                 collateral = trade.total_invested
                 total_return = collateral + realized_pnl
+                logger.info(f"SPOT SHORT close: collateral={collateral}, pnl={realized_pnl}, total_return={total_return}")
+                
                 if total_return > 0:
                     WalletService.unblock_coins(
                         user=trade.user,
                         amount=total_return,
-                        description=f"Close short {trade.asset_symbol}",
+                        description=f"Close SHORT {quantity} {trade.asset_symbol} @ {price} - Collateral+P&L",
                     )
+                # If total_return <= 0, collateral is lost
 
+        # =====================================================================
+        # FUTURES TRADING - CLOSING LOGIC
+        # =====================================================================
         elif trade.trade_type == "FUTURES":
-            # Return margin + P&L
+            # Get the blocked margin
             margin_blocked = trade.total_invested
+            
+            # Calculate total return: margin + P&L
             total_return = margin_blocked + realized_pnl
+            
+            logger.info(
+                f"FUTURES close: margin_blocked={margin_blocked}, pnl={realized_pnl}, total_return={total_return}"
+            )
 
+            # Always return something (margin or what's left after loss)
             if total_return > 0:
+                # Profit case: return margin + profit
                 WalletService.unblock_coins(
                     user=trade.user,
                     amount=total_return,
-                    description=f"Close Futures {trade.asset_symbol} - Margin+P&L",
+                    description=f"Close FUTURES {trade.asset_symbol} - Margin+P&L (+{realized_pnl})",
                 )
+            elif total_return == 0:
+                # Break-even: return margin
+                WalletService.unblock_coins(
+                    user=trade.user,
+                    amount=margin_blocked,
+                    description=f"Close FUTURES {trade.asset_symbol} - Margin (break-even)",
+                )
+            else:
+                # Loss case: margin is lost, but return any remaining if partial loss
+                # Example: margin=1000, loss=500 -> return 500
+                remaining = margin_blocked + realized_pnl  # This will be positive but less than margin
+                if remaining > 0:
+                    WalletService.unblock_coins(
+                        user=trade.user,
+                        amount=remaining,
+                        description=f"Close FUTURES {trade.asset_symbol} - Partial margin returned (loss={abs(realized_pnl)})",
+                    )
+                else:
+                    # Complete loss - entire margin gone
+                    logger.warning(
+                        f"FUTURES complete loss for user {trade.user.id}: "
+                        f"margin={margin_blocked}, loss={abs(realized_pnl)}"
+                    )
 
+        # =====================================================================
+        # OPTIONS TRADING - CLOSING LOGIC
+        # =====================================================================
         elif trade.trade_type == "OPTIONS":
-            # Options: if profitable, credit profit
+            # Premium was already deducted when opening
+            # On close, we only credit if there's a profit
+            
+            premium_paid = trade.total_invested  # This is the premium paid upfront
+            
+            logger.info(
+                f"OPTIONS close: premium_paid={premium_paid}, pnl={realized_pnl}"
+            )
+
             if realized_pnl > 0:
+                # Profitable: credit the P&L
                 WalletService.credit_coins(
                     user=trade.user,
                     amount=realized_pnl,
-                    description=f"Options profit {trade.asset_symbol}",
+                    description=f"Close OPTIONS {trade.asset_symbol} - Profit",
+                )
+            elif realized_pnl == 0:
+                # Break even: nothing to credit (premium paid equals nothing received)
+                logger.info(f"OPTIONS break-even for user {trade.user.id}")
+            else:
+                # Loss: nothing to credit (premium already lost)
+                logger.info(
+                    f"OPTIONS loss for user {trade.user.id}: premium_lost={abs(realized_pnl)}"
                 )
 
+        # =====================================================================
+        # UPDATE TRADE RECORD
+        # =====================================================================
+        
         # Update trade
         trade.remaining_quantity = Decimal("0")
         trade.realized_pnl += realized_pnl
@@ -1000,11 +1196,100 @@ class CloseTradeView(APIView):
 
         return {
             "trade_id": str(trade.id),
+            "trade_type": trade.trade_type,
             "closed_quantity": str(quantity),
             "realized_pnl": str(realized_pnl),
             "status": trade.status,
             "wallet_balance": str(new_balance),
         }
+
+
+
+    # def _close_trade(self, trade, data):
+    #     """Handle complete closing of trades"""
+    #     price = data.get("price", trade.average_price)
+    #     quantity = trade.remaining_quantity
+
+    #     # Calculate P&L
+    #     if trade.direction == "BUY":
+    #         realized_pnl = (price - trade.average_price) * quantity
+    #     else:
+    #         realized_pnl = (trade.average_price - price) * quantity
+
+    #     # HANDLE WALLET BASED ON TRADE TYPE
+    #     if trade.trade_type == "SPOT":
+    #         if trade.direction == "BUY":
+    #             # Normal long position - credit sell value
+    #             sell_value = price * quantity
+    #             WalletService.credit_coins(
+    #                 user=trade.user,
+    #                 amount=sell_value,
+    #                 description=f"Close {quantity} {trade.asset_symbol} @ {price}",
+    #             )
+    #         else:
+    #             # Short position - return collateral with P&L
+    #             collateral = trade.total_invested
+    #             total_return = collateral + realized_pnl
+    #             if total_return > 0:
+    #                 WalletService.unblock_coins(
+    #                     user=trade.user,
+    #                     amount=total_return,
+    #                     description=f"Close short {trade.asset_symbol}",
+    #                 )
+
+    #     elif trade.trade_type == "FUTURES":
+    #         # Return margin + P&L
+    #         margin_blocked = trade.total_invested
+    #         total_return = margin_blocked + realized_pnl
+
+    #         if total_return > 0:
+    #             WalletService.unblock_coins(
+    #                 user=trade.user,
+    #                 amount=total_return,
+    #                 description=f"Close Futures {trade.asset_symbol} - Margin+P&L",
+    #             )
+
+    #     elif trade.trade_type == "OPTIONS":
+    #         # Options: if profitable, credit profit
+    #         if realized_pnl > 0:
+    #             WalletService.credit_coins(
+    #                 user=trade.user,
+    #                 amount=realized_pnl,
+    #                 description=f"Options profit {trade.asset_symbol}",
+    #             )
+
+    #     # Update trade
+    #     trade.remaining_quantity = Decimal("0")
+    #     trade.realized_pnl += realized_pnl
+    #     trade.status = "CLOSED"
+    #     trade.closed_at = timezone.now()
+    #     trade.save()
+
+    #     # Record history
+    #     TradeHistory.objects.create(
+    #         trade=trade,
+    #         user=trade.user,
+    #         action="SELL",
+    #         order_type=data.get("order_type", "MARKET"),
+    #         quantity=quantity,
+    #         price=price,
+    #         amount=quantity * price,
+    #         realized_pnl=realized_pnl,
+    #     )
+
+    #     # Update portfolio
+    #     portfolio = Portfolio.objects.get(user=trade.user)
+    #     portfolio.update_portfolio_metrics()
+
+    #     new_balance = WalletService.get_balance(trade.user)
+
+    #     return {
+    #         "trade_id": str(trade.id),
+    #         "closed_quantity": str(quantity),
+    #         "realized_pnl": str(realized_pnl),
+    #         "status": trade.status,
+    #         "wallet_balance": str(new_balance),
+    #     }
 
 
 # =====================================================================
