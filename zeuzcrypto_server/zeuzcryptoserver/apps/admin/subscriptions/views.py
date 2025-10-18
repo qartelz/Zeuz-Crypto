@@ -11,7 +11,7 @@ from .serializers import (
     CouponSerializer,
     PlanCouponSerializer,
     SubscriptionSerializer,
-    CreateSubscriptionSerializer,
+    SubscriptionCreateSerializer,
     SubscriptionHistorySerializer,
 )
 
@@ -147,13 +147,257 @@ class PlanCouponViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["plan", "coupon"]
 
+#
+# class SubscriptionViewSet(viewsets.ModelViewSet):
+#     """
+#     ViewSet for managing user subscriptions.
+#     Users can only access their own subscriptions unless they are staff.
+#     """
+#
+#     serializer_class = SubscriptionSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend, OrderingFilter]
+#     filterset_fields = ["status", "plan"]
+#     ordering_fields = ["start_date", "end_date", "created_at"]
+#     ordering = ["-created_at"]
+#
+#     def get_queryset(self):
+#         """Filter subscriptions based on user permissions"""
+#         if self.request.user.is_staff:
+#             return Subscription.objects.all().select_related("user", "plan", "coupon")
+#         return Subscription.objects.filter(user=self.request.user).select_related(
+#             "plan", "coupon"
+#         )
+#
+#     def get_serializer_class(self):
+#         """Use different serializers for different actions"""
+#         if self.action == "create":
+#             return CreateSubscriptionSerializer
+#         return SubscriptionSerializer
+#
+#     def create(self, request, *args, **kwargs):
+#         """Create a new subscription with robust validation"""
+#         data = request.data.copy()
+#         required_fields = ["plan", "start_date"]
+#         errors = {}
+#
+#         # Check required fields
+#         for field in required_fields:
+#             if not data.get(field):
+#                 errors[field] = ["This field is required."]
+#
+#         # Validate plan
+#         plan = None
+#         if data.get("plan"):
+#             try:
+#                 plan = Plan.objects.get(id=data["plan"], is_active=True)
+#             except Plan.DoesNotExist:
+#                 errors["plan"] = ["Plan not found or inactive."]
+#
+#         # Validate coupon if provided
+#         coupon = None
+#         coupon_code = data.get("coupon") or data.get("coupon_code")
+#         if coupon_code:
+#             try:
+#                 coupon = Coupon.objects.get(code=coupon_code.upper(), is_active=True)
+#                 if not coupon.is_valid():
+#                     errors["coupon"] = ["Coupon is not valid or has expired."]
+#             except Coupon.DoesNotExist:
+#                 errors["coupon"] = ["Invalid coupon code."]
+#
+#         # Validate start_date
+#         start_date = data.get("start_date")
+#         if start_date:
+#             try:
+#                 # Accept both date and datetime
+#                 from dateutil.parser import parse as dateparse
+#
+#                 parsed_start = dateparse(start_date)
+#                 if parsed_start.date() < timezone.now().date():
+#                     errors["start_date"] = ["Start date cannot be in the past."]
+#             except Exception:
+#                 errors["start_date"] = ["Invalid start date format."]
+#
+#         # Validate overlapping subscriptions
+#         if plan and start_date and not errors.get("start_date"):
+#             from dateutil.parser import parse as dateparse
+#
+#             parsed_start = dateparse(start_date)
+#             end_date = parsed_start + timezone.timedelta(days=plan.duration_days)
+#             overlapping = Subscription.objects.filter(
+#                 user=request.user,
+#                 status="ACTIVE",
+#                 start_date__lt=end_date,
+#                 end_date__gt=parsed_start,
+#             )
+#             if overlapping.exists():
+#                 errors["non_field_errors"] = [
+#                     "You already have an active subscription that overlaps with this period."
+#                 ]
+#
+#         # Validate coupon applicability
+#         if coupon and plan and not errors.get("coupon"):
+#             if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
+#                 errors["coupon"] = [
+#                     "This coupon is not applicable to the selected plan."
+#                 ]
+#
+#         if errors:
+#             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         # Prepare validated data for serializer
+#         serializer_data = {
+#             "plan": plan.id,
+#             "start_date": start_date,
+#         }
+#         if coupon:
+#             serializer_data["coupon"] = coupon.id
+#         if "subscription_source" in data:
+#             serializer_data["subscription_source"] = data["subscription_source"]
+#         if "end_date" in data:
+#             serializer_data["end_date"] = data["end_date"]
+#         if "status" in data:
+#             serializer_data["status"] = data["status"]
+#
+#         serializer = self.get_serializer(data=serializer_data)
+#         serializer.is_valid(raise_exception=True)
+#         subscription = serializer.save(user=request.user)
+#
+#         # Return the created subscription using the display serializer
+#         response_serializer = SubscriptionSerializer(subscription)
+#         response_data = response_serializer.data
+#         # Add any missing fields if needed (e.g., plan details, coupon details)
+#         response_data["plan"] = PlanSerializer(plan).data if plan else None
+#         if coupon:
+#             response_data["coupon"] = CouponSerializer(coupon).data
+#         return Response(response_data, status=status.HTTP_201_CREATED)
+#
+#     @action(detail=False, methods=["get"])
+#     def active(self, request):
+#         """Get user's currently active subscriptions"""
+#         active_subscriptions = self.get_queryset().filter(
+#             status="ACTIVE",
+#             start_date__lte=timezone.now(),
+#             end_date__gte=timezone.now(),
+#         )
+#         serializer = self.get_serializer(active_subscriptions, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=["post"])
+#     def cancel(self, request, pk=None):
+#         """Cancel an active subscription"""
+#         subscription = self.get_object()
+#
+#         if subscription.status != "ACTIVE":
+#             return Response(
+#                 {"error": "Only active subscriptions can be cancelled"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#
+#         subscription.status = "CANCELLED"
+#         subscription.save()
+#
+#         serializer = self.get_serializer(subscription)
+#         return Response(serializer.data)
+#
+#     @action(detail=False, methods=["get"])
+#     def expiring_soon(self, request):
+#         """Get subscriptions expiring in the next 7 days"""
+#         seven_days_from_now = timezone.now() + timezone.timedelta(days=7)
+#         expiring_subscriptions = self.get_queryset().filter(
+#             status="ACTIVE",
+#             end_date__lte=seven_days_from_now,
+#             end_date__gte=timezone.now(),
+#         )
+#         serializer = self.get_serializer(expiring_subscriptions, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=["get"])
+#     def history(self, request, pk=None):
+#         """Get history entries for a specific subscription"""
+#         subscription = self.get_object()
+#         history_entries = SubscriptionHistory.objects.filter(
+#             subscription=subscription
+#         ).order_by("-timestamp")
+#         serializer = SubscriptionHistorySerializer(history_entries, many=True)
+#         return Response(serializer.data)
+#
+# class SubscriptionViewSet(viewsets.ModelViewSet):
+#     """
+#     Manage user subscriptions.
+#     """
+#
+#     serializer_class = SubscriptionSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend, OrderingFilter]
+#     filterset_fields = ["status", "plan"]
+#     ordering_fields = ["start_date", "end_date", "created_at"]
+#     ordering = ["-created_at"]
+#
+#     def get_queryset(self):
+#         qs = Subscription.objects.select_related("user", "plan", "coupon")
+#         return qs if self.request.user.is_staff else qs.filter(user=self.request.user)
+#
+#     def get_serializer_class(self):
+#         if self.action == "create":
+#             return SubscriptionCreateSerializer
+#         return SubscriptionSerializer
+#
+#     @action(detail=False, methods=["get"])
+#     def active(self, request):
+#         subs = self.get_queryset().filter(
+#             status="ACTIVE",
+#             start_date__lte=timezone.now(),
+#             end_date__gte=timezone.now(),
+#         )
+#         serializer = self.get_serializer(subs, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=["post"])
+#     def cancel(self, request, pk=None):
+#         subscription = self.get_object()
+#         if subscription.status != "ACTIVE":
+#             return Response(
+#                 {"error": "Only active subscriptions can be cancelled"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         subscription.status = "CANCELLED"
+#         subscription.save()
+#         return Response(self.get_serializer(subscription).data)
+#
+#     @action(detail=False, methods=["get"])
+#     def expiring_soon(self, request):
+#         upcoming = timezone.now() + timezone.timedelta(days=7)
+#         subs = self.get_queryset().filter(
+#             status="ACTIVE",
+#             end_date__lte=upcoming,
+#             end_date__gte=timezone.now(),
+#         )
+#         return Response(self.get_serializer(subs, many=True).data)
+#
+#     @action(detail=True, methods=["get"])
+#     def history(self, request, pk=None):
+#         sub = self.get_object()
+#         history_entries = SubscriptionHistory.objects.filter(
+#             subscription=sub
+#         ).order_by("-timestamp")
+#         serializer = SubscriptionHistorySerializer(history_entries, many=True)
+#         return Response(serializer.data)
+
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
+from .models import Subscription, SubscriptionHistory
+from .serializers import SubscriptionSerializer, SubscriptionCreateSerializer, SubscriptionHistorySerializer
+
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing user subscriptions.
-    Users can only access their own subscriptions unless they are staff.
+    Manage user subscriptions.
     """
-
     serializer_class = SubscriptionSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -162,162 +406,58 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        """Filter subscriptions based on user permissions"""
-        if self.request.user.is_staff:
-            return Subscription.objects.all().select_related("user", "plan", "coupon")
-        return Subscription.objects.filter(user=self.request.user).select_related(
-            "plan", "coupon"
-        )
+        qs = Subscription.objects.select_related("user", "plan", "coupon")
+        return qs if self.request.user.is_staff else qs.filter(user=self.request.user)
 
     def get_serializer_class(self):
-        """Use different serializers for different actions"""
         if self.action == "create":
-            return CreateSubscriptionSerializer
+            return SubscriptionCreateSerializer
         return SubscriptionSerializer
 
-    def create(self, request, *args, **kwargs):
-        """Create a new subscription with robust validation"""
-        data = request.data.copy()
-        required_fields = ["plan", "start_date"]
-        errors = {}
-
-        # Check required fields
-        for field in required_fields:
-            if not data.get(field):
-                errors[field] = ["This field is required."]
-
-        # Validate plan
-        plan = None
-        if data.get("plan"):
-            try:
-                plan = Plan.objects.get(id=data["plan"], is_active=True)
-            except Plan.DoesNotExist:
-                errors["plan"] = ["Plan not found or inactive."]
-
-        # Validate coupon if provided
-        coupon = None
-        coupon_code = data.get("coupon") or data.get("coupon_code")
-        if coupon_code:
-            try:
-                coupon = Coupon.objects.get(code=coupon_code.upper(), is_active=True)
-                if not coupon.is_valid():
-                    errors["coupon"] = ["Coupon is not valid or has expired."]
-            except Coupon.DoesNotExist:
-                errors["coupon"] = ["Invalid coupon code."]
-
-        # Validate start_date
-        start_date = data.get("start_date")
-        if start_date:
-            try:
-                # Accept both date and datetime
-                from dateutil.parser import parse as dateparse
-
-                parsed_start = dateparse(start_date)
-                if parsed_start.date() < timezone.now().date():
-                    errors["start_date"] = ["Start date cannot be in the past."]
-            except Exception:
-                errors["start_date"] = ["Invalid start date format."]
-
-        # Validate overlapping subscriptions
-        if plan and start_date and not errors.get("start_date"):
-            from dateutil.parser import parse as dateparse
-
-            parsed_start = dateparse(start_date)
-            end_date = parsed_start + timezone.timedelta(days=plan.duration_days)
-            overlapping = Subscription.objects.filter(
-                user=request.user,
-                status="ACTIVE",
-                start_date__lt=end_date,
-                end_date__gt=parsed_start,
-            )
-            if overlapping.exists():
-                errors["non_field_errors"] = [
-                    "You already have an active subscription that overlaps with this period."
-                ]
-
-        # Validate coupon applicability
-        if coupon and plan and not errors.get("coupon"):
-            if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
-                errors["coupon"] = [
-                    "This coupon is not applicable to the selected plan."
-                ]
-
-        if errors:
-            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Prepare validated data for serializer
-        serializer_data = {
-            "plan": plan.id,
-            "start_date": start_date,
-        }
-        if coupon:
-            serializer_data["coupon"] = coupon.id
-        if "subscription_source" in data:
-            serializer_data["subscription_source"] = data["subscription_source"]
-        if "end_date" in data:
-            serializer_data["end_date"] = data["end_date"]
-        if "status" in data:
-            serializer_data["status"] = data["status"]
-
-        serializer = self.get_serializer(data=serializer_data)
-        serializer.is_valid(raise_exception=True)
-        subscription = serializer.save(user=request.user)
-
-        # Return the created subscription using the display serializer
-        response_serializer = SubscriptionSerializer(subscription)
-        response_data = response_serializer.data
-        # Add any missing fields if needed (e.g., plan details, coupon details)
-        response_data["plan"] = PlanSerializer(plan).data if plan else None
-        if coupon:
-            response_data["coupon"] = CouponSerializer(coupon).data
-        return Response(response_data, status=status.HTTP_201_CREATED)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Pass 'user' context for admin creation
+        if self.request.user.is_staff and self.action == "create":
+            context["user"] = self.request.data.get("user_id")
+        return context
 
     @action(detail=False, methods=["get"])
     def active(self, request):
-        """Get user's currently active subscriptions"""
-        active_subscriptions = self.get_queryset().filter(
+        subs = self.get_queryset().filter(
             status="ACTIVE",
             start_date__lte=timezone.now(),
             end_date__gte=timezone.now(),
         )
-        serializer = self.get_serializer(active_subscriptions, many=True)
+        serializer = self.get_serializer(subs, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
-        """Cancel an active subscription"""
         subscription = self.get_object()
-
         if subscription.status != "ACTIVE":
             return Response(
                 {"error": "Only active subscriptions can be cancelled"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         subscription.status = "CANCELLED"
         subscription.save()
-
-        serializer = self.get_serializer(subscription)
-        return Response(serializer.data)
+        return Response(self.get_serializer(subscription).data)
 
     @action(detail=False, methods=["get"])
     def expiring_soon(self, request):
-        """Get subscriptions expiring in the next 7 days"""
-        seven_days_from_now = timezone.now() + timezone.timedelta(days=7)
-        expiring_subscriptions = self.get_queryset().filter(
+        upcoming = timezone.now() + timezone.timedelta(days=7)
+        subs = self.get_queryset().filter(
             status="ACTIVE",
-            end_date__lte=seven_days_from_now,
+            end_date__lte=upcoming,
             end_date__gte=timezone.now(),
         )
-        serializer = self.get_serializer(expiring_subscriptions, many=True)
-        return Response(serializer.data)
+        return Response(self.get_serializer(subs, many=True).data)
 
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):
-        """Get history entries for a specific subscription"""
-        subscription = self.get_object()
+        sub = self.get_object()
         history_entries = SubscriptionHistory.objects.filter(
-            subscription=subscription
+            subscription=sub
         ).order_by("-timestamp")
         serializer = SubscriptionHistorySerializer(history_entries, many=True)
         return Response(serializer.data)

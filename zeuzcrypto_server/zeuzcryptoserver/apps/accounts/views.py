@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from apps.admin.subscriptions.models import Subscription
 
 from .models import User, UserProfile, UserWallet, UserBatch, UserApproval
 from .serializers import *
@@ -17,25 +18,63 @@ from apps.permission.permissions import IsAdmin, IsB2BAdmin, IsAdminOrB2BAdmin, 
 
 
 # Authentication Views
+# class LoginView(APIView):
+#     permission_classes = [AllowAny]
+#
+#     def post(self, request):
+#         serializer = LoginSerializer(data=request.data, context={'request': request})
+#         serializer.is_valid(raise_exception=True)
+#
+#         user = serializer.validated_data['user']
+#         user.last_login = timezone.now()
+#         user.save(update_fields=['last_login'])
+#
+#         refresh = RefreshToken.for_user(user)
+#
+#         return Response({
+#             'refresh': str(refresh),
+#             'access': str(refresh.access_token),
+#             'user': UserSerializer(user).data
+#         })
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        
+
         user = serializer.validated_data['user']
         user.last_login = timezone.now()
         user.save(update_fields=['last_login'])
-        
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': UserSerializer(user).data
-        })
 
+        refresh = RefreshToken.for_user(user)
+
+        # ✅ Fetch the most recent active subscription
+        subscription = (
+            Subscription.objects
+            .filter(user=user)
+            .order_by('-start_date')
+            .select_related('plan')
+            .first()
+        )
+
+        subscription_data = None
+        if subscription:
+            subscription_data = {
+                "plan_name": getattr(subscription.plan, "name", None),
+                "plan_id": getattr(subscription.plan, "id", None),
+                "start_date": subscription.start_date,
+                "end_date": subscription.end_date,
+                "status": subscription.status,
+                "is_expired": getattr(subscription, "is_expired", False),
+            }
+
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": UserSerializer(user).data,
+            "subscription": subscription_data
+        })
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]

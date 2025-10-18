@@ -79,3 +79,47 @@ class IsB2BAdminOrCreator(permissions.BasePermission):
             hasattr(obj, 'created_by') and 
             obj.created_by == request.user
         )
+
+
+from rest_framework import permissions
+from apps.admin.subscriptions.models import Subscription
+from django.utils import timezone
+
+
+class HasActiveSubscription(permissions.BasePermission):
+    """
+    Allows access only to users with an active (non-expired) subscription.
+    """
+
+    message = {"detail": "You don't have an active subscription."}
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        # Must be authenticated
+        if not user or not user.is_authenticated:
+            self.message = {"detail": "Authentication required."}
+            return False
+
+        # Auto-expire any outdated subscriptions
+        Subscription.objects.filter(
+            user=user,
+            end_date__lt=timezone.now(),
+            status="ACTIVE"
+        ).update(status="EXPIRED")
+
+        # Check if user has a valid active subscription
+        active_subscription = (
+            Subscription.objects
+            .filter(user=user, status="ACTIVE", end_date__gte=timezone.now())
+            .order_by('-end_date')
+            .first()
+        )
+
+        if not active_subscription:
+            self.message = {"detail": "You don't have an active subscription."}
+            return False
+
+        # Optional: attach subscription to request for easy access in views
+        request.active_subscription = active_subscription
+        return True

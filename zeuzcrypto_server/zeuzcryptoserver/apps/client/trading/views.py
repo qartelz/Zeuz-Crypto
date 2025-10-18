@@ -32,7 +32,7 @@ from .serializers import (
     TradeHistorySerializer,
 )
 from .wallet_services import WalletService
-
+from apps.permission.permissions import   HasActiveSubscription
 
 # class TradeViewSet(viewsets.ModelViewSet):
 #     serializer_class = TradeSerializer
@@ -54,7 +54,7 @@ from .wallet_services import WalletService
 
 class TradeViewSet(viewsets.ModelViewSet):
     serializer_class = TradeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
 
     def get_queryset(self):
         return Trade.objects.filter(user=self.request.user).order_by("-opened_at")
@@ -70,7 +70,7 @@ class TradeViewSet(viewsets.ModelViewSet):
 
 
 class PlaceOrderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
 
     def post(self, request):
         serializer = PlaceOrderSerializer(data=request.data)
@@ -744,7 +744,7 @@ class PlaceOrderView(APIView):
 
 
 class PartialCloseView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
 
     def post(self, request, trade_id):
         try:
@@ -915,7 +915,7 @@ class PartialCloseView(APIView):
 
 
 class CloseTradeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
 
     def post(self, request, trade_id):
         try:
