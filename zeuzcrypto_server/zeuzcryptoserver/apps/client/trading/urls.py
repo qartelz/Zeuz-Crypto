@@ -3,7 +3,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import GetOpenTradeBySymbol
-
+from .signals import (
+    get_margin_status,
+    get_active_positions,
+    websocket_status
+)
 router = DefaultRouter()
 router.register(r'trades', views.TradeViewSet, basename='trades')
 router.register(r'portfolio', views.PortfolioViewSet, basename='portfolio')
@@ -35,7 +39,11 @@ urlpatterns = [
 
 
 
-
+  # ... other urls
+    # path('trades/<uuid:trade_id>/close/', CloseTradeView.as_view(), name='close-trade'),
+    path('trades/<uuid:trade_id>/margin-status/', get_margin_status, name='margin-status'),
+    path('positions/active/', get_active_positions, name='active-positions'),
+    path('websocket/status/', websocket_status, name='websocket-status'),
   
 
 

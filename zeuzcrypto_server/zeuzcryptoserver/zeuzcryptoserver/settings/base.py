@@ -26,11 +26,14 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
+
+    'channels',
     
     "apps.account",
     "apps.accounts",
     "apps.admin.subscriptions",
     "apps.client.trading",
+    "apps.admin.challenge.apps.ChallengeConfig",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -102,6 +105,17 @@ TEMPLATES = [
         },
     },
 ]
+# -----------------------------------------------------------------------------
+# WebSocket / Channels configuration
+# -----------------------------------------------------------------------------
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 # -----------------------------------------------------------------------------
 # Password Validators
@@ -320,6 +334,19 @@ CELERY_BEAT_SCHEDULE = {
     "daily-portfolio-snapshot": {
         "task": "apps.client.trading.tasks.daily_portfolio_snapshot",
         "schedule": crontab(hour=23, minute=59),  # End of day
+    },
+
+    'check-expired-options-daily': {
+        'task': 'apps.client.trading.tasks.check_expired_options',
+        'schedule': crontab(hour=0, minute=5),
+    },
+    'sync-active-symbols': {
+        'task': 'apps.client.trading.tasks.sync_active_symbols',
+        'schedule': 300.0,  # every 5 minutes
+    },
+    'monitor-margins': {
+        'task': 'apps.client.trading.tasks.monitor_all_margins',
+        'schedule': 60.0,  # every minute
     },
 }
 
