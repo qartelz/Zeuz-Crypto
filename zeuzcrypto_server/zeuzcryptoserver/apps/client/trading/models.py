@@ -151,6 +151,18 @@ class OptionsDetails(models.Model):
         db_table = 'options_details'
 
 
+class PriceHistory(models.Model):
+    symbol = models.CharField(max_length=20)
+    mark_price = models.DecimalField(max_digits=15, decimal_places=8)
+    ltp = models.DecimalField(max_digits=15, decimal_places=8)
+    high = models.DecimalField(max_digits=15, decimal_places=8)
+    low = models.DecimalField(max_digits=15, decimal_places=8)
+    volume = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'price_history'
+
 class TradeHistory(models.Model):
     """History of all trade actions (buy/sell orders)"""
     ORDER_TYPES = [
