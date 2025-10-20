@@ -2,8 +2,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import GetOpenTradeBySymbol
-from .signals import (
+# from .views import GetOpenTradeBySymbol
+
+from .views import (
     get_margin_status,
     get_active_positions,
     websocket_status
@@ -31,7 +32,7 @@ urlpatterns = [
     
     # Market data
     path('update-prices/', views.UpdatePricesView.as_view(), name='update-prices'),
-    path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
+    # path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
     
     # Risk management
     path('risk-check/', views.RiskCheckView.as_view(), name='risk-check'),

@@ -1,483 +1,483 @@
-import uuid
-from decimal import Decimal
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.utils import timezone
-from django.db import transaction
+# import uuid
+# from decimal import Decimal
+# from django.db import models
+# from django.core.validators import MinValueValidator, MaxValueValidator
+# from django.utils import timezone
+# from django.db import transaction
 
 
-# ============================================================================
-# CHALLENGE WALLET MODELS
-# ============================================================================
+# # ============================================================================
+# # CHALLENGE WALLET MODELS
+# # ============================================================================
 
-class ChallengeWallet(models.Model):
-    """Isolated wallet for each challenge participation"""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_wallets')
-    participation = models.OneToOneField(
-        'UserChallengeParticipation', 
-        on_delete=models.CASCADE, 
-        related_name='wallet'
-    )
+# class ChallengeWallet(models.Model):
+#     """Isolated wallet for each challenge participation"""
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_wallets')
+#     participation = models.OneToOneField(
+#         'UserChallengeParticipation', 
+#         on_delete=models.CASCADE, 
+#         related_name='wallet'
+#     )
     
-    # Balance tracking
-    initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('10000.00'))
-    available_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('10000.00'))
-    locked_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
-    earned_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
+#     # Balance tracking
+#     initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('10000.00'))
+#     available_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('10000.00'))
+#     locked_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
+#     earned_balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#     is_active = models.BooleanField(default=True)
     
-    class Meta:
-        db_table = 'challenge_wallets'
-        indexes = [
-            models.Index(fields=['user', 'participation']),
-            models.Index(fields=['user', 'is_active']),
-        ]
-        unique_together = [['user', 'participation']]
+#     class Meta:
+#         db_table = 'challenge_wallets'
+#         indexes = [
+#             models.Index(fields=['user', 'participation']),
+#             models.Index(fields=['user', 'is_active']),
+#         ]
+#         unique_together = [['user', 'participation']]
     
-    def __str__(self):
-        return f"{self.user.email} - {self.total_balance} coins"
+#     def __str__(self):
+#         return f"{self.user.email} - {self.total_balance} coins"
     
-    @property
-    def total_balance(self):
-        return self.available_balance + self.locked_balance + self.earned_balance
+#     @property
+#     def total_balance(self):
+#         return self.available_balance + self.locked_balance + self.earned_balance
     
-    def check_sufficient_balance(self, amount):
-        return self.available_balance >= amount
+#     def check_sufficient_balance(self, amount):
+#         return self.available_balance >= amount
     
-    @transaction.atomic
-    def lock_coins(self, amount, description="Trade entry"):
-        if not self.check_sufficient_balance(amount):
-            raise ValueError(f"Insufficient balance. Available: {self.available_balance}, Required: {amount}")
+#     @transaction.atomic
+#     def lock_coins(self, amount, description="Trade entry"):
+#         if not self.check_sufficient_balance(amount):
+#             raise ValueError(f"Insufficient balance. Available: {self.available_balance}, Required: {amount}")
         
-        balance_before = self.available_balance
-        self.available_balance -= amount
-        self.locked_balance += amount
-        self.save(update_fields=['available_balance', 'locked_balance', 'updated_at'])
+#         balance_before = self.available_balance
+#         self.available_balance -= amount
+#         self.locked_balance += amount
+#         self.save(update_fields=['available_balance', 'locked_balance', 'updated_at'])
         
-        ChallengeWalletTransaction.objects.create(
-            wallet=self, transaction_type='TRADE_LOCK', amount=amount,
-            balance_before=balance_before, balance_after=self.available_balance,
-            description=description
-        )
-        return True
+#         ChallengeWalletTransaction.objects.create(
+#             wallet=self, transaction_type='TRADE_LOCK', amount=amount,
+#             balance_before=balance_before, balance_after=self.available_balance,
+#             description=description
+#         )
+#         return True
     
-    @transaction.atomic
-    def unlock_coins(self, amount, description="Trade exit"):
-        if self.locked_balance < amount:
-            raise ValueError(f"Cannot unlock more than locked balance")
+#     @transaction.atomic
+#     def unlock_coins(self, amount, description="Trade exit"):
+#         if self.locked_balance < amount:
+#             raise ValueError(f"Cannot unlock more than locked balance")
         
-        balance_before = self.available_balance
-        self.locked_balance -= amount
-        self.available_balance += amount
-        self.save(update_fields=['available_balance', 'locked_balance', 'updated_at'])
+#         balance_before = self.available_balance
+#         self.locked_balance -= amount
+#         self.available_balance += amount
+#         self.save(update_fields=['available_balance', 'locked_balance', 'updated_at'])
         
-        ChallengeWalletTransaction.objects.create(
-            wallet=self, transaction_type='TRADE_UNLOCK', amount=amount,
-            balance_before=balance_before, balance_after=self.available_balance,
-            description=description
-        )
-        return True
+#         ChallengeWalletTransaction.objects.create(
+#             wallet=self, transaction_type='TRADE_UNLOCK', amount=amount,
+#             balance_before=balance_before, balance_after=self.available_balance,
+#             description=description
+#         )
+#         return True
     
-    @transaction.atomic
-    def add_profit(self, profit_amount, description="Trade profit"):
-        balance_before = self.earned_balance
-        self.earned_balance += profit_amount
-        self.available_balance += profit_amount
-        self.save(update_fields=['earned_balance', 'available_balance', 'updated_at'])
+#     @transaction.atomic
+#     def add_profit(self, profit_amount, description="Trade profit"):
+#         balance_before = self.earned_balance
+#         self.earned_balance += profit_amount
+#         self.available_balance += profit_amount
+#         self.save(update_fields=['earned_balance', 'available_balance', 'updated_at'])
         
-        ChallengeWalletTransaction.objects.create(
-            wallet=self, transaction_type='PROFIT_ADD', amount=profit_amount,
-            balance_before=balance_before, balance_after=self.earned_balance,
-            description=description
-        )
-        return True
+#         ChallengeWalletTransaction.objects.create(
+#             wallet=self, transaction_type='PROFIT_ADD', amount=profit_amount,
+#             balance_before=balance_before, balance_after=self.earned_balance,
+#             description=description
+#         )
+#         return True
     
-    @transaction.atomic
-    def deduct_loss(self, loss_amount, description="Trade loss"):
-        balance_before = self.earned_balance
-        self.earned_balance -= loss_amount
-        self.save(update_fields=['earned_balance', 'updated_at'])
+#     @transaction.atomic
+#     def deduct_loss(self, loss_amount, description="Trade loss"):
+#         balance_before = self.earned_balance
+#         self.earned_balance -= loss_amount
+#         self.save(update_fields=['earned_balance', 'updated_at'])
         
-        ChallengeWalletTransaction.objects.create(
-            wallet=self, transaction_type='LOSS_DEDUCT', amount=loss_amount,
-            balance_before=balance_before, balance_after=self.earned_balance,
-            description=description
-        )
-        return True
+#         ChallengeWalletTransaction.objects.create(
+#             wallet=self, transaction_type='LOSS_DEDUCT', amount=loss_amount,
+#             balance_before=balance_before, balance_after=self.earned_balance,
+#             description=description
+#         )
+#         return True
 
 
-class ChallengeWalletTransaction(models.Model):
-    """Audit trail for wallet transactions"""
-    TRANSACTION_TYPES = [
-        ('INITIAL_DEPOSIT', 'Initial Deposit'),
-        ('TRADE_LOCK', 'Trade Lock'),
-        ('TRADE_UNLOCK', 'Trade Unlock'),
-        ('PROFIT_ADD', 'Profit Added'),
-        ('LOSS_DEDUCT', 'Loss Deducted'),
-        ('REWARD_BONUS', 'Reward Bonus'),
-        ('RESET', 'Wallet Reset'),
-    ]
+# class ChallengeWalletTransaction(models.Model):
+#     """Audit trail for wallet transactions"""
+#     TRANSACTION_TYPES = [
+#         ('INITIAL_DEPOSIT', 'Initial Deposit'),
+#         ('TRADE_LOCK', 'Trade Lock'),
+#         ('TRADE_UNLOCK', 'Trade Unlock'),
+#         ('PROFIT_ADD', 'Profit Added'),
+#         ('LOSS_DEDUCT', 'Loss Deducted'),
+#         ('REWARD_BONUS', 'Reward Bonus'),
+#         ('RESET', 'Wallet Reset'),
+#     ]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    wallet = models.ForeignKey(ChallengeWallet, on_delete=models.CASCADE, related_name='transactions')
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
-    balance_before = models.DecimalField(max_digits=15, decimal_places=2)
-    balance_after = models.DecimalField(max_digits=15, decimal_places=2)
-    description = models.CharField(max_length=255)
-    trade = models.ForeignKey('ChallengeTrade', on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     wallet = models.ForeignKey(ChallengeWallet, on_delete=models.CASCADE, related_name='transactions')
+#     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+#     amount = models.DecimalField(max_digits=15, decimal_places=2)
+#     balance_before = models.DecimalField(max_digits=15, decimal_places=2)
+#     balance_after = models.DecimalField(max_digits=15, decimal_places=2)
+#     description = models.CharField(max_length=255)
+#     trade = models.ForeignKey('ChallengeTrade', on_delete=models.SET_NULL, null=True, blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:
-        db_table = 'challenge_wallet_transactions'
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['wallet', 'created_at']),
-            models.Index(fields=['transaction_type', 'created_at']),
-        ]
+#     class Meta:
+#         db_table = 'challenge_wallet_transactions'
+#         ordering = ['-created_at']
+#         indexes = [
+#             models.Index(fields=['wallet', 'created_at']),
+#             models.Index(fields=['transaction_type', 'created_at']),
+#         ]
 
 
-# ============================================================================
-# CHALLENGE TRADE MODELS
-# ============================================================================
+# # ============================================================================
+# # CHALLENGE TRADE MODELS
+# # ============================================================================
 
-class ChallengeTrade(models.Model):
-    """Challenge-specific trade model"""
-    TRADE_TYPES = [('SPOT', 'Spot'), ('FUTURES', 'Futures'), ('OPTIONS', 'Options')]
-    DIRECTIONS = [('BUY', 'Buy'), ('SELL', 'Sell')]
-    STATUSES = [('OPEN', 'Open'), ('CLOSED', 'Closed'), ('PARTIALLY_CLOSED', 'Partially Closed')]
+# class ChallengeTrade(models.Model):
+#     """Challenge-specific trade model"""
+#     TRADE_TYPES = [('SPOT', 'Spot'), ('FUTURES', 'Futures'), ('OPTIONS', 'Options')]
+#     DIRECTIONS = [('BUY', 'Buy'), ('SELL', 'Sell')]
+#     STATUSES = [('OPEN', 'Open'), ('CLOSED', 'Closed'), ('PARTIALLY_CLOSED', 'Partially Closed')]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_trades')
-    participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE, related_name='trades')
-    wallet = models.ForeignKey(ChallengeWallet, on_delete=models.CASCADE, related_name='trades')
-    challenge_week = models.ForeignKey('ChallengeWeek', on_delete=models.CASCADE, related_name='trades')
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_trades')
+#     participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE, related_name='trades')
+#     wallet = models.ForeignKey(ChallengeWallet, on_delete=models.CASCADE, related_name='trades')
+#     challenge_week = models.ForeignKey('ChallengeWeek', on_delete=models.CASCADE, related_name='trades')
     
-    # Asset details
-    asset_symbol = models.CharField(max_length=20)
-    asset_name = models.CharField(max_length=100, blank=True)
+#     # Asset details
+#     asset_symbol = models.CharField(max_length=20)
+#     asset_name = models.CharField(max_length=100, blank=True)
     
-    # Trade details
-    trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
-    direction = models.CharField(max_length=4, choices=DIRECTIONS)
-    status = models.CharField(max_length=20, choices=STATUSES, default='OPEN')
+#     # Trade details
+#     trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
+#     direction = models.CharField(max_length=4, choices=DIRECTIONS)
+#     status = models.CharField(max_length=20, choices=STATUSES, default='OPEN')
     
-    # Position details
-    total_quantity = models.DecimalField(max_digits=20, decimal_places=8)
-    remaining_quantity = models.DecimalField(max_digits=20, decimal_places=8)
-    average_entry_price = models.DecimalField(max_digits=20, decimal_places=8)
-    current_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
-    entry_amount = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     # Position details
+#     total_quantity = models.DecimalField(max_digits=20, decimal_places=8)
+#     remaining_quantity = models.DecimalField(max_digits=20, decimal_places=8)
+#     average_entry_price = models.DecimalField(max_digits=20, decimal_places=8)
+#     current_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
+#     entry_amount = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
     
-    # Exit details
-    exit_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
+#     # Exit details
+#     exit_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     
-    # P&L tracking
-    realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
-    unrealized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     # P&L tracking
+#     realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     unrealized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
     
-    # Capital allocation
-    allocation_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'))
+#     # Capital allocation
+#     allocation_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'))
     
-    # Timestamps
-    opened_at = models.DateTimeField(auto_now_add=True)
-    closed_at = models.DateTimeField(null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
+#     # Timestamps
+#     opened_at = models.DateTimeField(auto_now_add=True)
+#     closed_at = models.DateTimeField(null=True, blank=True)
+#     updated_at = models.DateTimeField(auto_now=True)
     
-    class Meta:
-        db_table = 'challenge_trades'
-        indexes = [
-            models.Index(fields=['user', 'status']),
-            models.Index(fields=['participation', 'status']),
-            models.Index(fields=['asset_symbol', 'trade_type']),
-        ]
+#     class Meta:
+#         db_table = 'challenge_trades'
+#         indexes = [
+#             models.Index(fields=['user', 'status']),
+#             models.Index(fields=['participation', 'status']),
+#             models.Index(fields=['asset_symbol', 'trade_type']),
+#         ]
     
-    def __str__(self):
-        return f"{self.user.email} - {self.asset_symbol} {self.direction}"
+#     def __str__(self):
+#         return f"{self.user.email} - {self.asset_symbol} {self.direction}"
     
-    def save(self, *args, **kwargs):
-        if self.remaining_quantity is None:
-            self.remaining_quantity = self.total_quantity
+#     def save(self, *args, **kwargs):
+#         if self.remaining_quantity is None:
+#             self.remaining_quantity = self.total_quantity
         
-        if not self.entry_amount or self.entry_amount == 0:
-            self.entry_amount = self.total_quantity * self.average_entry_price
+#         if not self.entry_amount or self.entry_amount == 0:
+#             self.entry_amount = self.total_quantity * self.average_entry_price
         
-        if self.wallet and self.entry_amount:
-            self.allocation_percentage = (self.entry_amount / self.wallet.initial_balance) * 100
+#         if self.wallet and self.entry_amount:
+#             self.allocation_percentage = (self.entry_amount / self.wallet.initial_balance) * 100
         
-        super().save(*args, **kwargs)
+#         super().save(*args, **kwargs)
     
-    @property
-    def total_pnl(self):
-        return self.realized_pnl + self.unrealized_pnl
+#     @property
+#     def total_pnl(self):
+#         return self.realized_pnl + self.unrealized_pnl
     
-    @property
-    def holding_duration_hours(self):
-        if self.closed_at:
-            duration = self.closed_at - self.opened_at
-        else:
-            duration = timezone.now() - self.opened_at
-        return duration.total_seconds() / 3600
+#     @property
+#     def holding_duration_hours(self):
+#         if self.closed_at:
+#             duration = self.closed_at - self.opened_at
+#         else:
+#             duration = timezone.now() - self.opened_at
+#         return duration.total_seconds() / 3600
     
-    def calculate_unrealized_pnl(self, current_price):
-        """Update unrealized P&L"""
-        if self.status == 'CLOSED':
-            return Decimal('0')
+#     def calculate_unrealized_pnl(self, current_price):
+#         """Update unrealized P&L"""
+#         if self.status == 'CLOSED':
+#             return Decimal('0')
         
-        if self.direction == 'BUY':
-            pnl = (current_price - self.average_entry_price) * self.remaining_quantity
-        else:
-            pnl = (self.average_entry_price - current_price) * self.remaining_quantity
+#         if self.direction == 'BUY':
+#             pnl = (current_price - self.average_entry_price) * self.remaining_quantity
+#         else:
+#             pnl = (self.average_entry_price - current_price) * self.remaining_quantity
         
-        self.unrealized_pnl = pnl
-        self.current_price = current_price
-        self.save(update_fields=['unrealized_pnl', 'current_price', 'updated_at'])
-        return self.unrealized_pnl
+#         self.unrealized_pnl = pnl
+#         self.current_price = current_price
+#         self.save(update_fields=['unrealized_pnl', 'current_price', 'updated_at'])
+#         return self.unrealized_pnl
     
-    @transaction.atomic
-    def close_position(self, exit_price, exit_quantity):
-        """Close trade (full or partial)"""
-        if exit_quantity > self.remaining_quantity:
-            raise ValueError(f"Cannot close more than remaining quantity")
+#     @transaction.atomic
+#     def close_position(self, exit_price, exit_quantity):
+#         """Close trade (full or partial)"""
+#         if exit_quantity > self.remaining_quantity:
+#             raise ValueError(f"Cannot close more than remaining quantity")
         
-        # Calculate P&L
-        if self.direction == 'BUY':
-            pnl = (exit_price - self.average_entry_price) * exit_quantity
-        else:
-            pnl = (self.average_entry_price - exit_price) * exit_quantity
+#         # Calculate P&L
+#         if self.direction == 'BUY':
+#             pnl = (exit_price - self.average_entry_price) * exit_quantity
+#         else:
+#             pnl = (self.average_entry_price - exit_price) * exit_quantity
         
-        # Update trade
-        self.remaining_quantity -= exit_quantity
-        self.realized_pnl += pnl
-        self.exit_price = exit_price
+#         # Update trade
+#         self.remaining_quantity -= exit_quantity
+#         self.realized_pnl += pnl
+#         self.exit_price = exit_price
         
-        if self.remaining_quantity == 0:
-            self.status = 'CLOSED'
-            self.closed_at = timezone.now()
-        else:
-            self.status = 'PARTIALLY_CLOSED'
+#         if self.remaining_quantity == 0:
+#             self.status = 'CLOSED'
+#             self.closed_at = timezone.now()
+#         else:
+#             self.status = 'PARTIALLY_CLOSED'
         
-        self.save(update_fields=['remaining_quantity', 'realized_pnl', 'exit_price', 'status', 'closed_at', 'updated_at'])
+#         self.save(update_fields=['remaining_quantity', 'realized_pnl', 'exit_price', 'status', 'closed_at', 'updated_at'])
         
-        # Update wallet
-        locked_amount = exit_quantity * self.average_entry_price
-        self.wallet.unlock_coins(locked_amount, description=f"Close {self.asset_symbol}")
+#         # Update wallet
+#         locked_amount = exit_quantity * self.average_entry_price
+#         self.wallet.unlock_coins(locked_amount, description=f"Close {self.asset_symbol}")
         
-        if pnl > 0:
-            self.wallet.add_profit(pnl, description=f"Profit from {self.asset_symbol}")
-        else:
-            self.wallet.deduct_loss(abs(pnl), description=f"Loss from {self.asset_symbol}")
+#         if pnl > 0:
+#             self.wallet.add_profit(pnl, description=f"Profit from {self.asset_symbol}")
+#         else:
+#             self.wallet.deduct_loss(abs(pnl), description=f"Loss from {self.asset_symbol}")
         
-        # Create history
-        ChallengeTradeHistory.objects.create(
-            trade=self,
-            user=self.user,
-            action='SELL' if self.direction == 'BUY' else 'BUY',
-            quantity=exit_quantity,
-            price=exit_price,
-            amount=exit_quantity * exit_price,
-            realized_pnl=pnl
-        )
+#         # Create history
+#         ChallengeTradeHistory.objects.create(
+#             trade=self,
+#             user=self.user,
+#             action='SELL' if self.direction == 'BUY' else 'BUY',
+#             quantity=exit_quantity,
+#             price=exit_price,
+#             amount=exit_quantity * exit_price,
+#             realized_pnl=pnl
+#         )
         
-        return pnl
+#         return pnl
 
 
-class ChallengeFuturesDetails(models.Model):
-    """Futures-specific details"""
-    trade = models.OneToOneField(ChallengeTrade, on_delete=models.CASCADE, related_name='futures_details')
-    leverage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('1'))
-    margin_required = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
-    expiry_date = models.DateField()
+# class ChallengeFuturesDetails(models.Model):
+#     """Futures-specific details"""
+#     trade = models.OneToOneField(ChallengeTrade, on_delete=models.CASCADE, related_name='futures_details')
+#     leverage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('1'))
+#     margin_required = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     expiry_date = models.DateField()
     
-    class Meta:
-        db_table = 'challenge_futures_details'
+#     class Meta:
+#         db_table = 'challenge_futures_details'
 
 
-class ChallengeOptionsDetails(models.Model):
-    """Options-specific details"""
-    OPTION_TYPES = [('CALL', 'Call'), ('PUT', 'Put')]
-    POSITIONS = [('LONG', 'Long'), ('SHORT', 'Short')]
+# class ChallengeOptionsDetails(models.Model):
+#     """Options-specific details"""
+#     OPTION_TYPES = [('CALL', 'Call'), ('PUT', 'Put')]
+#     POSITIONS = [('LONG', 'Long'), ('SHORT', 'Short')]
     
-    trade = models.OneToOneField(ChallengeTrade, on_delete=models.CASCADE, related_name='options_details')
-    option_type = models.CharField(max_length=4, choices=OPTION_TYPES)
-    position = models.CharField(max_length=5, choices=POSITIONS)
-    strike_price = models.DecimalField(max_digits=20, decimal_places=8)
-    expiry_date = models.DateField()
-    premium = models.DecimalField(max_digits=20, decimal_places=8)
+#     trade = models.OneToOneField(ChallengeTrade, on_delete=models.CASCADE, related_name='options_details')
+#     option_type = models.CharField(max_length=4, choices=OPTION_TYPES)
+#     position = models.CharField(max_length=5, choices=POSITIONS)
+#     strike_price = models.DecimalField(max_digits=20, decimal_places=8)
+#     expiry_date = models.DateField()
+#     premium = models.DecimalField(max_digits=20, decimal_places=8)
     
-    class Meta:
-        db_table = 'challenge_options_details'
+#     class Meta:
+#         db_table = 'challenge_options_details'
 
 
-class ChallengeTradeHistory(models.Model):
-    """Trade action history"""
-    ACTIONS = [('BUY', 'Buy'), ('SELL', 'Sell'), ('PARTIAL_SELL', 'Partial Sell')]
+# class ChallengeTradeHistory(models.Model):
+#     """Trade action history"""
+#     ACTIONS = [('BUY', 'Buy'), ('SELL', 'Sell'), ('PARTIAL_SELL', 'Partial Sell')]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    trade = models.ForeignKey(ChallengeTrade, on_delete=models.CASCADE, related_name='history')
-    user = models.ForeignKey('User', on_delete=models.CASCADE)
-    action = models.CharField(max_length=15, choices=ACTIONS)
-    quantity = models.DecimalField(max_digits=20, decimal_places=8)
-    price = models.DecimalField(max_digits=20, decimal_places=8)
-    amount = models.DecimalField(max_digits=20, decimal_places=8)
-    realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
-    created_at = models.DateTimeField(auto_now_add=True)
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     trade = models.ForeignKey(ChallengeTrade, on_delete=models.CASCADE, related_name='history')
+#     user = models.ForeignKey('User', on_delete=models.CASCADE)
+#     action = models.CharField(max_length=15, choices=ACTIONS)
+#     quantity = models.DecimalField(max_digits=20, decimal_places=8)
+#     price = models.DecimalField(max_digits=20, decimal_places=8)
+#     amount = models.DecimalField(max_digits=20, decimal_places=8)
+#     realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     created_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:
-        db_table = 'challenge_trade_history'
-        ordering = ['-created_at']
+#     class Meta:
+#         db_table = 'challenge_trade_history'
+#         ordering = ['-created_at']
 
 
-# ============================================================================
-# ANALYTICS & SCORING
-# ============================================================================
+# # ============================================================================
+# # ANALYTICS & SCORING
+# # ============================================================================
 
-class ChallengeTradeAnalytics(models.Model):
-    """Aggregated analytics"""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    participation = models.OneToOneField('UserChallengeParticipation', on_delete=models.CASCADE, related_name='analytics')
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_analytics')
+# class ChallengeTradeAnalytics(models.Model):
+#     """Aggregated analytics"""
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     participation = models.OneToOneField('UserChallengeParticipation', on_delete=models.CASCADE, related_name='analytics')
+#     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_analytics')
     
-    # Trade stats
-    total_trades = models.IntegerField(default=0)
-    open_trades = models.IntegerField(default=0)
-    closed_trades = models.IntegerField(default=0)
-    profitable_trades = models.IntegerField(default=0)
-    losing_trades = models.IntegerField(default=0)
+#     # Trade stats
+#     total_trades = models.IntegerField(default=0)
+#     open_trades = models.IntegerField(default=0)
+#     closed_trades = models.IntegerField(default=0)
+#     profitable_trades = models.IntegerField(default=0)
+#     losing_trades = models.IntegerField(default=0)
     
-    # Trade types
-    spot_trades = models.IntegerField(default=0)
-    futures_trades = models.IntegerField(default=0)
-    options_trades = models.IntegerField(default=0)
+#     # Trade types
+#     spot_trades = models.IntegerField(default=0)
+#     futures_trades = models.IntegerField(default=0)
+#     options_trades = models.IntegerField(default=0)
     
-    # P&L metrics
-    total_realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
-    total_unrealized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
-    win_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
-    profit_factor = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
+#     # P&L metrics
+#     total_realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     total_unrealized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=Decimal('0'))
+#     win_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
+#     profit_factor = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
     
-    # Portfolio metrics
-    initial_portfolio_value = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
-    current_portfolio_value = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
-    portfolio_return_percentage = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
+#     # Portfolio metrics
+#     initial_portfolio_value = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+#     current_portfolio_value = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+#     portfolio_return_percentage = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
     
-    # Capital allocation
-    average_allocation_per_trade = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
-    max_allocation_per_trade = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
+#     # Capital allocation
+#     average_allocation_per_trade = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
+#     max_allocation_per_trade = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
     
-    # Scores (0-10)
-    pnl_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
-    money_management_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
-    capital_allocation_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
-    total_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
-    behavioral_tag = models.CharField(max_length=50, blank=True)
+#     # Scores (0-10)
+#     pnl_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
+#     money_management_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
+#     capital_allocation_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
+#     total_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0'))
+#     behavioral_tag = models.CharField(max_length=50, blank=True)
     
-    last_calculated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+#     last_calculated_at = models.DateTimeField(auto_now=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:
-        db_table = 'challenge_trade_analytics'
-        indexes = [
-            models.Index(fields=['user', 'participation']),
-            models.Index(fields=['-total_score']),
-        ]
-
-
-class ChallengeLeaderboard(models.Model):
-    """Cached leaderboard"""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    challenge_week = models.ForeignKey('ChallengeWeek', on_delete=models.CASCADE, related_name='leaderboard_entries')
-    participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE)
-    user = models.ForeignKey('User', on_delete=models.CASCADE)
-    
-    rank = models.IntegerField()
-    total_score = models.DecimalField(max_digits=4, decimal_places=2)
-    portfolio_return_percentage = models.DecimalField(max_digits=10, decimal_places=2)
-    total_trades = models.IntegerField()
-    win_rate = models.DecimalField(max_digits=5, decimal_places=2)
-    behavioral_tag = models.CharField(max_length=50)
-    user_display_name = models.CharField(max_length=100)
-    
-    last_updated = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        db_table = 'challenge_leaderboard'
-        ordering = ['rank']
-        unique_together = [['challenge_week', 'participation']]
+#     class Meta:
+#         db_table = 'challenge_trade_analytics'
+#         indexes = [
+#             models.Index(fields=['user', 'participation']),
+#             models.Index(fields=['-total_score']),
+#         ]
 
 
-# ============================================================================
-# REWARD DISTRIBUTION
-# ============================================================================
+# class ChallengeLeaderboard(models.Model):
+#     """Cached leaderboard"""
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     challenge_week = models.ForeignKey('ChallengeWeek', on_delete=models.CASCADE, related_name='leaderboard_entries')
+#     participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE)
+#     user = models.ForeignKey('User', on_delete=models.CASCADE)
+    
+#     rank = models.IntegerField()
+#     total_score = models.DecimalField(max_digits=4, decimal_places=2)
+#     portfolio_return_percentage = models.DecimalField(max_digits=10, decimal_places=2)
+#     total_trades = models.IntegerField()
+#     win_rate = models.DecimalField(max_digits=5, decimal_places=2)
+#     behavioral_tag = models.CharField(max_length=50)
+#     user_display_name = models.CharField(max_length=100)
+    
+#     last_updated = models.DateTimeField(auto_now=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+    
+#     class Meta:
+#         db_table = 'challenge_leaderboard'
+#         ordering = ['rank']
+#         unique_together = [['challenge_week', 'participation']]
 
-class ChallengeRewardDistribution(models.Model):
-    """Reward distribution to main wallet"""
-    REWARD_TYPES = [
-        ('COMPLETION_BONUS', 'Completion Bonus'),
-        ('PROFIT_BONUS', 'Profit Bonus'),
-        ('LEADERBOARD_PRIZE', 'Leaderboard Prize'),
-    ]
-    STATUS_CHOICES = [('PENDING', 'Pending'), ('COMPLETED', 'Completed'), ('FAILED', 'Failed')]
+
+# # ============================================================================
+# # REWARD DISTRIBUTION
+# # ============================================================================
+
+# class ChallengeRewardDistribution(models.Model):
+#     """Reward distribution to main wallet"""
+#     REWARD_TYPES = [
+#         ('COMPLETION_BONUS', 'Completion Bonus'),
+#         ('PROFIT_BONUS', 'Profit Bonus'),
+#         ('LEADERBOARD_PRIZE', 'Leaderboard Prize'),
+#     ]
+#     STATUS_CHOICES = [('PENDING', 'Pending'), ('COMPLETED', 'Completed'), ('FAILED', 'Failed')]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_rewards')
-    participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE)
-    reward_type = models.CharField(max_length=20, choices=REWARD_TYPES)
-    coin_amount = models.DecimalField(max_digits=15, decimal_places=2)
-    description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='challenge_rewards')
+#     participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE)
+#     reward_type = models.CharField(max_length=20, choices=REWARD_TYPES)
+#     coin_amount = models.DecimalField(max_digits=15, decimal_places=2)
+#     description = models.TextField()
+#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     
-    wallet_transaction = models.ForeignKey('WalletTransaction', on_delete=models.SET_NULL, null=True, blank=True)
-    processed_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_rewards')
-    error_message = models.TextField(blank=True)
+#     wallet_transaction = models.ForeignKey('WalletTransaction', on_delete=models.SET_NULL, null=True, blank=True)
+#     processed_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_rewards')
+#     error_message = models.TextField(blank=True)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    processed_at = models.DateTimeField(null=True, blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     processed_at = models.DateTimeField(null=True, blank=True)
     
-    class Meta:
-        db_table = 'challenge_reward_distributions'
-        ordering = ['-created_at']
+#     class Meta:
+#         db_table = 'challenge_reward_distributions'
+#         ordering = ['-created_at']
     
-    @transaction.atomic
-    def process_reward(self, processed_by=None):
-        """Add reward to main wallet"""
-        if self.status != 'PENDING':
-            raise ValueError(f"Cannot process reward with status: {self.status}")
+#     @transaction.atomic
+#     def process_reward(self, processed_by=None):
+#         """Add reward to main wallet"""
+#         if self.status != 'PENDING':
+#             raise ValueError(f"Cannot process reward with status: {self.status}")
         
-        try:
-            from apps.accounts.models import UserWallet, WalletTransaction
+#         try:
+#             from apps.accounts.models import UserWallet, WalletTransaction
             
-            wallet, _ = UserWallet.objects.get_or_create(user=self.user)
-            balance_before = wallet.balance
-            wallet.balance += self.coin_amount
-            wallet.save(update_fields=['balance'])
+#             wallet, _ = UserWallet.objects.get_or_create(user=self.user)
+#             balance_before = wallet.balance
+#             wallet.balance += self.coin_amount
+#             wallet.save(update_fields=['balance'])
             
-            wallet_txn = WalletTransaction.objects.create(
-                user=self.user,
-                amount=self.coin_amount,
-                transaction_type='CREDIT',
-                description=f"Challenge Reward: {self.description}",
-                balance_before=balance_before,
-                balance_after=wallet.balance
-            )
+#             wallet_txn = WalletTransaction.objects.create(
+#                 user=self.user,
+#                 amount=self.coin_amount,
+#                 transaction_type='CREDIT',
+#                 description=f"Challenge Reward: {self.description}",
+#                 balance_before=balance_before,
+#                 balance_after=wallet.balance
+#             )
             
-            self.wallet_transaction = wallet_txn
-            self.status = 'COMPLETED'
-            self.processed_by = processed_by
-            self.processed_at = timezone.now()
-            self.save()
+#             self.wallet_transaction = wallet_txn
+#             self.status = 'COMPLETED'
+#             self.processed_by = processed_by
+#             self.processed_at = timezone.now()
+#             self.save()
             
-            return True
-        except Exception as e:
-            self.status = 'FAILED'
-            self.error_message = str(e)
-            self.save()
-            raise
+#             return True
+#         except Exception as e:
+#             self.status = 'FAILED'
+#             self.error_message = str(e)
+#             self.save()
+#             raise
 
 # # ==================== CHALLENGE WALLET MODELS ====================
 
