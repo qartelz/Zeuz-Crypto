@@ -1,10 +1,15 @@
 # ==================== FILE: apps/challenges/serializers/challenge_serializers.py ====================
 
 from rest_framework import serializers
-from apps.admin.challenge import (
-    ChallengeProgram, ChallengeWeek, ChallengeTask,
-    UserChallengeParticipation, ChallengeScore, ChallengeReward
-)
+# from apps.admin.challenge import (
+#     ChallengeProgram, ChallengeWeek, ChallengeTask,
+#     UserChallengeParticipation, ChallengeScore, ChallengeReward
+# )
+from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeTask
+from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
+from apps.admin.challenge.models.analytics_models import ChallengeScore
+from apps.admin.challenge.models.challenge_models import ChallengeReward
+
 
 
 class ChallengeProgramSerializer(serializers.ModelSerializer):

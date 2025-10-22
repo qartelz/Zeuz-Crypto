@@ -2,11 +2,13 @@
 # ==================== FILE: apps/challenges/serializers/trade_serializers.py ====================
 
 from rest_framework import serializers
-from apps.admin.challenge.models import (
-    ChallengeTrade, ChallengeTradeHistory, ChallengeTradeAnalytics,
-    ChallengeFuturesDetails, ChallengeOptionsDetails
-)
+# from apps.admin.challenge.models import (
+#     ChallengeTrade, ChallengeTradeHistory, ChallengeTradeAnalytics,
+#     ChallengeFuturesDetails, ChallengeOptionsDetails
+# )
 
+from apps.admin.challenge.models.analytics_models import ChallengeTradeAnalytics
+from apps.admin.challenge.models.trade_models import ChallengeFuturesDetails, ChallengeOptionsDetails,ChallengeTrade,ChallengeTradeHistory
 
 class ChallengeTradeSerializer(serializers.ModelSerializer):
     total_pnl = serializers.ReadOnlyField()

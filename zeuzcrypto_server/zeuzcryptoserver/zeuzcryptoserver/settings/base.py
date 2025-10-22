@@ -194,9 +194,24 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
 "https://www.zeuzcrypto.com",
+"https://zeuzcrypto.com",
+    # "https://www.zeuzcrypto.com",
     # "https://yourdomain.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
 
 # -----------------------------------------------------------------------------
 # Static & Media

@@ -2,8 +2,8 @@
 # ==================== FILE: apps/challenges/serializers/wallet_serializers.py ====================
 
 from rest_framework import serializers
-from apps.admin.challenge import ChallengeWallet, ChallengeWalletTransaction
-
+# from apps.admin.challenge import ChallengeWallet, ChallengeWalletTransaction
+from apps.admin.challenge.models.challenge_models import ChallengeWallet, ChallengeWalletTransaction
 
 class ChallengeWalletSerializer(serializers.ModelSerializer):
     total_balance = serializers.ReadOnlyField()

@@ -2,12 +2,13 @@
 # ==================== FILE: apps/challenges/serializers/admin_serializers.py ====================
 
 from rest_framework import serializers
-from apps.admin.challenge.models import (
-    ChallengeProgram, ChallengeWeek, ChallengeStatistics,
-    UserChallengeParticipation, ChallengeLeaderboard
-)
-
-
+# from apps.admin.challenge.models import (
+#     ChallengeProgram, ChallengeWeek, ChallengeStatistics,
+#     UserChallengeParticipation, ChallengeLeaderboard
+# )
+from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeStatistics
+from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
+from apps.admin.challenge.models.analytics_models import ChallengeLeaderboard
 class ChallengeProgramAdminSerializer(serializers.ModelSerializer):
     weeks = serializers.SerializerMethodField()
     total_participants = serializers.SerializerMethodField()
