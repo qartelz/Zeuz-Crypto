@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from pathlib import Path
-from decouple import config
+# from decouple import config
 import os
 from celery.schedules import crontab
 
@@ -12,10 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # -----------------------------------------------------------------------------
 # Security & Debug
 # -----------------------------------------------------------------------------
-DEBUG = config("DEBUG", default=False, cast=bool)
+# DEBUG = config("DEBUG", default=False, cast=bool)
 
 # ⚠️ For production, use environment variable for SECRET_KEY
-SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key")
+# SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key")
+SECRET_KEY = "django-insecure-+5s+xno^y)ss$-8i8_#%7xv3-)im#gihn1g$c^l!wd!&6#ryj7"
 
 # -----------------------------------------------------------------------------
 # Custom User Model
@@ -26,11 +27,14 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
+
+    'channels',
     
     "apps.account",
     "apps.accounts",
     "apps.admin.subscriptions",
     "apps.client.trading",
+    "apps.admin.challenge.apps.ChallengeConfig",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -102,6 +106,17 @@ TEMPLATES = [
         },
     },
 ]
+# -----------------------------------------------------------------------------
+# WebSocket / Channels configuration
+# -----------------------------------------------------------------------------
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 # -----------------------------------------------------------------------------
 # Password Validators
@@ -179,9 +194,24 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
 "https://www.zeuzcrypto.com",
+"https://zeuzcrypto.com",
+    # "https://www.zeuzcrypto.com",
     # "https://yourdomain.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
 
 # -----------------------------------------------------------------------------
 # Static & Media
@@ -219,13 +249,13 @@ SITE_ID = 1
 # -----------------------------------------------------------------------------
 # Email
 # -----------------------------------------------------------------------------
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
-EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
-EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+# EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+# EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+# EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+# EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # -----------------------------------------------------------------------------
 # Custom Settings
@@ -320,6 +350,19 @@ CELERY_BEAT_SCHEDULE = {
     "daily-portfolio-snapshot": {
         "task": "apps.client.trading.tasks.daily_portfolio_snapshot",
         "schedule": crontab(hour=23, minute=59),  # End of day
+    },
+
+    'check-expired-options-daily': {
+        'task': 'apps.client.trading.tasks.check_expired_options',
+        'schedule': crontab(hour=0, minute=5),
+    },
+    'sync-active-symbols': {
+        'task': 'apps.client.trading.tasks.sync_active_symbols',
+        'schedule': 300.0,  # every 5 minutes
+    },
+    'monitor-margins': {
+        'task': 'apps.client.trading.tasks.monitor_all_margins',
+        'schedule': 60.0,  # every minute
     },
 }
 

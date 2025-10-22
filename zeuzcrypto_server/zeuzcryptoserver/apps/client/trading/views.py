@@ -1462,6 +1462,147 @@ class GetOpenTradeBySymbol(APIView):
         )
 
 
+
+
+
+
+
+"""
+this is for automated margin calulation websocket management 
+"""
+
+# views.py - Additional API endpoints
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import Trade, FuturesDetails
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_margin_status(request, trade_id):
+    """Get current margin status for a futures trade"""
+    trade = get_object_or_404(
+        Trade.objects.select_related('futures_details'),
+        id=trade_id,
+        user=request.user,
+        trade_type='FUTURES'
+    )
+    
+    if not hasattr(trade, 'futures_details'):
+        return Response(
+            {'error': 'No futures details found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    futures_details = trade.futures_details
+    current_price = trade.current_price or trade.average_price
+    
+    # Calculate current margin
+    if trade.direction == 'BUY':
+        pnl = (current_price - trade.average_price) * trade.remaining_quantity
+    else:
+        pnl = (trade.average_price - current_price) * trade.remaining_quantity
+    
+    remaining_margin = futures_details.margin_used + pnl
+    margin_call_threshold = futures_details.margin_required * Decimal('0.2')
+    margin_percentage = (remaining_margin / futures_details.margin_required) * 100 if futures_details.margin_required > 0 else Decimal('0')
+    
+    return Response({
+        'trade_id': str(trade.id),
+        'symbol': trade.asset_symbol,
+        'status': trade.status,
+        'direction': trade.direction,
+        'leverage': str(futures_details.leverage),
+        'entry_price': str(trade.average_price),
+        'current_price': str(current_price),
+        'quantity': str(trade.remaining_quantity),
+        'margin_required': str(futures_details.margin_required),
+        'margin_used': str(futures_details.margin_used),
+        'remaining_margin': str(remaining_margin),
+        'margin_call_threshold': str(margin_call_threshold),
+        'margin_percentage': str(margin_percentage),
+        'unrealized_pnl': str(trade.unrealized_pnl),
+        'realized_pnl': str(trade.realized_pnl),
+        'is_at_risk': remaining_margin <= margin_call_threshold,
+        'is_critical': remaining_margin <= margin_call_threshold * Decimal('0.5')
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_active_positions(request):
+    """Get all active positions with current prices and margins"""
+    trades = Trade.objects.filter(
+        user=request.user,
+        status__in=['OPEN', 'PARTIALLY_CLOSED']
+    ).select_related('futures_details', 'options_details').order_by('-opened_at')
+    
+    positions = []
+    for trade in trades:
+        position = {
+            'id': str(trade.id),
+            'symbol': trade.asset_symbol,
+            'type': trade.trade_type,
+            'direction': trade.direction,
+            'quantity': str(trade.remaining_quantity),
+            'entry_price': str(trade.average_price),
+            'current_price': str(trade.current_price) if trade.current_price else str(trade.average_price),
+            'unrealized_pnl': str(trade.unrealized_pnl),
+            'realized_pnl': str(trade.realized_pnl),
+            'total_pnl': str(trade.total_pnl),
+            'pnl_percentage': str(trade.pnl_percentage),
+            'opened_at': trade.opened_at.isoformat(),
+            'status': trade.status
+        }
+        
+        if trade.trade_type == 'FUTURES' and hasattr(trade, 'futures_details'):
+            futures = trade.futures_details
+            
+            # Calculate margin status
+            if trade.direction == 'BUY':
+                pnl = (trade.current_price - trade.average_price) * trade.remaining_quantity if trade.current_price else Decimal('0')
+            else:
+                pnl = (trade.average_price - trade.current_price) * trade.remaining_quantity if trade.current_price else Decimal('0')
+            
+            remaining_margin = futures.margin_used + pnl
+            margin_percentage = (remaining_margin / futures.margin_required) * 100 if futures.margin_required > 0 else Decimal('0')
+            
+            position['leverage'] = str(futures.leverage)
+            position['margin_used'] = str(futures.margin_used)
+            position['remaining_margin'] = str(remaining_margin)
+            position['margin_percentage'] = str(margin_percentage)
+            position['is_at_risk'] = remaining_margin <= futures.margin_required * Decimal('0.2')
+        
+        elif trade.trade_type == 'OPTIONS' and hasattr(trade, 'options_details'):
+            options = trade.options_details
+            position['option_type'] = options.option_type
+            position['strike_price'] = str(options.strike_price)
+            position['expiry_date'] = options.expiry_date.isoformat()
+            position['premium'] = str(options.premium)
+        
+        positions.append(position)
+    
+    return Response({
+        'positions': positions,
+        'total_positions': len(positions)
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def websocket_status(request):
+    """Get WebSocket connection status"""
+    from .websocket_manager import ws_manager
+    
+    return Response({
+        'connected': ws_manager.websocket is not None and ws_manager.running,
+        'subscribed_symbols': list(ws_manager.subscribed_symbols),
+        'total_subscriptions': len(ws_manager.subscribed_symbols)
+    })
+
 # # views.py
 # from rest_framework import viewsets, status
 # from rest_framework.decorators import action
