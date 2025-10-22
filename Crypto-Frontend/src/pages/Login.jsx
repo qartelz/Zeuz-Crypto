@@ -1,8 +1,9 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/svg/logo.svg';
 import bgImage from '../assets/images/Login-bg.png';
-import AuthContext from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const LoginPage = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,30 +26,32 @@ const LoginPage = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  const baseURL = import.meta.env.VITE_API_BASE_URL;
   const handleLogin = async () => {
     setLoading(true);
     setMessage('');
     setMessageType('');
-  
+
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/account/login/', {
+      const response = await fetch(`${baseURL}account/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
-       
         const result = await loginUser(email, password);
-  
+
         if (result.success && (result.user.role === 'b2b_user' || result.user.role === 'b2c_user')) {
           setMessage('Login successful!');
           setMessageType('success');
@@ -57,7 +61,6 @@ const LoginPage = () => {
           setMessageType('error');
         }
       } else {
-        // Handle error from API
         const errorMessage =
           data.non_field_errors?.[0] ||
           data.detail ||
@@ -70,10 +73,9 @@ const LoginPage = () => {
       setMessage('Something went wrong. Please try again.');
       setMessageType('error');
     }
-  
+
     setLoading(false);
   };
-  
 
   const handleForgotPassword = async () => {
     if (!forgotEmail) {
@@ -85,7 +87,7 @@ const LoginPage = () => {
     setForgotMessage('');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/account/password-reset/', {
+      const response = await fetch(`${baseURL}account/password-reset/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
@@ -95,7 +97,6 @@ const LoginPage = () => {
 
       if (response.ok) {
         setForgotMessage('A reset link has been sent.');
-        
       } else {
         setForgotMessage(data.error || 'Failed to send reset link.');
       }
@@ -105,8 +106,6 @@ const LoginPage = () => {
 
     setForgotLoading(false);
   };
-
-  
 
   return (
     <div
@@ -126,21 +125,19 @@ const LoginPage = () => {
           <p className="text-gray-400">Please continue with your credentials.</p>
         </div>
 
-        {/* {renderMessage()} */}
+        {/* Message */}
         {message && (
-  <div
-    className={`text-center mb-6 px-4 py-3 rounded-md shadow-md text-sm font-medium
-      ${
-        messageType === 'error'
-          ? 'bg-red-500/10 text-red-400 border border-red-500'
-          : 'bg-green-500/10 text-green-400 border border-green-500'
-      }`}
-  >
-    {message}
-  </div>
-)}
-
-        
+          <div
+            className={`text-center mb-6 px-4 py-3 rounded-md shadow-md text-sm font-medium
+            ${
+              messageType === 'error'
+                ? 'bg-red-500/10 text-red-400 border border-red-500'
+                : 'bg-green-500/10 text-green-400 border border-green-500'
+            }`}
+          >
+            {message}
+          </div>
+        )}
 
         {/* Input Fields */}
         <div className="space-y-4 mb-6">
@@ -153,15 +150,26 @@ const LoginPage = () => {
                        px-4 text-center rounded-xl border border-[#4733A6]
                        outline-none focus:ring-2 focus:ring-[#A489F5] transition"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
-                       px-4 text-center rounded-xl border border-[#4733A6]
-                       outline-none focus:ring-2 focus:ring-[#A489F5] transition"
-          />
+
+          {/* Password with toggle */}
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
+                         px-4 text-center rounded-xl border border-[#4733A6]
+                         outline-none focus:ring-2 focus:ring-[#A489F5] transition"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-3 text-gray-400 hover:text-white"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
 
         {/* Forgot Password */}
@@ -237,7 +245,6 @@ const LoginPage = () => {
                 {forgotLoading ? 'Sending...' : 'Send Reset Link'}
               </button>
             </div>
-           
           </div>
         </div>
       )}
@@ -257,32 +264,52 @@ const LoginPage = () => {
                          px-4 rounded-xl border border-[#4733A6] mb-4
                          outline-none focus:ring-2 focus:ring-[#A489F5] transition"
             />
-            <input
-              type="password"
-              placeholder="New Password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
-                         px-4 rounded-xl border border-[#4733A6] mb-4
-                         outline-none focus:ring-2 focus:ring-[#A489F5] transition"
-            />
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
-                         px-4 rounded-xl border border-[#4733A6] mb-4
-                         outline-none focus:ring-2 focus:ring-[#A489F5] transition"
-            />
+
+            {/* New Password */}
+            <div className="relative mb-4">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
+                           px-4 rounded-xl border border-[#4733A6]
+                           outline-none focus:ring-2 focus:ring-[#A489F5] transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-4 top-3 text-gray-400 hover:text-white"
+              >
+                {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="relative mb-4">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5]
+                           px-4 rounded-xl border border-[#4733A6]
+                           outline-none focus:ring-2 focus:ring-[#A489F5] transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-3 text-gray-400 hover:text-white"
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
 
             {resetMessage && (
               <div className="text-sm text-center text-yellow-400 mb-4">
                 {resetMessage}
               </div>
             )}
-
-            
           </div>
         </div>
       )}

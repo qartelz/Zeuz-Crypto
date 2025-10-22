@@ -1,27 +1,40 @@
-import { createContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import { AuthContext } from './AuthContext';
 
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 export const WalletContext = createContext();
 
 export const WalletProvider = ({ children }) => {
+  const authContext = useContext(AuthContext);
+
+  if (!authContext) {
+    console.warn('WalletProvider must be used within an AuthProvider');
+    return null; 
+  }
+
+  const { authTokens } = authContext;
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchWallet = async () => {
-    const tokens = JSON.parse(localStorage.getItem("authTokens"));
-    if (!tokens) return;
+    if (!authTokens) {
+      setBalance(null);
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await axios.get("http://127.0.0.1:8000/api/v1/account/wallet/", {
+      const response = await axios.get(`${baseURL}account/wallet/`, {
         headers: {
-          Authorization: `Bearer ${tokens.access}`,
+          Authorization: `Bearer ${authTokens.access}`,
         },
       });
 
       setBalance(response.data.balance);
     } catch (error) {
-      console.error("Failed to fetch wallet:", error);
-      setBalance("0.00");
+      console.error('Failed to fetch wallet:', error);
+      setBalance('0.00');
     } finally {
       setLoading(false);
     }
@@ -29,7 +42,7 @@ export const WalletProvider = ({ children }) => {
 
   useEffect(() => {
     fetchWallet();
-  }, []);
+  }, [authTokens]);
 
   return (
     <WalletContext.Provider value={{ balance, loading, refreshWallet: fetchWallet }}>

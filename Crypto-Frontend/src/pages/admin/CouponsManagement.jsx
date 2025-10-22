@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const baseURL = "http://127.0.0.1:8000/api/v1/admin/subscriptions/coupons";
-
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 const CouponsManagement = () => {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +52,7 @@ const CouponsManagement = () => {
       if (filters.ordering) queryParams.append("ordering", filters.ordering);
 
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-      const response = await fetch(`${baseURL}/?${queryParams.toString()}`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/coupons/?${queryParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${tokens?.access}`,
         },
@@ -95,7 +94,7 @@ const CouponsManagement = () => {
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
   
     try {
-      const response = await fetch(`${baseURL}/`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/coupons/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -204,7 +203,7 @@ const CouponsManagement = () => {
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
   
     try {
-      const response = await fetch(`${baseURL}/${editData.id}/`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/coupons/${editData.id}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -256,7 +255,7 @@ const handleConfirmDelete = async () => {
 
   const tokens = JSON.parse(localStorage.getItem("authTokens"));
   try {
-    const response = await fetch(`${baseURL}/${id}/`, {
+    const response = await fetch(`${baseURL}admin/subscriptions/coupons/${id}/`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${tokens?.access}`,
@@ -277,7 +276,7 @@ const handleConfirmDelete = async () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
+    <div className="min-h-screen rounded-4xl bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-1">

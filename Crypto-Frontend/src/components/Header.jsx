@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/svg/logo.svg';
-import AuthContext from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
+
 
 const Header = () => {
   const { isLoggedIn, logoutUser } = useContext(AuthContext);

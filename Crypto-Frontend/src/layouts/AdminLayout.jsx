@@ -28,7 +28,7 @@ function AdminLayout() {
 
       {/* Main content with gradient background */}
       <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-[#0F0F1E] to-[#4733A6]">
-        <div className="bg-white/5 backdrop-blur-lg rounded-xl shadow-lg p-6 min-h-screen text-gray-100">
+        <div className=" rounded-xl shadow-lg p-6 min-h-screen text-gray-100">
           <Outlet />
         </div>
       </main>

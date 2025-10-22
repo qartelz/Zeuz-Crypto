@@ -6,7 +6,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useContext } from "react";
-import AuthContext from "../../contexts/AuthContext";
+import {  } from "../../contexts/AuthContext";
 
 function B2bAdminSidebar() {
   const location = useLocation();

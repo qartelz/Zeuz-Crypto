@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const BASE_URL = "https://api.binance.com";
+const REST_BASE = "https://api.binance.com";
 const WS_BASE = "wss://stream.binance.com:9443/ws";
 
 const binanceYellow = "#F0B90B";
@@ -15,7 +15,7 @@ const BinanceDashboard = () => {
 
   // Fetch all USDT pairs
   useEffect(() => {
-    fetch(`${BASE_URL}/api/v3/exchangeInfo`)
+    fetch(`${REST_BASE}/api/v3/exchangeInfo`)
       .then((res) => res.json())
       .then((data) => {
         const allSymbols = data.symbols

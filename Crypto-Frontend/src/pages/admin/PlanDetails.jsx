@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const PlanDetails = () => {
   const { id } = useParams();
@@ -14,7 +15,7 @@ const PlanDetails = () => {
     const fetchPlanDetails = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/v1/admin/subscriptions/plans/${id}/`
+          `${baseURL}admin/subscriptions/plans/${id}/`
         );
 
         if (!response.ok) {
@@ -65,7 +66,7 @@ const PlanDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#2f287f] p-6 lg:p-8">
+    <div className="min-h-screen rounded-4xl bg-gradient-to-br from-[#0F0F1E] to-[#2f287f] p-6 lg:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">

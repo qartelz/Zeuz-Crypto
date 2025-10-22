@@ -24,12 +24,19 @@ import CouponsManagement from "./pages/admin/CouponsManagement";
 import OrderHistory from "./pages/OrderHistory";
 import 'react-toastify/dist/ReactToastify.css';
 import { Toaster } from "react-hot-toast";
+import { WalletProvider } from "./contexts/WalletContext";
+import Achievements from "./pages/Achievements";
+import { PnLProvider } from "./contexts/PnLContext";
+import ProfilePage from "./pages/ProfilePage";
+import SubscriptionPage from "./pages/admin/SubscriptionPage";
 
 function App() {
   return (
     <Router>
         <Toaster position="top-right" reverseOrder={false} />
       <AuthProvider>
+      <WalletProvider>
+      <PnLProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -45,8 +52,13 @@ function App() {
               <Route path="/trading" element={<Trading />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/history" element={<OrderHistory />} />
-              <Route path="/challenge" element={<Challenges />} />
+              <Route path="/challenges" element={<Challenges />} />
+              <Route path="/achievements" element={<Achievements/>} />
+              <Route path="/profile" element={<ProfilePage/>} />
             </Route>
+           
+
+
           </Route>
 
           {/*Protected Routes - Admin */}
@@ -58,6 +70,8 @@ function App() {
               <Route path="plans" element={<PlansManagement />} />
               <Route path="plans/:id" element={<PlanDetails />} />
               <Route path="coupons" element={<CouponsManagement />} />
+              <Route path="subscriptions" element={<SubscriptionPage />} />
+
 
 
               <Route path="user-profile" element={<UserProfile />} />
@@ -70,6 +84,8 @@ function App() {
             </Route>
           </Route>
         </Routes>
+        </PnLProvider>
+        </WalletProvider>
       </AuthProvider>
     </Router>
   );

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useContext } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import AuthContext from "../contexts/AuthContext";
+import {AuthContext} from "../contexts/AuthContext";
 
 
 const Sidebar = ({ onHoverChange }) => {
@@ -22,10 +22,10 @@ const Sidebar = ({ onHoverChange }) => {
   const navItems = [
     { id: "home", icon: Home, label: "Home", path: "/" },
     { id: "market", icon: BarChart3, label: "Market", path: "/trading" },
-    { id: "Orders", icon: History, label: "Target", path: "/history" },
-    { id: "challenge", icon: Gamepad2, label: "Challenge", path: "/dashboard/challenge" },
-    { id: "achievements", icon: Trophy, label: "Achievements", path: "/dashboard/achievements" },
-    { id: "settings", icon: Settings, label: "Settings", path: "/dashboard/settings" },
+    { id: "Orders", icon: History, label: "Holdings", path: "/history" },
+    { id: "challenge", icon: Gamepad2, label: "Challenge", path: "/challenges" },
+    { id: "achievements", icon: Trophy, label: "Achievements", path: "/achievements" },
+    { id: "settings", icon: Settings, label: "Settings", path: "/settings" },
   ];
 
   const bottomItems = [
@@ -72,7 +72,7 @@ const Sidebar = ({ onHoverChange }) => {
               key={id}
               to={path}
               className={({ isActive }) =>
-                `flex items-center space-x-3 py-3 px-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                `flex items-center whitespace-nowrap space-x-3 py-3 px-3 rounded-lg cursor-pointer transition-all duration-200 ${
                   isActive ? "bg-[#D643BF]/20" : "hover:bg-[#D643BF]/10"
                 }`
               }

@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+const baseURL = import.meta.env.VITE_API_baseURL;
 
 const BatchesList = () => {
   const [batches, setBatches] = useState([]);
@@ -44,7 +45,7 @@ const BatchesList = () => {
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/account/batch/list/", {
+      const res = await fetch(`${baseURL}account/batch/list/`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${tokens?.access}`,
@@ -82,7 +83,7 @@ const BatchesList = () => {
     setCreating(true);
     setCreateResponse(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/account/batch/create/", {
+      const res = await fetch(`${baseURL}account/batch/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,7 +125,7 @@ const BatchesList = () => {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/v1/account/batch/users/${batch.id}/`,
+        `${baseURL}account/batch/users/${batch.id}/`,
         {
           headers: {
             Authorization: `Bearer ${tokens?.access}`,
@@ -148,7 +149,7 @@ const BatchesList = () => {
     setUserFormResponse(null);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/account/b2b-user/register/", {
+      const res = await fetch(`${baseURL}account/b2b-user/register/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Eye, Trash2 } from "lucide-react";
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const UsersListPage = () => {
   const [usersList, setUsersList] = useState([]);
+  console.log(usersList,"the userlist")
+
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -18,7 +21,7 @@ const UsersListPage = () => {
 
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/account/users/?role=b2c_user",
+          `${baseURL}account/users/?role=b2c_user`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -27,6 +30,7 @@ const UsersListPage = () => {
           }
         );
 
+        
         if (response.status === 401) {
           const errorData = await response.json();
 
@@ -97,7 +101,7 @@ const UsersListPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
+    <div className="min-h-screen rounded-4xl bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-1">

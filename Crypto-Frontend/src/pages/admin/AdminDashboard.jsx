@@ -133,7 +133,7 @@ import {
   /* === Main Component === */
   function AdminDashboard({ adminName = "Admin Name", totalUsers = 24780 }) {
     return (
-      <div className="min-h-screen p-8 space-y-8 bg-gradient-to-br from-[#0F0F1E] via-[#1a1635] to-[#4733A6]">
+      <div className="min-h-screen rounded-4xl p-8 space-y-8 bg-gradient-to-br from-[#0F0F1E] via-[#1a1635] to-[#4733A6]">
         {/* Greeting */}
         <div className="flex items-center space-x-3">
           <User className="text-indigo-400" size={36} strokeWidth={1.5} />

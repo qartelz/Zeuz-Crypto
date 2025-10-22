@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 const SYMBOL = 'btcusdt';
-const BASE_URL = 'https://api.binance.com';
+const REST_BASE = 'https://api.binance.com';
 const WS_BASE = 'wss://stream.binance.com:9443/ws';
 
 const OrderBookChart = () => {
@@ -13,15 +13,15 @@ const OrderBookChart = () => {
 
   useEffect(() => {
     // Initial fetch
-    fetch(`${BASE_URL}/api/v3/depth?symbol=${SYMBOL.toUpperCase()}&limit=10`)
+    fetch(`${REST_BASE}/api/v3/depth?symbol=${SYMBOL.toUpperCase()}&limit=10`)
       .then(res => res.json())
       .then(data => setOrderBook({ bids: data.bids, asks: data.asks }));
 
-    fetch(`${BASE_URL}/api/v3/trades?symbol=${SYMBOL.toUpperCase()}&limit=10`)
+    fetch(`${REST_BASE}/api/v3/trades?symbol=${SYMBOL.toUpperCase()}&limit=10`)
       .then(res => res.json())
       .then(data => setTrades(data));
 
-    fetch(`${BASE_URL}/api/v3/klines?symbol=${SYMBOL.toUpperCase()}&interval=1m&limit=10`)
+    fetch(`${REST_BASE}/api/v3/klines?symbol=${SYMBOL.toUpperCase()}&interval=1m&limit=10`)
       .then(res => res.json())
       .then(data => setCandles(data));
 

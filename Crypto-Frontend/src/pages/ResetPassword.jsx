@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 const PasswordReset = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ const PasswordReset = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/v1/account/password-reset/confirm/${token}/`,
+        `${baseURL}account/password-reset/confirm/${token}/`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

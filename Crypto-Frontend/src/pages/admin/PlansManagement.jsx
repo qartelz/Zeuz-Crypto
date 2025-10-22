@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const baseURL = "http://127.0.0.1:8000/api/v1/admin/subscriptions/plans";
-
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 const PlansManagement = () => {
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
@@ -49,7 +48,7 @@ const PlansManagement = () => {
       if (filters.ordering) queryParams.append("ordering", filters.ordering);
 
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-      const response = await fetch(`${baseURL}/?${queryParams.toString()}`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/plans?${queryParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${tokens?.access}`,
         },
@@ -58,6 +57,8 @@ const PlansManagement = () => {
       if (!response.ok) throw new Error(`Failed to load plans`);
 
       const data = await response.json();
+
+      console.log(data,"the response ofthe plan")
       setPlans(data.results || data);
     } catch (err) {
       setPlansError(err.message);
@@ -86,7 +87,7 @@ const PlansManagement = () => {
 
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
     try {
-      const response = await fetch(`${baseURL}/${editData.id}/`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/plans/${editData.id}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -120,7 +121,7 @@ const PlansManagement = () => {
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`${baseURL}/${id}/`, {
+      const response = await fetch(`${baseURL}admin/subscriptions/plans/${id}/`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${tokens?.access}`,
@@ -191,7 +192,7 @@ const PlansManagement = () => {
     const tokens = JSON.parse(localStorage.getItem("authTokens"));
 
     try {
-      const response = await fetch(baseURL + "/", {
+      const response = await fetch(`${baseURL}admin/subscriptions/plans/` , {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -206,7 +207,10 @@ const PlansManagement = () => {
           .map(([field, msgs]) => `${field}: ${msgs.join(", ")}`)
           .join(" | ");
         throw new Error(errors);
+
+        
       }
+      console.log(response,"the reposne of the plan api")
 
       if (!response.ok) {
         throw new Error(
@@ -226,7 +230,7 @@ const PlansManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
+    <div className="min-h-screen rounded-4xl  bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-1">

@@ -6,9 +6,10 @@ import {
   Crown,
   DollarSign,
   Tag,
+  CreditCard,
 } from "lucide-react";
 import { useContext, useState } from "react";
-import AuthContext from "../../contexts/AuthContext";
+import {AuthContext} from "../../contexts/AuthContext";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -24,6 +25,7 @@ function AdminSidebar() {
     { to: "/admin/adminspage", label: "Admins", icon: Crown },
     { to: "/admin/plans", label: "Plans", icon: DollarSign },
     { to: "/admin/coupons", label: "Coupons", icon: Tag },
+    { to: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   ];
 
   const handleLogout = () => {

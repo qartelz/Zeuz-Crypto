@@ -6,43 +6,53 @@ import {
   History,
   TrendingDown,
   TrendingUp,
-  CheckCircle, XCircle,
+  CheckCircle,
+  XCircle,
   X,
 } from "lucide-react";
 
 import toast from "react-hot-toast";
 
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 const OrderHistory = () => {
+
   const [orderHistory, setOrderHistory] = useState([]);
   const [holdings, setHoldings] = useState([]);
-  console.log(holdings, "the holdings");
-  const [loading, setLoading] = useState(false);
+  // console.log(holdings, "the holdings");
+  const [isloading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [toggleOption, setToggleOption] = useState("Spot");
+  const options = ["Spot", "Futures", "Options"];
 
-  console.log(selectedOrder,"the seleted order")
-  const { balance } = useContext(WalletContext);
+  // console.log(selectedOrder, "the seleted order");
+  const { balance,refreshWallet ,loading } = useContext(WalletContext);
   const [expandedRows, setExpandedRows] = useState([]);
   const [activeTab, setActiveTab] = useState("orderHistory");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [spotSide, setSpotSide] = useState("buy");
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
   const [lastTradePrice, setLastTradePrice] = useState(null);
   const [livePrices, setLivePrices] = useState({});
-  console.log(livePrices,"the live price")
 
 
-
-
+  console.log(livePrices, "the live price");
 
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const navigate = useNavigate();
+  const tokens = JSON.parse(localStorage.getItem("authTokens"));
+
   const handleModalOrder = async () => {
     if (amount <= 0) {
       toast.custom(
         (t) => (
-          <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -55,15 +65,18 @@ const OrderHistory = () => {
       );
       return;
     }
-  
+
     try {
       setIsPlacingOrder(true);
-      const tokens = JSON.parse(localStorage.getItem("authTokens"));
-  
+
       if (!tokens?.access) {
         toast.custom(
           (t) => (
-            <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+            <div
+              className={`${
+                t.visible ? "animate-enter" : "animate-leave"
+              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+            >
               <div className="flex-1 w-0 p-4 flex items-center">
                 <XCircle className="h-6 w-6 text-red-500 mr-2" />
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -76,32 +89,38 @@ const OrderHistory = () => {
         );
         return;
       }
-  
+
       if (spotSide === "sell") {
         const sellAmount = parseFloat(amount);
         const isFull = sellAmount >= selectedOrder.remaining_quantity;
-  
+
         let response;
-  
+
         if (isFull) {
+          const payload = {
+            quantity: sellAmount.toFixed(8),
+            price: Number(lastTradePrice).toFixed(2),
+          };
+
           response = await fetch(
-            `http://127.0.0.1:8000/api/v1/trading/close-trade/${selectedOrder.id}/`,
+            `${baseURL}trading/close-trade/${selectedOrder.id}/`,
             {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${tokens.access}`,
               },
+              body: JSON.stringify(payload),
             }
           );
         } else {
           const payload = {
-            quantity: sellAmount.toString(),
-            price: Number(selectedOrder.average_price).toFixed(2),
+            quantity: sellAmount.toFixed(8),
+            price: Number(lastTradePrice).toFixed(2),
           };
-  
+
           response = await fetch(
-            `http://127.0.0.1:8000/api/v1/trading/partial-close/${selectedOrder.id}/`,
+            `${baseURL}trading/partial-close/${selectedOrder.id}/`,
             {
               method: "POST",
               headers: {
@@ -112,37 +131,49 @@ const OrderHistory = () => {
             }
           );
         }
-  
+
         const data = await response.json();
-  
+        console.log(data, "the order place status data");
+
         if (response.ok) {
           toast.custom(
             (t) => (
-              <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {isFull
                       ? "Trade closed successfully!"
-                      : `Sold ${sellAmount} ${selectedOrder.asset_symbol} @ ${Number(selectedOrder.average_price).toFixed(2)}`}
+                      : `Sold ${sellAmount} ${
+                          selectedOrder.asset_symbol
+                        } @ ${Number(selectedOrder.average_price).toFixed(2)}`}
                   </p>
                 </div>
               </div>
             ),
             { position: "top-right", duration: 2500 }
           );
-  
+          await refreshWallet();
           setSelectedOrder(null);
           setAmount(0);
-          // Call your refresh function here if needed
+          await fetchData();
         } else {
           toast.custom(
             (t) => (
-              <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Error: {data.detail || data.message || "Something went wrong"}
+                    Error:{" "}
+                    {data.detail || data.message || "Something went wrong"}
                   </p>
                 </div>
               </div>
@@ -163,25 +194,26 @@ const OrderHistory = () => {
           price: Number(lastTradePrice).toFixed(2),
           order_type: "MARKET",
         };
-  
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/trading/place-order/",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${tokens.access}`,
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-  
+
+        const response = await fetch(`${baseURL}trading/place-order/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokens.access}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
         const data = await response.json();
-  
+
         if (response.ok) {
           toast.custom(
             (t) => (
-              <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -192,14 +224,18 @@ const OrderHistory = () => {
             ),
             { position: "top-right", duration: 2500 }
           );
-  
+await refreshWallet();
           setSelectedOrder(null);
           setAmount(0);
-          // Call your refresh function here if needed
+          await fetchData();
         } else {
           toast.custom(
             (t) => (
-              <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -216,7 +252,11 @@ const OrderHistory = () => {
       console.error(error);
       toast.custom(
         (t) => (
-          <div className={`${t.visible ? "animate-enter" : "animate-leave"} max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}>
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -232,42 +272,604 @@ const OrderHistory = () => {
     }
   };
 
+  const [selectedFuturesOrder, setSelectedFuturesOrder] = useState(null);
+
+  const [futuresLeverage, setFuturesLeverage] = useState(20);
+  const [futuresMarginType, setFuturesMarginType] = useState("CROSS");
+
+
+  const [optionsAmount, setOptionsAmount] = useState("");
+const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
+
+  const handleFuturesModalOrder = async (side) => {
+    if (futuresAmount <= 0) {
+      toast.custom(
+        (t) => (
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
+            <div className="flex-1 w-0 p-4 flex items-center">
+              <XCircle className="h-6 w-6 text-red-500 mr-2" />
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Please enter a valid quantity
+              </p>
+            </div>
+          </div>
+        ),
+        { position: "top-right", duration: 2500 }
+      );
+      return;
+    }
+
+    try {
+      setIsPlacingFuturesOrder(true);
+
+      if (!tokens?.access) {
+        toast.custom(
+          (t) => (
+            <div
+              className={`${
+                t.visible ? "animate-enter" : "animate-leave"
+              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+            >
+              <div className="flex-1 w-0 p-4 flex items-center">
+                <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  You must be logged in!
+                </p>
+              </div>
+            </div>
+          ),
+          { position: "top-right", duration: 2500 }
+        );
+        return;
+      }
+
+      if (side === "sell") {
+        // SELL/CLOSE logic
+        const sellAmount = parseFloat(futuresAmount);
+        const isFull = sellAmount >= selectedFuturesOrder.remaining_quantity;
+
+        let response;
+
+        if (isFull) {
+          const payload = {
+            quantity: sellAmount.toFixed(3),
+            price: Number(futuresLastTradePrice).toFixed(2),
+          };
+
+          response = await fetch(
+            `${baseURL}trading/close-trade/${selectedFuturesOrder.id}/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokens.access}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+        } else {
+          const payload = {
+            quantity: sellAmount.toFixed(3),
+            price: Number(futuresLastTradePrice).toFixed(2),
+          };
+
+          response = await fetch(
+            `${baseURL}trading/partial-close/${selectedFuturesOrder.id}/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokens.access}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+        }
+
+        const data = await response.json();
+
+        if (response.ok) {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {isFull
+                      ? "Position closed successfully!"
+                      : `Closed ${sellAmount} contracts @ ${Number(
+                          futuresLastTradePrice
+                        ).toFixed(2)}`}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+          await refreshWallet();
+          setSelectedFuturesOrder(null);
+          setFuturesAmount("");
+          await fetchData();
+        } else {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Error:{" "}
+                    {data.detail || data.message || "Something went wrong"}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+        }
+      } else {
+        // BUY/LONG logic
+
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30);
+        const formattedExpiryDate = expiryDate.toISOString().split("T")[0];
+
+        const payload = {
+          asset_symbol: selectedFuturesOrder.asset_symbol.toUpperCase(),
+          asset_name: selectedFuturesOrder.asset_name || "Bitcoin Perpetual",
+          asset_exchange: "DELTA",
+          trade_type: "FUTURES",
+          direction: "BUY",
+          holding_type: selectedFuturesOrder.holding_type || "SHORTTERM",
+          quantity: futuresAmount.toString(),
+          price: Number(futuresLastTradePrice).toFixed(2),
+          order_type: "MARKET",
+          leverage: futuresLeverage.toFixed(2),
+          contract_size: parseFloat(
+            selectedFuturesOrder?.contract_value || "0.001"
+          ).toFixed(8),
+          expiry_date: formattedExpiryDate,
+        };
+
+        const response = await fetch(`${baseURL}trading/place-order/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokens.access}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        console.log(data, "tthe resonseof long in holdings");
+
+        if (response.ok) {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Long position opened: {data.quantity} contracts @{" "}
+                    {data.price}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+          await refreshWallet();
+          setSelectedFuturesOrder(null);
+          setFuturesAmount("");
+          await fetchData();
+        } else {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Error: {data.detail || "Something went wrong"}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.custom(
+        (t) => (
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
+            <div className="flex-1 w-0 p-4 flex items-center">
+              <XCircle className="h-6 w-6 text-red-500 mr-2" />
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Failed to place order
+              </p>
+            </div>
+          </div>
+        ),
+        { position: "top-right", duration: 2500 }
+      );
+    } finally {
+      setIsPlacingFuturesOrder(false);
+    }
+  };
+
+
+  const handleOptionsModalOrder = async (side) => {
+    if (optionsAmount <= 0) {
+      toast.custom(
+        (t) => (
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
+            <div className="flex-1 w-0 p-4 flex items-center">
+              <XCircle className="h-6 w-6 text-red-500 mr-2" />
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Please enter a valid quantity
+              </p>
+            </div>
+          </div>
+        ),
+        { position: "top-right", duration: 2500 }
+      );
+      return;
+    }
   
+    try {
+      setIsPlacingOptionsOrder(true);
+  
+      if (!tokens?.access) {
+        toast.custom(
+          (t) => (
+            <div
+              className={`${
+                t.visible ? "animate-enter" : "animate-leave"
+              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+            >
+              <div className="flex-1 w-0 p-4 flex items-center">
+                <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  You must be logged in!
+                </p>
+              </div>
+            </div>
+          ),
+          { position: "top-right", duration: 2500 }
+        );
+        return;
+      }
+  
+      let response;
+  
+      if (side === "sell") {
+        // 🟥 SELL / CLOSE OPTIONS POSITION
+        const sellAmount = parseFloat(optionsAmount);
+        const isFull = sellAmount >= selectedOptionsOrder.remaining_quantity;
+  
+        const payload = {
+          quantity: sellAmount.toFixed(3),
+          price: Number(selectedOptionsOrder.options_details?.premium || 0).toFixed(2),
+        };
+  
+        const url = isFull
+          ? `${baseURL}trading/close-options/${selectedOptionsOrder.id}/`
+          : `${baseURL}trading/partial-close-options/${selectedOptionsOrder.id}/`;
+  
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokens.access}`,
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {isFull
+                      ? "Option position closed successfully!"
+                      : `Closed ${sellAmount} contracts @ ${Number(
+                          selectedOptionsOrder.options_details?.premium
+                        ).toFixed(2)}`}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+  
+          await refreshWallet();
+          setSelectedOptionsOrder(null);
+          setOptionsAmount("");
+          await fetchData();
+        } else {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Error: {data.detail || data.message || "Something went wrong"}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+        }
+      } else {
+        // 🟩 BUY / OPEN OPTIONS POSITION
+        const expiryDate =
+          selectedOptionsOrder?.options_details?.expiry_date ||
+          new Date().toISOString().split("T")[0];
+  
+        const payload = {
+          asset_symbol: selectedOptionsOrder.asset_symbol.toUpperCase(),
+          asset_name: selectedOptionsOrder.asset_name || "Options Contract",
+          asset_exchange: "NFO",
+          trade_type: "OPTIONS",
+          direction: "BUY",
+          holding_type: "SHORTTERM",
+          quantity: optionsAmount.toString(),
+          price: Number(selectedOptionsOrder.options_details?.premium || 0).toFixed(2),
+          order_type: "MARKET",
+          option_type: selectedOptionsOrder.options_details?.option_type,
+          strike_price: selectedOptionsOrder.options_details?.strike_price,
+          expiry_date: expiryDate,
+        };
+  
+        response = await fetch(`${baseURL}trading/place-options-order/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokens.access}`,
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Bought {data.quantity} {data.option_type} contracts @ {data.price}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+          await refreshWallet();
+          setSelectedOptionsOrder(null);
+          setOptionsAmount("");
+          await fetchData();
+        } else {
+          toast.custom(
+            (t) => (
+              <div
+                className={`${
+                  t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              >
+                <div className="flex-1 w-0 p-4 flex items-center">
+                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Error: {data.detail || "Something went wrong"}
+                  </p>
+                </div>
+              </div>
+            ),
+            { position: "top-right", duration: 2500 }
+          );
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.custom(
+        (t) => (
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+          >
+            <div className="flex-1 w-0 p-4 flex items-center">
+              <XCircle className="h-6 w-6 text-red-500 mr-2" />
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Failed to place options order
+              </p>
+            </div>
+          </div>
+        ),
+        { position: "top-right", duration: 2500 }
+      );
+    } finally {
+      setIsPlacingOptionsOrder(false);
+    }
+  };
 
-
-  const navigate = useNavigate();
-  const tokens = JSON.parse(localStorage.getItem("authTokens"));
-
-  // WebSocket for live prices in Holdings tab
   useEffect(() => {
     if (activeTab !== "holdings" || holdings.length === 0) return;
 
-    const streams = holdings
-      // .filter((h) => h.status === "OPEN")
-      .map((h) => `${h.asset_symbol.toLowerCase()}usdt@trade`)
-      .join("/");
+    // 🔹 Separate holdings by trade type
+    const spotHoldings = holdings.filter((h) => h.trade_type === "SPOT");
+    const futuresHoldings = holdings.filter((h) => h.trade_type === "FUTURES");
+    const optionsHoldings = holdings.filter((h) => h.trade_type === "OPTIONS");
+    console.log(optionsHoldings,"the options holdings")
 
-    if (!streams) return;
+    let binanceWs, deltaWs;
 
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/stream?streams=${streams}`
-    );
+    // ===========================
+    // 🔸 1. BINANCE (SPOT)
+    // ===========================
+    if (spotHoldings.length > 0) {
+      const streams = spotHoldings
+        .map((h) => `${h.asset_symbol.toLowerCase()}usdt@trade`)
+        .join("/");
 
-    ws.onmessage = (event) => {
-      const response = JSON.parse(event.data);
-      if (response.data && response.data.s && response.data.p) {
-        const symbol = response.data.s.replace("USDT", "");
-        setLivePrices((prev) => ({
-          ...prev,
-          [symbol]: response.data.p,
-        }));
+      if (streams) {
+        binanceWs = new WebSocket(
+          `wss://stream.binance.com:9443/stream?streams=${streams}`
+        );
+
+        binanceWs.onmessage = (event) => {
+          const response = JSON.parse(event.data);
+          if (response.data && response.data.s && response.data.p) {
+            const symbol = response.data.s.replace("USDT", "");
+            setLivePrices((prev) => ({
+              ...prev,
+              [symbol]: response.data.p,
+            }));
+          }
+        };
+
+        binanceWs.onerror = (error) =>
+          console.error("Binance Holdings WebSocket error:", error);
       }
-    };
+    }
 
-    ws.onerror = (error) => console.error("Holdings WebSocket error:", error);
+    // ===========================
+    // 🔸 2. DELTA (FUTURES)
+    // ===========================
+    if (futuresHoldings.length > 0) {
+      deltaWs = new WebSocket("wss://socket.delta.exchange");
 
+      deltaWs.onopen = () => {
+        const payload = {
+          type: "subscribe",
+          payload: {
+            channels: [
+              {
+                name: "v2/ticker",
+                symbols: futuresHoldings.map((h) =>
+                  h.asset_symbol.toUpperCase()
+                ),
+              },
+            ],
+          },
+        };
+        deltaWs.send(JSON.stringify(payload));
+
+        console.log(payload,"the payload of options")
+      };
+      deltaWs.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+
+        // console.log(response, "the respose of delta");
+
+        // Only process ticker updates
+        if (
+          response?.type === "v2/ticker" &&
+          response?.symbol &&
+          response?.mark_price
+        ) {
+          const symbol = response.symbol;
+          setLivePrices((prev) => ({
+            ...prev,
+            [symbol]: response.close,
+          }));
+        }
+      };
+
+      deltaWs.onerror = (error) =>
+        console.error("Delta Holdings WebSocket error:", error);
+    }
+
+    if (optionsHoldings.length > 0) {
+      const deltaOptionsWs = new WebSocket("wss://socket.delta.exchange");
+    
+      deltaOptionsWs.onopen = () => {
+        const payload = {
+          type: "subscribe",
+          payload: {
+            channels: [
+              {
+                name: "v2/ticker",
+                symbols: optionsHoldings.map((h) => h.asset_symbol),
+              },
+            ],
+          },
+        };
+        deltaOptionsWs.send(JSON.stringify(payload));
+    
+        console.log(payload, "OPTIONS payload");
+      };
+    
+      deltaOptionsWs.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+    
+        // Only process ticker updates
+        if (response?.type === "v2/ticker" && response?.symbol && response?.mark_price) {
+          const symbol = response.symbol;
+          setLivePrices((prev) => ({
+            ...prev,
+            [symbol]: response.mark_price,  //
+          }));
+        }
+      };
+    
+      deltaOptionsWs.onerror = (error) =>
+        console.error("Delta Options WebSocket error:", error);
+    }
+    
+
+    // ===========================
+    // 🔹 Cleanup
+    // ===========================
     return () => {
-      ws.close();
+      if (binanceWs) binanceWs.close();
+      if (deltaWs) deltaWs.close();
     };
   }, [activeTab, holdings]);
 
@@ -276,13 +878,15 @@ const OrderHistory = () => {
       ? balance / Number(lastTradePrice)
       : selectedOrder?.remaining_quantity;
   const totalValue =
-    amount *
-    Number(spotSide === "buy" ? lastTradePrice : selectedOrder?.average_price);
+    amount * Number(spotSide === "buy" ? lastTradePrice : lastTradePrice);
+
+    // console.log(totalValue,"the total value")
 
   useEffect(() => {
     if (!selectedOrder?.asset_symbol) return;
 
     const symbol = `${selectedOrder.asset_symbol.toLowerCase()}usdt`;
+
     const ws = new WebSocket(
       `wss://stream.binance.com:9443/ws/${symbol}@trade`
     );
@@ -301,115 +905,179 @@ const OrderHistory = () => {
     };
   }, [selectedOrder]);
 
+  useEffect(() => {
+    if (!selectedFuturesOrder?.asset_symbol) return;
+
+    const ws = new WebSocket("wss://socket.delta.exchange");
+
+    ws.onopen = () => {
+      const payload = {
+        type: "subscribe",
+        payload: {
+          channels: [
+            {
+              name: "v2/ticker",
+              symbols: [selectedFuturesOrder.asset_symbol.toUpperCase()],
+            },
+          ],
+        },
+      };
+      ws.send(JSON.stringify(payload));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data?.type === "v2/ticker" && data?.close) {
+        setFuturesLastTradePrice(data.close);
+      }
+    };
+
+    ws.onerror = (error) => console.error("Futures WebSocket error:", error);
+
+    return () => {
+      ws.close();
+    };
+  }, [selectedFuturesOrder]);
 
   useEffect(() => {
-    setAmount(0);
+    setAmount("");
   }, [spotSide]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/trading/api/trading/trades/",
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${tokens?.access}`,
-            },
-          }
-        );
+    try {
+      const response = await fetch(`${baseURL}trading/api/trading/trades/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens?.access}`,
+        },
+      });
 
-        if (response.status === 401) {
-          const errorData = await response.json();
-          if (
-            errorData?.code === "token_not_valid" ||
-            errorData?.detail === "Given token not valid for any token type"
-          ) {
-            localStorage.removeItem("authTokens");
-            navigate("/login");
-            return;
-          }
-          throw new Error("Unauthorized access");
+      console.log(response,"responseresponseresponse")
+
+     
+
+      if (response.status === 401) {
+        const errorData = await response.json();
+        
+
+       
+        if (
+          errorData?.code === "token_not_valid" ||
+          errorData?.detail === "Given token not valid for any token type"
+        ) {
+          localStorage.removeItem("authTokens");
+          navigate("/login");
+          return;
         }
+        throw new Error("Unauthorized access");
+      }
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+      if (!response.ok) {
+        // Try to parse JSON even when response is not ok
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData?.detail || `HTTP error! status: ${response.status}`;
+        throw new Error(message);
+      }
 
-        const data = await response.json();
+      const data = await response.json();
 
-        console.log(data, "Holdings and History");
+      console.log(data, "Holdings and History");
 
-        // Format order history from nested history array
-        const formattedHistory = data.results.flatMap((trade) =>
-          trade.history.map((h) => ({
-            asset_symbol: trade.asset_symbol,
-            asset_name: trade.asset_name,
-            trade_type: trade.trade_type,
-            direction: trade.direction,
-            holding_type: trade.holding_type,
-            status: trade.status,
-            total_quantity: trade.total_quantity,
-            average_price: trade.average_price,
-            total_invested: trade.total_invested,
-            opened_at: trade.opened_at,
-            closed_at: trade.closed_at,
-            action: h.action,
-            order_type: h.order_type,
-            quantity: h.quantity,
-            price: h.price,
-            amount: h.amount,
-            realized_pnl: h.realized_pnl,
-            created_at: h.created_at,
-          }))
-        );
-
-        // Format holdings from main trade data
-        const formattedHoldings = data.results.map((trade) => ({
-          id: trade.id,
+      // Format order history from nested history array
+      const formattedHistory = data.results.flatMap((trade) =>
+        trade.history.map((h) => ({
           asset_symbol: trade.asset_symbol,
           asset_name: trade.asset_name,
-          asset_exchange: trade.asset_exchange,
           trade_type: trade.trade_type,
           direction: trade.direction,
-          status: trade.status,
           holding_type: trade.holding_type,
+          status: trade.status,
           total_quantity: trade.total_quantity,
-          remaining_quantity: trade.remaining_quantity,
           average_price: trade.average_price,
-          realized_pnl: trade.realized_pnl,
-          unrealized_pnl: trade.unrealized_pnl,
           total_invested: trade.total_invested,
           opened_at: trade.opened_at,
           closed_at: trade.closed_at,
-          updated_at: trade.updated_at,
-          total_pnl: trade.total_pnl,
-          pnl_percentage: trade.pnl_percentage,
-          history: trade.history || [],
-        }));
+          action: h.action,
+          order_type: h.order_type,
+          quantity: h.quantity,
+          price: h.price,
+          amount: h.amount,
+          realized_pnl: h.realized_pnl,
+          created_at: h.created_at,
+        }))
+      );
 
-        setOrderHistory(formattedHistory);
-        setHoldings(formattedHoldings);
-      } catch (err) {
-        setError(err.message || "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Format holdings from main trade data
+      const formattedHoldings = data.results.map((trade) => ({
+        id: trade.id,
+        asset_symbol: trade.asset_symbol,
+        asset_name: trade.asset_name,
+        asset_exchange: trade.asset_exchange,
+        trade_type: trade.trade_type,
+        direction: trade.direction,
+        status: trade.status,
+        holding_type: trade.holding_type,
+        total_quantity: trade.total_quantity,
+        remaining_quantity: trade.remaining_quantity,
+        average_price: trade.average_price,
+        realized_pnl: trade.realized_pnl,
+        unrealized_pnl: trade.unrealized_pnl,
+        total_invested: trade.total_invested,
+        opened_at: trade.opened_at,
+        closed_at: trade.closed_at,
+        updated_at: trade.updated_at,
+        total_pnl: trade.total_pnl,
+        pnl_percentage: trade.pnl_percentage,
+        history: trade.history || [],
+      }));
+
+      setOrderHistory(formattedHistory);
+      setHoldings(formattedHoldings);
+    } catch (err) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
 
     fetchData();
   }, [navigate]);
 
+  const [optionsSellQty, setOptionsSellQty] = useState(0);
+  const [isClosingOptions, setIsClosingOptions] = useState(false);
+  const [selectedOptionsOrder, setSelectedOptionsOrder] = useState(null);
+const [optionsQuantity, setOptionsQuantity] = useState(1);
+const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
+
+
+  const [futuresSpotSide, setFuturesSpotSide] = useState("buy");
+  const [futuresAmount, setFuturesAmount] = useState("");
+  const [futuresLastTradePrice, setFuturesLastTradePrice] = useState(null);
+  const [isPlacingFuturesOrder, setIsPlacingFuturesOrder] = useState(false);
+
+
+
   const handleTradeClick = (holding) => {
-    if (holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED") {
+  if (holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED") {
+    if (holding.trade_type === "SPOT") {
       setSelectedOrder(holding);
       setAmount(holding.remaining_quantity);
       setSpotSide("buy");
+    } else if (holding.trade_type === "FUTURES") {
+      setSelectedFuturesOrder(holding);
+      setFuturesAmount(holding.remaining_quantity);
+      setFuturesSpotSide("buy");
+    } else if (holding.trade_type === "OPTIONS") {
+      setSelectedOptionsOrder(holding);
+      setOptionsQuantity(holding.remaining_quantity);
     }
-  };
+  }
+};
 
   const handleStart = () => setShowTooltip(true);
   const handleEnd = () => setShowTooltip(false);
@@ -429,8 +1097,8 @@ const OrderHistory = () => {
 
   const calculateLivePnL = (holding) => {
     const currentPrice = livePrices[holding.asset_symbol];
-    console.log(currentPrice,"the current priiiice")
-    if (!currentPrice ) {
+    // console.log(currentPrice, "the current priiiice");
+    if (!currentPrice) {
       return {
         pnl: holding.total_pnl,
         percentage: holding.pnl_percentage,
@@ -478,34 +1146,34 @@ const OrderHistory = () => {
     }
     return true;
   });
-  console.log("Filtered History:", filteredHistory);
+  // console.log("Filtered History:", filteredHistory);
 
   return (
     <div className="min-h-screen  text-white">
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+      <div className="max-w-[1400px] mx-auto  ">
+        {/* <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
           Order History
-        </h1>
+        </h1> */}
 
         {/* Tabs */}
-        <div className="bg-[#13152E] border border-white/10 rounded-lg p-1 mb-6">
+        <div className=" p-1 mb-6">
           <div className="flex gap-2">
             {[
-              {
-                label: `Open Orders(${getOpenOrdersCount()})`,
-                value: "openOrders",
-              },
+              // {
+              //   label: `Open Orders(${getOpenOrdersCount()})`,
+              //   value: "openOrders",
+              // },
               { label: "Order History", value: "orderHistory" },
               { label: "Holdings", value: "holdings" },
-              { label: "Funds", value: "funds" },
-              { label: "Bots", value: "bots" },
+              { label: "Closed Trades", value: "closed" },
+              // { label: "Bots", value: "bots" },
             ].map((tab, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-6 py-3 rounded-lg  text-sm font-medium transition-all ${
+                className={`px-6 py-3   text-sm font-medium transition-all ${
                   activeTab === tab.value
-                    ? "bg-[#1E1F36] border border-white/10 text-white"
+                    ? " border-b border-white text-white"
                     : "text-gray-400 hover:text-white"
                 }`}
               >
@@ -517,7 +1185,7 @@ const OrderHistory = () => {
 
         {/* Date Filter - Only show for Order History */}
         {activeTab === "orderHistory" && (
-          <div className="bg-[#13152E] border border-white/10 rounded-lg p-4 mb-6">
+          <div className="  w-full  rounded-lg p-4 mb-6">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-gray-400 text-sm">From:</label>
@@ -554,23 +1222,23 @@ const OrderHistory = () => {
         )}
 
         {/* Loading State */}
-        {loading && (
+        {isloading && (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-purple-500 mx-auto"></div>
             <p className="text-gray-400 mt-4">Loading...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">
+          <div className=" text-red-400">
             {error}
           </div>
         )}
 
         {/* Order History Table */}
-        {!loading && !error && activeTab === "orderHistory" && (
-          <div className="bg-[#13152E] border sm:border-[#4733A6]/40 rounded-lg overflow-hidden">
+        {!isloading && !error && activeTab === "orderHistory" && (
+          <div className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -579,7 +1247,7 @@ const OrderHistory = () => {
                       Date
                     </th>
                     <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">
-                      Pair
+                      Name
                     </th>
                     <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">
                       Type
@@ -628,7 +1296,7 @@ const OrderHistory = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-sm font-medium text-white">
-                            {order.asset_symbol}/USDT
+                            {order.asset_symbol}
                           </td>
                           <td className="py-4 px-4 text-sm text-gray-300">
                             {order.order_type}
@@ -653,19 +1321,7 @@ const OrderHistory = () => {
                           <td className="py-4 font-bold px-4 text-sm text-right text-gray-300">
                             {Number(order.amount).toFixed(4)}
                           </td>
-                          {/* <td className="py-4 px-4 text-sm">
-                            <span
-                              className={`px-3 py-1 rounded text-xs ${
-                                order.status === "OPEN"
-                                  ? "bg-blue-500/20 text-blue-400"
-                                  : order.status === "CLOSED"
-                                  ? "bg-green-500/20 text-green-400"
-                                  : "bg-gray-500/20 text-gray-400"
-                              }`}
-                            >
-                              {order.status}
-                            </span>
-                          </td> */}
+                      
                         </tr>
                       ))
                   ) : (
@@ -685,9 +1341,25 @@ const OrderHistory = () => {
         )}
 
         {/* Holdings Table */}
-        {!loading && !error && activeTab === "holdings" && (
-          <div className="bg-[#13152E] rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
+        {!isloading && !error && activeTab === "holdings" && (
+          <div className="rounded-lg px-6 overflow-hidden">
+            <div className="flex w-72 border rounded-md border-b border-gray-800">
+              {options.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setToggleOption(option)}
+                  className={`flex-1 py-2 text-sm text-center  rounded-md transition duration-200  ${
+                    toggleOption === option
+                      ? "bg-purple-600/20 p-1  text-white backdrop-blur-md shadow-inner"
+                      : " text-gray-700 "
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto ">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-800">
@@ -724,235 +1396,272 @@ const OrderHistory = () => {
                   </tr>
                 </thead>
 
-                <tbody>
-                  {holdings.length > 0 ? (
+                {/* <tbody>
+                  {holdings.filter((holding) => holding.status !== "CLOSED")
+                    .length > 0 ? (
                     holdings
-                    .filter((holding) => holding.status !== "CLOSED")
-                    .map((holding, idx) => {
-                      const pnlData = calculateLivePnL(holding);
-                      const isExpanded = expandedRows.includes(holding.id);
+                      .filter((holding) => holding.status !== "CLOSED")
+                      .map((holding, idx) => {
+                        const pnlData = calculateLivePnL(holding);
+                        const isExpanded = expandedRows.includes(holding.id);
 
-                      return (
-                        <React.Fragment key={idx}>
-                          {/* Main Row */}
-                          <tr className="border-b border-gray-800 hover:bg-[#1E1F36] transition-colors">
-                            <td className="py-4 px-4 text-sm font-medium text-white">
-                              {holding.asset_symbol}
-                              <br />
-                              <span className="text-xs text-gray-500">
-                                {holding.asset_name}
-                              </span>
-                            </td>
+                        return ( */}
 
-                            <td className="py-4 px-4 text-sm text-gray-300">
-                              {holding.trade_type}
-                              <br />
-                              <span className="text-xs text-gray-500">
-                                {holding.holding_type}
-                              </span>
-                            </td>
+                <tbody>
+                  {holdings.filter(
+                    (holding) =>
+                      holding.status !== "CLOSED" &&
+                      holding.trade_type === toggleOption.toUpperCase()
+                  ).length > 0 ? (
+                    holdings
+                      .filter(
+                        (holding) =>
+                          holding.status !== "CLOSED" &&
+                          holding.trade_type === toggleOption.toUpperCase()
+                      )
+                      .map((holding, idx) => {
+                        const pnlData = calculateLivePnL(holding);
 
-                            <td className="py-4 px-4 text-sm">
-                              <span
-                                className={`${
-                                  holding.direction.toLowerCase() === "buy"
-                                    ? "text-green-400"
-                                    : "text-red-400"
-                                }`}
-                              >
-                                {holding.direction}
-                              </span>
-                            </td>
+                        // console.log(pnlData,"the pnl data")
+                        const isExpanded = expandedRows.includes(holding.id);
 
-                            <td className="py-4 px-4 text-sm text-right text-gray-300">
-                              {Number(holding.remaining_quantity).toFixed(6)}
-                            </td>
-
-                            <td className="py-4 px-4 text-sm text-right text-gray-300">
-                              {Number(holding.average_price).toFixed(4)}
-                            </td>
-
-                            <td className="py-4 px-4 text-sm text-right text-gray-300">
-                              {pnlData.isLive ? (
-                                <span className="flex w-full font-bold items-center justify-end gap-1">
-                                  {pnlData.currentPrice}
+                        return (
+                          <React.Fragment key={idx}>
+                            {/* Main Row */}
+                            <tr className="border-b border-gray-800 hover:bg-[#1E1F36] transition-colors">
+                              <td className="py-4 px-4 text-sm font-medium text-white">
+                                {holding.asset_symbol}
+                                <br />
+                                <span className="text-xs text-gray-500">
+                                  {holding.asset_name}
                                 </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
+                              </td>
 
-                            <td className="py-4 px-4 text-sm text-right text-gray-300">
-                              {Number(holding.total_invested).toFixed(2)}
-                            </td>
-
-                            <td className="py-4 w-28 px-4 text-sm text-right">
-                              <div className="flex flex-col items-end">
-                                <span
-                                  className={
-                                    Number(pnlData.pnl) >= 0
-                                      ? "text-green-400 font-semibold"
-                                      : "text-red-400 font-semibold"
-                                  }
-                                >
-                                  {pnlData.pnl}
+                              <td className="py-4 px-4 text-sm text-gray-300">
+                                {holding.trade_type}
+                                <br />
+                                <span className="text-xs text-gray-500">
+                                  {holding.holding_type}
                                 </span>
+                              </td>
+
+                              <td className="py-4 px-4 text-sm">
                                 <span
-                                  className={`text-xs ${
-                                    Number(pnlData.pnl) >= 0
+                                  className={`${
+                                    holding.direction.toLowerCase() === "buy"
                                       ? "text-green-400"
                                       : "text-red-400"
                                   }`}
                                 >
-                                  ({Number(pnlData.percentage).toFixed(4)}%)
+                                  {holding.direction}
                                 </span>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="py-4 px-4 text-sm text-center">
-                              <span
-                                className={`px-3 py-1 rounded text-xs ${
-                                  holding.status === "OPEN"
-                                    ? "bg-blue-500/20 text-blue-400"
-                                    : "bg-green-500/20 text-green-400"
-                                }`}
-                              >
-                                {holding.status}
-                              </span>
-                            </td>
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.remaining_quantity).toFixed(6)}
+                              </td>
 
-                            <td className="py-4 px-4 text-center">
-                              <div className="flex justify-center items-center gap-2">
-                                
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.average_price).toFixed(4)}
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {pnlData.isLive ? (
+                                  <span className="flex w-full font-bold items-center justify-end gap-1">
+                                    {pnlData.currentPrice}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500">-</span>
+                                )}
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.total_invested).toFixed(2)}
+                              </td>
+
+                              <td className="py-4 w-28 px-4 text-sm text-right">
+                                <div className="flex flex-col items-end">
+                                  <span
+                                    className={
+                                      Number(pnlData.pnl) >= 0
+                                        ? "text-green-400 font-semibold"
+                                        : "text-red-400 font-semibold"
+                                    }
+                                  >
+                                    {pnlData.pnl}
+                                  </span>
+                                  <span
+                                    className={`text-xs ${
+                                      Number(pnlData.pnl) >= 0
+                                        ? "text-green-400"
+                                        : "text-red-400"
+                                    }`}
+                                  >
+                                    ({Number(pnlData.percentage).toFixed(4)}%)
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-center">
+                                <span
+                                  className={`px-3 py-1 rounded text-xs 
+                                 ${
+                                   //   holding.status === "OPEN"
+                                   // ?
+                                   "bg-blue-500/20 text-blue-400"
+                                   // : "bg-green-500/20 text-green-400"
+                                 }`}
+                                >
+                                  {/* {holding.status} */}
+                                  OPEN
+                                </span>
+                              </td>
+
+                              <td className="py-4 px-4 text-center">
+                                <div className="flex justify-center items-center gap-2">
                                   <button
                                     onClick={() => handleTradeClick(holding)}
-                                    className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-xs font-semibold transition"
+                                    className="bg-[#D643BF]  hover:bg-[#b8329f] px-4 py-2 rounded text-xs font-semibold transition"
                                   >
                                     Trade
                                   </button>
-                             
 
-<button
-  className="px-2 py-2 rounded bg-gray-800 hover:bg-gray-600"
-  onClick={() =>
-    setExpandedRows((prev) =>
-      prev.includes(holding.id)
-        ? prev.filter((id) => id !== holding.id)
-        : [...prev, holding.id]
-    )
-  }
-  title="History"
->
-  <History className="w-4 h-4" />
-</button>
-
-                              </div>
-                            </td>
-
-                            {/* Expand/Collapse Button */}
-                          </tr>
-
-                          {/* Expanded Section (separate row) */}
-                          {isExpanded && (
-                            <tr className="bg-[#13152E] border-b border-gray-800">
-                              <td colSpan="12" className="p-6 bg-gray-950">
-                                <div className="mb-4 flex items-center justify-between">
-                                  <h3 className="text-lg font-semibold text-gray-200 tracking-wide flex items-center gap-2">
-                                    <span className="inline-block w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                                    History
-                                  </h3>
-                                  <span className="text-sm text-gray-400">
-                                    {holding?.history?.length || 0} record
-                                    {holding?.history?.length === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-
-                                <div className="overflow-x-auto rounded-xl border border-gray-800 shadow-md shadow-indigo-900/10">
-                                  <table className="min-w-full text-sm text-gray-300">
-                                    <thead>
-                                      <tr className="bg-[#1D2143] border-b border-gray-700">
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Action
-                                        </th>
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Order Type
-                                        </th>
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Quantity
-                                        </th>
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Price
-                                        </th>
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Amount
-                                        </th>
-                                        <th className="p-3 text-left font-medium text-gray-400">
-                                          Created At
-                                        </th>
-                                      </tr>
-                                    </thead>
-
-                                    <tbody>
-                                      {holding?.history?.length > 0 ? (
-                                        holding.history.map((h, i) => (
-                                          <tr
-                                            key={h.id || i}
-                                            className="border-t border-gray-800 hover:bg-[#212652] transition-colors duration-200"
-                                          >
-                                            <td
-                                              className={`p-3 capitalize font-medium ${
-                                                h.action?.toLowerCase() ===
-                                                "buy"
-                                                  ? "text-green-400"
-                                                  : h.action?.toLowerCase() ===
-                                                    "sell"
-                                                  ? "text-red-400"
-                                                  : "text-gray-200"
-                                              }`}
-                                            >
-                                              {h.action}
-                                            </td>
-
-                                            <td className="p-3 capitalize text-gray-200">
-                                              {h.order_type}
-                                            </td>
-                                            <td className="p-3 text-gray-200">
-                                              {parseFloat(h.quantity).toFixed(
-                                                4
-                                              )}
-                                            </td>
-                                            <td className="p-3 text-gray-200">
-                                              {parseFloat(h.price).toFixed(2)}
-                                            </td>
-                                            <td className="p-3 text-gray-200">
-                                              {parseFloat(h.amount).toFixed(2)}
-                                            </td>
-                                            <td className="p-3 text-gray-400">
-                                              {new Date(
-                                                h.created_at
-                                              ).toLocaleString()}
-                                            </td>
-                                          </tr>
-                                        ))
-                                      ) : (
-                                        <tr>
-                                          <td
-                                            colSpan="7"
-                                            className="p-5 text-center text-gray-500 bg-[#141731]"
-                                          >
-                                            No order history found
-                                          </td>
-                                        </tr>
-                                      )}
-                                    </tbody>
-                                  </table>
+                                  <button
+                                    className="px-2 py-2 rounded "
+                                    onClick={() =>
+                                      setExpandedRows((prev) =>
+                                        prev.includes(holding.id)
+                                          ? prev.filter(
+                                              (id) => id !== holding.id
+                                            )
+                                          : [...prev, holding.id]
+                                      )
+                                    }
+                                    title="History"
+                                  >
+                                    <History className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </td>
+
+                              {/* Expand/Collapse Button */}
                             </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
+
+                            {/* Expanded Section (separate row) */}
+                            {isExpanded && (
+                              <tr className=" border-b border-gray-800">
+                                <td colSpan="12" className="p-6 ">
+                                  <div className="mb-4 flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-gray-200 tracking-wide flex items-center gap-2">
+                                      {/* <span className="inline-block w-1.5 h-6 bg-indigo-500 rounded-full"></span> */}
+                                      History
+                                    </h3>
+                                    <span className="text-sm text-gray-400">
+                                      {holding?.history?.length || 0} record
+                                      {holding?.history?.length === 1
+                                        ? ""
+                                        : "s"}
+                                    </span>
+                                  </div>
+
+                                  <div className="overflow-x-auto    border-b border-gray-800 ">
+                                    <table className="min-w-full text-sm text-gray-300">
+                                      <thead>
+                                        <tr className="border-b border-gray-700">
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Action
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Order Type
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Quantity
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Price
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Amount
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Created At
+                                          </th>
+                                        </tr>
+                                      </thead>
+
+                                      <tbody>
+                                        {holding?.history?.length > 0 ? (
+                                          [...holding.history]
+                                            .sort(
+                                              (a, b) =>
+                                                new Date(b.created_at) -
+                                                new Date(a.created_at)
+                                            )
+                                            .map((h, i) => (
+                                              <tr
+                                                key={h.id || i}
+                                                className=" transition-colors duration-200"
+                                              >
+                                                <td
+                                                  className={`p-3 capitalize font-medium ${
+                                                    h.action?.toLowerCase() ===
+                                                    "buy"
+                                                      ? "text-green-400"
+                                                      : h.action?.toLowerCase() ===
+                                                          "sell" ||
+                                                        h.action?.toLowerCase() ===
+                                                          "partial_sell"
+                                                      ? "text-red-400"
+                                                      : "text-gray-200"
+                                                  }`}
+                                                >
+                                                  {h.action}
+                                                </td>
+
+                                                <td className="p-3 capitalize text-gray-200">
+                                                  {h.order_type}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(
+                                                    h.quantity
+                                                  ).toFixed(4)}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(h.price).toFixed(
+                                                    2
+                                                  )}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(h.amount).toFixed(
+                                                    2
+                                                  )}
+                                                </td>
+                                                <td className="p-3 text-gray-400">
+                                                  {new Date(
+                                                    h.created_at
+                                                  ).toLocaleString()}
+                                                </td>
+                                              </tr>
+                                            ))
+                                        ) : (
+                                          <tr>
+                                            <td
+                                              colSpan="7"
+                                              className="p-5 text-center text-gray-500 bg-[#141731]"
+                                            >
+                                              No order history found
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
                   ) : (
                     <tr>
                       <td
@@ -970,277 +1679,866 @@ const OrderHistory = () => {
         )}
 
         {/* Open Orders Tab */}
-        {!loading && !error && activeTab === "openOrders" && (
-          <div className="bg-[#13152E] rounded-lg p-8 text-center">
+        {/* {!isloading && !error && activeTab === "openOrders" && (
+          <div className=" rounded-lg p-8 text-center">
             <p className="text-gray-400">Open orders will be displayed here</p>
           </div>
-        )}
+        )} */}
 
-        {/* Funds Tab */}
-        {!loading && !error && activeTab === "funds" && (
-          <div className="bg-[#13152E] rounded-lg p-8 text-center">
-            <p className="text-gray-400">
-              Funds information will be displayed here
-            </p>
+        {/* Closed Tab */}
+        {!isloading && !error && activeTab === "closed" && (
+          <div className="rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">
+                      Asset
+                    </th>
+                    <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">
+                      Type
+                    </th>
+                    {/* <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">
+                      Side
+                    </th> */}
+                    <th className="text-right py-4 px-4 text-sm font-medium text-gray-400">
+                      Total Qty
+                    </th>
+                    <th className="text-right py-4 px-4 text-sm font-medium text-gray-400">
+                      Avg Price
+                    </th>
+                    <th className="text-right py-4 px-4 text-sm font-medium text-gray-400">
+                      Price
+                    </th>
+                    <th className="text-right py-4 px-4 text-sm font-medium text-gray-400">
+                      Invested
+                    </th>
+                    <th className="text-right py-4 px-4 text-sm font-medium text-gray-400">
+                      PnL
+                    </th>
+                    <th className="text-center py-4 px-4 text-sm font-medium text-gray-400">
+                      Status
+                    </th>
+                    <th className="text-center py-4 px-4 text-sm font-medium text-gray-400">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {holdings.filter((holding) => holding.status == "CLOSED")
+                    .length > 0 ? (
+                    holdings
+                      .filter((holding) => holding.status == "CLOSED")
+                      .map((holding, idx) => {
+                        const pnlData = calculateLivePnL(holding);
+                        const isExpanded = expandedRows.includes(holding.id);
+
+                        return (
+                          <React.Fragment key={idx}>
+                            {/* Main Row */}
+                            <tr className="border-b border-gray-800 hover:bg-[#1E1F36] transition-colors">
+                              <td className="py-4 px-4 text-sm font-medium text-white">
+                                {holding.asset_symbol}
+                                <br />
+                                <span className="text-xs text-gray-500">
+                                  {holding.asset_name}
+                                </span>
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-gray-300">
+                                {holding.trade_type}
+                                <br />
+                                <span className="text-xs text-gray-500">
+                                  {holding.holding_type}
+                                </span>
+                              </td>
+
+                              {/* <td className="py-4 px-4 text-sm">
+                                <span
+                                  className={`${
+                                    holding.direction.toLowerCase() === "buy"
+                                      ? "text-green-400"
+                                      : "text-red-400"
+                                  }`}
+                                >
+                                  {holding.direction}
+                                </span>
+                              </td> */}
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.total_quantity).toFixed(6)}
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.average_price).toFixed(4)}
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                <span className="flex w-full items-center justify-end gap-1">
+                                  {holding.history.find(
+                                    (item) => item.action === "SELL"
+                                  )
+                                    ? parseFloat(
+                                        holding.history.find(
+                                          (item) => item.action === "SELL"
+                                        ).price
+                                      ).toFixed(4)
+                                    : " - "}
+                                </span>
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-right text-gray-300">
+                                {Number(holding.total_invested).toFixed(2)}
+                              </td>
+
+                              <td className="py-4 w-28 px-4 text-sm text-right">
+                                <div className="flex flex-col items-end">
+                                  <span
+                                    className={
+                                      Number(holding.realized_pnl) >= 0
+                                        ? "text-green-400 font-semibold"
+                                        : "text-red-400 font-semibold"
+                                    }
+                                  >
+                                    {holding.realized_pnl}
+                                  </span>
+                                  <span
+                                    className={`text-xs ${
+                                      Number(pnlData.pnl) >= 0
+                                        ? "text-green-400"
+                                        : "text-red-400"
+                                    }`}
+                                  >
+                                    ({Number(holding.pnl_percentage).toFixed(4)}
+                                    %)
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="py-4 px-4 text-sm text-center">
+                                <span
+                                  className={`px-3 py-1 rounded text-xs 
+                                 ${
+                                   holding.status === "OPEN"
+                                     ? "bg-blue-500/20 text-blue-400"
+                                     : "bg-green-500/20 text-green-400"
+                                 }`}
+                                >
+                                  {holding.status}
+                                </span>
+                              </td>
+
+                              <td className="py-4 px-4 text-center">
+                                <div className="flex justify-center items-center gap-2">
+                                  {/* <button
+                                    onClick={() => handleTradeClick(holding)}
+                                    className="bg-[#D643BF]  hover:bg-[#b8329f] px-4 py-2 rounded text-xs font-semibold transition"
+                                  >
+                                    Trade
+                                  </button> */}
+
+                                  <button
+                                    className="px-2 py-2 rounded "
+                                    onClick={() =>
+                                      setExpandedRows((prev) =>
+                                        prev.includes(holding.id)
+                                          ? prev.filter(
+                                              (id) => id !== holding.id
+                                            )
+                                          : [...prev, holding.id]
+                                      )
+                                    }
+                                    title="History"
+                                  >
+                                    <History className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Expand/Collapse Button */}
+                            </tr>
+
+                            {/* Expanded Section (separate row) */}
+                            {isExpanded && (
+                              <tr className=" border-b border-gray-800">
+                                <td colSpan="12" className="p-6 ">
+                                  <div className="mb-4 flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-gray-200 tracking-wide flex items-center gap-2">
+                                      {/* <span className="inline-block w-1.5 h-6 bg-indigo-500 rounded-full"></span> */}
+                                      History
+                                    </h3>
+                                    <span className="text-sm text-gray-400">
+                                      {holding?.history?.length || 0} record
+                                      {holding?.history?.length === 1
+                                        ? ""
+                                        : "s"}
+                                    </span>
+                                  </div>
+
+                                  <div className="overflow-x-auto    border-b border-gray-800 ">
+                                    <table className="min-w-full text-sm text-gray-300">
+                                      <thead>
+                                        <tr className="border-b border-gray-700">
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Action
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Order Type
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Quantity
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Price
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Amount
+                                          </th>
+                                          <th className="p-3 text-left font-medium text-gray-400">
+                                            Created At
+                                          </th>
+                                        </tr>
+                                      </thead>
+
+                                      <tbody>
+                                        {holding?.history?.length > 0 ? (
+                                          [...holding.history]
+                                            .sort(
+                                              (a, b) =>
+                                                new Date(b.created_at) -
+                                                new Date(a.created_at)
+                                            )
+                                            .map((h, i) => (
+                                              <tr
+                                                key={h.id || i}
+                                                className=" transition-colors duration-200"
+                                              >
+                                                <td
+                                                  className={`p-3 capitalize font-medium ${
+                                                    h.action?.toLowerCase() ===
+                                                    "buy"
+                                                      ? "text-green-400"
+                                                      : h.action?.toLowerCase() ===
+                                                          "sell" ||
+                                                        h.action?.toLowerCase() ===
+                                                          "partial_sell"
+                                                      ? "text-red-400"
+                                                      : "text-gray-200"
+                                                  }`}
+                                                >
+                                                  {h.action}
+                                                </td>
+
+                                                <td className="p-3 capitalize text-gray-200">
+                                                  {h.order_type}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(
+                                                    h.quantity
+                                                  ).toFixed(4)}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(h.price).toFixed(
+                                                    2
+                                                  )}
+                                                </td>
+                                                <td className="p-3 text-gray-200">
+                                                  {parseFloat(h.amount).toFixed(
+                                                    2
+                                                  )}
+                                                </td>
+                                                <td className="p-3 text-gray-400">
+                                                  {new Date(
+                                                    h.created_at
+                                                  ).toLocaleString()}
+                                                </td>
+                                              </tr>
+                                            ))
+                                        ) : (
+                                          <tr>
+                                            <td
+                                              colSpan="7"
+                                              className="p-5 text-center text-gray-500 bg-[#141731]"
+                                            >
+                                              No order history found
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={12}
+                        className="py-12 text-center text-gray-500"
+                      >
+                        No holdings found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* Bots Tab */}
-        {!loading && !error && activeTab === "bots" && (
+        {!isloading && !error && activeTab === "bots" && (
           <div className="bg-[#13152E] rounded-lg p-8 text-center">
             <p className="text-gray-400">Trading bots will be displayed here</p>
           </div>
         )}
 
-        {/* Trading Modal - Only for Holdings */}
-        {/* {selectedOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/60">
-            <div className="bg-[#13152E] rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-800">
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => setSpotSide("buy")}
-                  className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                    spotSide === "buy"
-                      ? "bg-green-500 text-white shadow-lg shadow-green-500/30"
-                      : "bg-[#1E1F36] text-gray-400 hover:bg-[#252740]"
-                  }`}
-                >
-                  Buy
-                </button>
-                <button
-                  onClick={() => setSpotSide("sell")}
-                  className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                    spotSide === "sell"
-                      ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                      : "bg-[#1E1F36] text-gray-400 hover:bg-[#252740]"
-                  }`}
-                >
-                  Sell
-                </button>
-              </div>
+        
 
-              <div className="bg-[#1E1F36] rounded-lg p-4 mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-400 text-sm">Current Price</span>
-                  <span className="text-2xl font-bold text-white">
-                    {lastTradePrice ? Number(lastTradePrice).toFixed(2) : "Loading..."}
-                    <span className="text-sm text-gray-400 ml-1">USDT</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-gray-400 text-sm mb-2 block">
-                  Amount ({selectedOrder.asset_symbol})
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  onWheel={(e) => e.target.blur()}
-                  className="w-full bg-[#1E1F36] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition"
-                  placeholder="0.00"
-                  max={spotSide === "buy" ? balance : selectedOrder.remaining_quantity}
-                />
-              </div>
-
-              <div className="relative mb-6">
-                <input
-                  type="range"
-                  min="0"
-                  max={spotSide === "buy" ? balance : selectedOrder.remaining_quantity}
-                  step={(spotSide === "buy" ? balance : selectedOrder.remaining_quantity) / 100}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  onMouseDown={handleStart}
-                  onMouseUp={handleEnd}
-                  onTouchStart={handleStart}
-                  onTouchEnd={handleEnd}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, ${
-                      spotSide === "buy" ? "#22c55e" : "#ef4444"
-                    } ${(amount / (spotSide === "buy" ? balance : selectedOrder.remaining_quantity)) * 100}%, #1E1F36 ${
-                      (amount / (spotSide === "buy" ? balance : selectedOrder.remaining_quantity)) * 100
-                    }%)`,
-                  }}
-                />
-                {showTooltip && (
-                  <div
-                    className="absolute -top-10 bg-gray-800 text-white text-xs px-3 py-1 rounded shadow-lg"
-                    style={{
-                      left: `calc(${(amount / (spotSide === "buy" ? balance : selectedOrder.remaining_quantity)) * 100}% - 24px)`,
-                    }}
-                  >
-                    {amount.toFixed(4)}
+        {selectedOrder && (
+          <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+            <div
+              className={`rounded-xl shadow-2xl w-[420px] transition-all duration-300 border ${
+                spotSide === "buy"
+                  ? "bg-[#0A1628] border-blue-500/30"
+                  : "bg-[#1A0A0F] border-red-500/30"
+              }`}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-700/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedOrder.asset_symbol}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {selectedOrder.asset_name}
+                    </p>
                   </div>
-                )}
-              </div>
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-gray-400" />
+                  </button>
+                </div>
 
-              <div className="bg-[#1E1F36] rounded-lg p-4 mb-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">Total</span>
-                  <span className="text-white font-semibold">
-                    {amount > 0 ? (amount * Number(selectedOrder.average_price || 0)).toFixed(2) : "0.00"} USDT
-                  </span>
+                {/* Buy/Sell Toggle */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSpotSide("buy");
+                      setAmount(0);
+                    }}
+                    className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                      spotSide === "buy"
+                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+                        : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <TrendingUp size={16} />
+                      Buy
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSpotSide("sell");
+                      setAmount(0);
+                    }}
+                    className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                      spotSide === "sell"
+                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                        : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <TrendingDown size={16} />
+                      Sell
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              <div className="flex justify-between text-xs text-gray-400 mb-6">
-                <span>
-                  Available: {selectedOrder.remaining_quantity} {selectedOrder.asset_symbol}
-                </span>
-                <span>Balance: {balance} USDT</span>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="flex-1 py-3 bg-[#1E1F36] hover:bg-[#252740] rounded-lg font-semibold transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const tokens = JSON.parse(localStorage.getItem("authTokens"));
-                      if (!tokens?.access) {
-                        alert("You must be logged in!");
-                        return;
-                      }
-                      const payload = {
-                        asset_symbol: selectedOrder.asset_symbol,
-                        asset_name: selectedOrder.asset_name,
-                        asset_exchange: selectedOrder.asset_exchange,
-                        trade_type: "SPOT",
-                        direction: spotSide.toUpperCase(),
-                        holding_type: selectedOrder.holding_type,
-                        quantity: amount.toFixed(8),
-                        price:
-                          spotSide === "buy"
-                            ? (Number(lastTradePrice || 0)).toFixed(8)
-                            : Number(selectedOrder.average_price).toFixed(8),
-                        order_type: "MARKET",
-                      };
-
-                      const response = await fetch("http://127.0.0.1:8000/api/v1/trading/place-order/", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${tokens.access}`,
-                        },
-                        body: JSON.stringify(payload),
-                      });
-
-                      if (!response.ok) throw new Error("Order failed");
-
-                      const data = await response.json();
-                      alert(`✅ ${data.action} ${data.quantity} ${selectedOrder.asset_symbol} successful`);
-                      setSelectedOrder(null);
-                      window.location.reload();
-                    } catch (error) {
-                      console.error(error);
-                      alert("❌ Order failed. Check console for details.");
-                    }
-                  }}
-                  className={`flex-1 py-3 rounded-lg font-semibold transition-all shadow-lg ${
+              {/* Body */}
+              <div className="px-6 py-5">
+                {/* Price Display */}
+                <div
+                  className={`rounded-lg p-4 mb-4 border ${
                     spotSide === "buy"
-                      ? "bg-green-500 hover:bg-green-600 shadow-green-500/30"
-                      : "bg-red-500 hover:bg-red-600 shadow-red-500/30"
+                      ? "bg-blue-500/10 border-blue-500/30"
+                      : "bg-red-500/10 border-red-500/30"
                   }`}
                 >
-                  {spotSide === "buy" ? "Buy" : "Sell"} {selectedOrder.asset_symbol}
-                </button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-400">
+                      {/* {spotSide === "buy" ?  */}
+                      {/* " */}
+                      Market Price
+                      {/* "  */}
+                      {/* : "Avg. Cost"} */}
+                    </span>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-white">
+                        {/* {spotSide === "buy" */}
+                        {/* ? */}
+                        {Number(lastTradePrice).toFixed(2)}
+                        {/* : Number(selectedOrder.average_price).toFixed(2)} */}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity Input */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-gray-400 mb-2 block">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty string or valid number
+                      if (/^\d*$/.test(value)) {
+                        setAmount(value);
+                      }
+                    }}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className="w-full bg-gray-800/50 border-2 border-gray-700 rounded-lg px-4 py-3 text-white font-semibold text-lg focus:outline-none focus:border-blue-500 transition"
+                    placeholder="0"
+                    max={maxAmount}
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1.5">
+                    <span>Available: {selectedOrder.remaining_quantity}</span>
+                    <span
+                      className={`font-semibold ${
+                        spotSide === "buy" ? "text-blue-400" : "text-red-400"
+                      }`}
+                    >
+                      {((amount / maxAmount) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Slider */}
+                <div className="relative mb-5">
+                  <div className="flex justify-between text-xs text-gray-400 mb-2">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={maxAmount}
+                    step={maxAmount / 100}
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    onMouseDown={handleStart}
+                    onMouseUp={handleEnd}
+                    onTouchStart={handleStart}
+                    onTouchEnd={handleEnd}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, ${
+                        spotSide === "buy" ? "#3b82f6" : "#ef4444"
+                      } ${(amount / maxAmount) * 100}%, #374151 ${
+                        (amount / maxAmount) * 100
+                      }%)`,
+                    }}
+                  />
+                  {showTooltip && amount > 0 && (
+                    <div
+                      className={`absolute -top-12 {
+                spotSide === "buy" ? "bg-blue-600" : "bg-red-600"
+              } text-white text-xs px-3 py-1.5 rounded-md shadow-lg font-medium`}
+                      style={{
+                        left: `calc(${(amount / maxAmount) * 100}% - 30px)`,
+                      }}
+                    >
+                      {`${Number(amount).toFixed(2)} (${(
+                        (Number(amount) / Number(maxAmount)) *
+                        100
+                      ).toFixed(1)}%)`}
+
+                      <div
+                        className={`absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${
+                          spotSide === "buy"
+                            ? "border-t-blue-600"
+                            : "border-t-red-600"
+                        }`}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Display */}
+                <div
+                  className={`rounded-lg p-4 mb-4 border ${
+                    spotSide === "buy"
+                      ? "bg-blue-500/10 border-blue-500/30"
+                      : "bg-red-500/10 border-red-500/30"
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-400">
+                      {spotSide === "buy" ? "Total Required" : "Total Value"}
+                    </span>
+
+                    <span className="text-xl font-bold text-white">
+                      {totalValue.toFixed(2)} USDT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Balance Info */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Available Balance</span>
+                    <span className="text-white font-semibold">{balance} </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="flex-1 py-3 bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 rounded-lg font-semibold text-gray-300 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleModalOrder}
+                    disabled={amount <= 0 || isPlacingOrder}
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                      spotSide === "buy"
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/30"
+                        : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
+                    }`}
+                  >
+                    {isPlacingOrder
+                      ? "Placing..."
+                      : spotSide === "buy"
+                      ? "Buy"
+                      : "Sell"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        )} */}
+        )}
 
-{selectedOrder && (
-  <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
-    <div
-      className={`rounded-xl shadow-2xl w-[420px] transition-all duration-300 border ${
-        spotSide === "buy"
-          ? "bg-[#0A1628] border-blue-500/30"
-          : "bg-[#1A0A0F] border-red-500/30"
-      }`}
-    >
+        {selectedFuturesOrder && (
+          <div className="fixed bottom-6 top-2 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="rounded-xl shadow-2xl w-[420px] transition-all duration-300 border bg-[#0A1628] border-purple-500/30">
+              {/* Header */}
+              <div className="px-6 pt-2 border-b border-gray-700/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedFuturesOrder.asset_symbol}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {selectedFuturesOrder.asset_name} - Futures
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedFuturesOrder(null)}
+                    className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-5">
+                {/* Leverage Selection */}
+                <div className="flex justify-between items-center text-xs mb-4">
+                  <span className="text-gray-400">Leverage</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={futuresLeverage}
+                      min={1}
+                      max={100}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFuturesLeverage(val > 100 ? 100 : val < 1 ? 1 : val);
+                      }}
+                      className="w-16 bg-gray-800/50 border border-gray-700 rounded text-center text-white focus:border-purple-400 focus:outline-none py-1"
+                    />
+                    <span className="text-gray-400">x</span>
+                  </div>
+                </div>
+
+                {/* Margin Type Toggle */}
+                <div className="flex space-x-2 mb-4">
+                  <button
+                    onClick={() => setFuturesMarginType("CROSS")}
+                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${
+                      futuresMarginType === "CROSS"
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
+                    }`}
+                  >
+                    Cross
+                  </button>
+                  <button
+                    onClick={() => setFuturesMarginType("ISOLATED")}
+                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${
+                      futuresMarginType === "ISOLATED"
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
+                    }`}
+                  >
+                    Isolated
+                  </button>
+                </div>
+
+                {/* Price Display */}
+                <div className="rounded-lg p-4 mb-4 border bg-purple-500/10 border-purple-500/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-400">Mark Price</span>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-white">
+                        {futuresLastTradePrice
+                          ? Number(futuresLastTradePrice).toFixed(2)
+                          : "-"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity Input */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-gray-400 mb-2 block">
+                    Quantity (Contracts)
+                  </label>
+                  <input
+                    type="number"
+                    value={futuresAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (/^\d*\.?\d*$/.test(value)) {
+                        setFuturesAmount(value);
+                      }
+                    }}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className="w-full bg-gray-800/50 border-2 border-gray-700 rounded-lg px-4 py-3 text-white font-semibold text-lg focus:outline-none focus:border-purple-500 transition"
+                    placeholder="0"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1.5">
+                    <span>
+                      Available: {selectedFuturesOrder.remaining_quantity}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Slider */}
+                <div className="relative mb-5">
+                  <div className="flex justify-between text-xs text-gray-400 mb-2">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={selectedFuturesOrder.remaining_quantity}
+                    step={selectedFuturesOrder.remaining_quantity / 100}
+                    value={futuresAmount}
+                    onChange={(e) => setFuturesAmount(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, #9333ea ${
+                        (futuresAmount /
+                          selectedFuturesOrder.remaining_quantity) *
+                        100
+                      }%, #374151 ${
+                        (futuresAmount /
+                          selectedFuturesOrder.remaining_quantity) *
+                        100
+                      }%)`,
+                    }}
+                  />
+                </div>
+
+                {/* Total Display */}
+                <div className="rounded-lg p-4 mb-4 border bg-purple-500/10 border-purple-500/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-400">
+                      Total Value
+                    </span>
+                    <span className="text-xl font-bold text-white">
+                      {(
+                        futuresAmount * Number(futuresLastTradePrice || 0)
+                      ).toFixed(2)}{" "}
+                      USDT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Balance Info */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Available Balance</span>
+                    <span className="text-white font-semibold">
+                      {balance} USDT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Margin Required Display */}
+
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Margin Required</span>
+                    <span className="text-white font-semibold">
+                      {(() => {
+                        const contractValue = 0.001;
+                        const marginRequired =
+                          (parseFloat(futuresAmount) *
+                            Number(futuresLastTradePrice) *
+                            contractValue) /
+                          futuresLeverage;
+                        return `${marginRequired.toFixed(2)} USDT`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Buy/Long and Sell/Short Buttons in Same Row */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleFuturesModalOrder("buy")}
+                    disabled={
+                      futuresAmount <= 0 ||
+                      futuresLastTradePrice <=0 ||
+                      isPlacingFuturesOrder ||
+                      (() => {
+                        const contractValue = 0.001;
+                        const marginRequired =
+                          (parseFloat(futuresAmount || 0) *
+                            Number(futuresLastTradePrice || 0) *
+                            contractValue) /
+                          futuresLeverage;
+                        return marginRequired > balance;
+                      })()
+                    }
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                      futuresAmount <= 0 ||
+                      futuresLastTradePrice <=0 ||
+                      isPlacingFuturesOrder ||
+                      (() => {
+                        const contractValue = 0.001;
+                        const marginRequired =
+                          (parseFloat(futuresAmount || 0) *
+                            Number(futuresLastTradePrice || 0) *
+                            contractValue) /
+                          futuresLeverage;
+                        return marginRequired > balance;
+                      })()
+                        ? "bg-gray-600"
+                        : "bg-green-600 hover:bg-green-700 shadow-green-500/30"
+                    }`}
+                  >
+                    {isPlacingFuturesOrder
+                      ? "Placing..."
+                      : (() => {
+                          const contractValue = 0.001;
+                          const marginRequired =
+                            (parseFloat(futuresAmount || 0) *
+                              Number(futuresLastTradePrice || 0) *
+                              contractValue) /
+                            futuresLeverage;
+                          return marginRequired > balance
+                            ? "Insufficient"
+                            : "Buy/Long";
+                        })()}
+                  </button>
+
+                  <button
+                    onClick={() => handleFuturesModalOrder("sell")}
+                    disabled={
+                      futuresAmount <= 0 ||
+                      futuresLastTradePrice <=0 ||
+                      isPlacingFuturesOrder ||
+                      parseFloat(futuresAmount) >
+                        selectedFuturesOrder.remaining_quantity
+                    }
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                      futuresAmount <= 0 ||
+                      futuresLastTradePrice <=0 ||
+                      isPlacingFuturesOrder ||
+                      parseFloat(futuresAmount) >
+                        selectedFuturesOrder.remaining_quantity
+                        ? "bg-gray-600"
+                        : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
+                    }`}
+                  >
+                    {isPlacingFuturesOrder
+                      ? "Placing..."
+                      : parseFloat(futuresAmount) >
+                        selectedFuturesOrder.remaining_quantity
+                      ? "Exceeds Position"
+                      : "Sell/Short"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+{selectedOptionsOrder && (
+  <div className="fixed bottom-6 top-2 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="rounded-xl shadow-2xl w-[420px] transition-all duration-300 border bg-[#0A1628] border-blue-500/30">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-700/50">
+      <div className="px-6 pt-2 border-b border-gray-700/50">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-xl font-bold text-white">
-              {selectedOrder.asset_symbol}
+              {selectedOptionsOrder.asset_symbol}
             </h3>
             <p className="text-sm text-gray-400">
-              {selectedOrder.asset_name}
+              {selectedOptionsOrder.asset_name} - Options (
+              {selectedOptionsOrder.options_details?.option_type})
             </p>
           </div>
           <button
-            onClick={() => setSelectedOrder(null)}
+            onClick={() => setSelectedOptionsOrder(null)}
             className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
           >
             <X size={20} className="text-gray-400" />
-          </button>
-        </div>
-
-        {/* Buy/Sell Toggle */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setSpotSide("buy");
-              setAmount(0);
-            }}
-            className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-              spotSide === "buy"
-                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-                : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
-            }`}
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <TrendingUp size={16} />
-              Buy
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setSpotSide("sell");
-              setAmount(0);
-            }}
-            className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-              spotSide === "sell"
-                ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700/50"
-            }`}
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <TrendingDown size={16} />
-              Sell
-            </div>
           </button>
         </div>
       </div>
 
       {/* Body */}
       <div className="px-6 py-5">
-        {/* Price Display */}
-        <div
-          className={`rounded-lg p-4 mb-4 border ${
-            spotSide === "buy"
-              ? "bg-blue-500/10 border-blue-500/30"
-              : "bg-red-500/10 border-red-500/30"
-          }`}
-        >
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">
-              {spotSide === "buy" ? "Market Price" : "Avg. Cost"}
-            </span>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-white">
-                {spotSide === "buy"
-                  ? Number(lastTradePrice).toFixed(2)
-                  : Number(selectedOrder.average_price).toFixed(2)}
-              </span>
+        {/* Strike & Expiry Info */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
+            <div className="text-xs text-gray-400 mb-1">Strike Price</div>
+            <div className="text-lg font-semibold text-white">
+              {parseFloat(
+                selectedOptionsOrder.options_details?.strike_price || 0
+              ).toLocaleString()}
+            </div>
+          </div>
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
+            <div className="text-xs text-gray-400 mb-1">Expiry Date</div>
+            <div className="text-lg font-semibold text-white">
+              {selectedOptionsOrder.options_details?.expiry_date}
             </div>
           </div>
         </div>
@@ -1248,23 +2546,22 @@ const OrderHistory = () => {
         {/* Quantity Input */}
         <div className="mb-4">
           <label className="text-sm font-medium text-gray-400 mb-2 block">
-            Quantity
+            Quantity to Sell
           </label>
           <input
             type="number"
-            value={amount || ""}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            value={optionsSellQty}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*\.?\d*$/.test(val)) setOptionsSellQty(val);
+            }}
             onWheel={(e) => e.currentTarget.blur()}
             className="w-full bg-gray-800/50 border-2 border-gray-700 rounded-lg px-4 py-3 text-white font-semibold text-lg focus:outline-none focus:border-blue-500 transition"
             placeholder="0"
-            max={maxAmount}
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1.5">
-            <span>Available: {selectedOrder.remaining_quantity}</span>
-            <span className={`font-semibold ${
-              spotSide === "buy" ? "text-blue-400" : "text-red-400"
-            }`}>
-              {((amount / maxAmount) * 100).toFixed(1)}%
+            <span>
+              Available: {selectedOptionsOrder.remaining_quantity || 0}
             </span>
           </div>
         </div>
@@ -1281,99 +2578,83 @@ const OrderHistory = () => {
           <input
             type="range"
             min="0"
-            max={maxAmount}
-            step={maxAmount / 100}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            onMouseDown={handleStart}
-            onMouseUp={handleEnd}
-            onTouchStart={handleStart}
-            onTouchEnd={handleEnd}
+            max={selectedOptionsOrder.remaining_quantity}
+            step={selectedOptionsOrder.remaining_quantity / 100}
+            value={optionsSellQty}
+            onChange={(e) => setOptionsSellQty(Number(e.target.value))}
             className="w-full h-2 rounded-full appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, ${
-                spotSide === "buy" ? "#3b82f6" : "#ef4444"
-              } ${(amount / maxAmount) * 100}%, #374151 ${
-                (amount / maxAmount) * 100
+              background: `linear-gradient(to right, #3b82f6 ${
+                (optionsSellQty / selectedOptionsOrder.remaining_quantity) * 100
+              }%, #374151 ${
+                (optionsSellQty / selectedOptionsOrder.remaining_quantity) * 100
               }%)`,
             }}
           />
-          {showTooltip && amount > 0 && (
-            <div
-              className={`absolute -top-12 {
-                spotSide === "buy" ? "bg-blue-600" : "bg-red-600"
-              } text-white text-xs px-3 py-1.5 rounded-md shadow-lg font-medium`}
-              style={{
-                left: `calc(${(amount / maxAmount) * 100}% - 30px)`,
-              }}
-            >
-          {`${Number(amount).toFixed(2)} (${((Number(amount) / Number(maxAmount)) * 100).toFixed(1)}%)`}
-
-              <div
-                className={`absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${
-                  spotSide === "buy"
-                    ? "border-t-blue-600"
-                    : "border-t-red-600"
-                }`}
-              ></div>
-            </div>
-          )}
         </div>
 
-        {/* Total Display */}
-        <div
-          className={`rounded-lg p-4 mb-4 border ${
-            spotSide === "buy"
-              ? "bg-blue-500/10 border-blue-500/30"
-              : "bg-red-500/10 border-red-500/30"
-          }`}
-        >
+        {/* Premium Display */}
+        <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Average Premium</span>
+            <div className="text-right">
+              <span className="text-2xl font-bold text-white">
+                {parseFloat(
+                  selectedOptionsOrder.options_details?.premium || 0
+                ).toFixed(2)}{" "}
+                USDT
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Value */}
+        <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-400">
-              Total
+              Total Value
             </span>
             <span className="text-xl font-bold text-white">
-              {totalValue.toFixed(2)}
+              {(
+                parseFloat(optionsSellQty || 0) *
+                parseFloat(
+                  selectedOptionsOrder.options_details?.premium || 0
+                )
+              ).toFixed(2)}{" "}
+              USDT
             </span>
           </div>
         </div>
 
-        {/* Balance Info */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Available Balance</span>
-            <span className="text-white font-semibold">{balance}</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => setSelectedOrder(null)}
-            className="flex-1 py-3 bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 rounded-lg font-semibold text-gray-300 transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleModalOrder}
-            disabled={amount <= 0 || isPlacingOrder}
-            className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-              spotSide === "buy"
-                ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/30"
-                : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
-            }`}
-          >
-            {isPlacingOrder
-              ? "Placing..."
-              : spotSide === "buy"
-              ? "Buy"
-              : "Sell"}
-          </button>
-        </div>
+        {/* Sell Button */}
+        <button
+          onClick={() => handleCloseOptionsPosition(selectedOptionsOrder)}
+          disabled={
+            isClosingOptions ||
+            parseFloat(optionsSellQty) <= 0 ||
+            parseFloat(optionsSellQty) >
+              parseFloat(selectedOptionsOrder.remaining_quantity)
+          }
+          className={`w-full py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+            parseFloat(optionsSellQty) <= 0 ||
+            parseFloat(optionsSellQty) >
+              parseFloat(selectedOptionsOrder.remaining_quantity)
+              ? "bg-gray-600"
+              : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
+          }`}
+        >
+          {isClosingOptions
+            ? "Closing..."
+            : parseFloat(optionsSellQty) >
+              parseFloat(selectedOptionsOrder.remaining_quantity)
+            ? "Exceeds Holding"
+            : "Sell / Close Position"}
+        </button>
       </div>
     </div>
   </div>
 )}
+
       </div>
     </div>
   );

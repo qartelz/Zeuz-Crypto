@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthContext from '../../contexts/AuthContext';
+import {AuthContext} from '../../contexts/AuthContext';
 import logo from '../../assets/svg/logo.svg';
 import bgImage from '../../assets/images/Login-bg.png';
 
@@ -66,10 +66,10 @@ const AdminLoginPage = () => {
 
   return (
     <div
-      className="min-h-screen bg-center bg-cover flex items-center justify-center px-4"
+      className="min-h-screen   bg-center bg-cover flex items-center justify-center px-4"
       style={{ backgroundImage: `url(${bgImage})` }}
     >
-      <div className="bg-[#0F0A25]/90 border border-[#4733A6] rounded-lg w-full max-w-xl px-10 py-12 shadow-lg">
+      <div className="bg-[#0F0A25]/90  border border-[#4733A6] rounded-lg w-full max-w-xl px-10 py-12 shadow-lg">
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <img src={logo} alt="Logo" className="h-10 w-auto" />

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/svg/logo.svg';
 import bgImage from '../assets/images/Login-bg.png';
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -19,6 +21,10 @@ const RegisterPage = () => {
   const [messageType, setMessageType] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 👁️ Password visibility toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -29,9 +35,8 @@ const RegisterPage = () => {
   const formatErrors = (errorData) => {
     if (typeof errorData === 'string') return errorData;
 
-    // Combine all field errors into a single message string
     const errors = Object.entries(errorData)
-      .map(([field, msgs]) => `${msgs.join(', ')}`)
+      .map(([_, msgs]) => `${msgs.join(', ')}`)
       .join(' ');
     return errors || 'Registration failed. Please try again.';
   };
@@ -49,7 +54,7 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/account/register/', {
+      const response = await fetch(`${baseURL}account/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -60,14 +65,7 @@ const RegisterPage = () => {
       if (response.ok) {
         setMessage(data.message || 'Registration successful!');
         setMessageType('success');
-
-        // Optionally: store tokens if needed
-        // localStorage.setItem('access_token', data.access);
-        // localStorage.setItem('refresh_token', data.refresh);
-
-        setTimeout(() => {
-          navigate('/login');
-        }, 1500);
+        setTimeout(() => navigate('/login'), 1500);
       } else {
         const errorMessage = formatErrors(data);
         setMessage(errorMessage);
@@ -146,22 +144,44 @@ const RegisterPage = () => {
             onChange={handleChange}
             className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5] px-4 text-center rounded-xl border border-[#4733A6] outline-none focus:ring-2 focus:ring-[#A489F5] transition"
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5] px-4 text-center rounded-xl border border-[#4733A6] outline-none focus:ring-2 focus:ring-[#A489F5] transition"
-          />
-          <input
-            type="password"
-            name="password_confirm"
-            placeholder="Confirm Password"
-            value={formData.password_confirm}
-            onChange={handleChange}
-            className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5] px-4 text-center rounded-xl border border-[#4733A6] outline-none focus:ring-2 focus:ring-[#A489F5] transition"
-          />
+
+          {/* 👁️ Password Field */}
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5] px-4 pr-10 text-center rounded-xl border border-[#4733A6] outline-none focus:ring-2 focus:ring-[#A489F5] transition"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A489F5] hover:text-white"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
+          {/* 👁️ Confirm Password Field */}
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              name="password_confirm"
+              placeholder="Confirm Password"
+              value={formData.password_confirm}
+              onChange={handleChange}
+              className="w-full h-12 bg-[#0C0820] text-white placeholder-[#A489F5] px-4 pr-10 text-center rounded-xl border border-[#4733A6] outline-none focus:ring-2 focus:ring-[#A489F5] transition"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A489F5] hover:text-white"
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
 
         {/* Register Button */}

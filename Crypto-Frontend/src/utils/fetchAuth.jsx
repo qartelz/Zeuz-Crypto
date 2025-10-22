@@ -3,6 +3,7 @@
 export async function fetchWithAuth(url, opts = {}) {
     const access = localStorage.getItem('admin_access_token');
     const refresh = localStorage.getItem('admin_refresh_token');
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
   
     let headers = opts.headers || {};
     if (access) {
@@ -17,7 +18,7 @@ export async function fetchWithAuth(url, opts = {}) {
   
     if (response.status === 401 && refresh) {
       // try using refresh token
-      const refreshRes = await fetch("http://127.0.0.1:8000/api/v1/account/token/refresh/", {
+      const refreshRes = await fetch(`${baseURL}account/token/refresh/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

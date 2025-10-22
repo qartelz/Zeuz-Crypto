@@ -6,8 +6,8 @@ import { WalletProvider } from './contexts/WalletContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-      <WalletProvider>
+     
     <App />
-    </WalletProvider>
+  
   </StrictMode>,
 )
