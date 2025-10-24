@@ -1372,17 +1372,16 @@ class RiskCheckView(APIView):
 this below is the api for fetchng the trades quatity while placing the order in the chart page 
 """
 
-
 class GetOpenTradeBySymbol(APIView):
     """
-    API View to get a specific open trade by asset_symbol for authenticated user.
+    API View to get a specific open or partially closed trade by asset_symbol for authenticated user.
     """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
-        POST: Check if user has an open trade for given asset_symbol
+        POST: Check if user has an open or partially closed trade for given asset_symbol
         Body: {"asset_symbol": "abhjj"}
         """
         asset_symbol = request.data.get("asset_symbol")
@@ -1396,15 +1395,17 @@ class GetOpenTradeBySymbol(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Get the open trade for this symbol
+        # Get the open or partially closed trade for this symbol
         trade = Trade.objects.filter(
-            user=request.user, asset_symbol=asset_symbol, status="OPEN"
+            user=request.user,
+            asset_symbol=asset_symbol,
+            status__in=["OPEN", "PARTIALLY_CLOSED"],
         ).first()
 
         if not trade:
             return Response(
                 {
-                    "message": f"No open trade found for {asset_symbol}",
+                    "message": f"No open or partially closed trade found for {asset_symbol}",
                     "asset_symbol": asset_symbol,
                     "status": "not_found",
                     "is_open": False,
@@ -1415,7 +1416,7 @@ class GetOpenTradeBySymbol(APIView):
         serializer = TradeSerializer(trade)
         return Response(
             {
-                "message": f"Open trade found for {asset_symbol}",
+                "message": f"Trade found for {asset_symbol}",
                 "asset_symbol": asset_symbol,
                 "status": "found",
                 "is_open": True,
@@ -1438,13 +1439,15 @@ class GetOpenTradeBySymbol(APIView):
             )
 
         trade = Trade.objects.filter(
-            user=request.user, asset_symbol=asset_symbol, status="OPEN"
+            user=request.user,
+            asset_symbol=asset_symbol,
+            status__in=["OPEN", "PARTIALLY_CLOSED"],
         ).first()
 
         if not trade:
             return Response(
                 {
-                    "message": f"No open trade found for {asset_symbol}",
+                    "message": f"No open or partially closed trade found for {asset_symbol}",
                     "asset_symbol": asset_symbol,
                     "is_open": False,
                 },
@@ -1454,12 +1457,101 @@ class GetOpenTradeBySymbol(APIView):
         serializer = TradeSerializer(trade)
         return Response(
             {
-                "message": f"Open trade found for {asset_symbol}",
+                "message": f"Trade found for {asset_symbol}",
                 "is_open": True,
                 "trade": serializer.data,
             },
             status=status.HTTP_200_OK,
         )
+
+
+# class GetOpenTradeBySymbol(APIView):
+#     """
+#     API View to get a specific open trade by asset_symbol for authenticated user.
+#     """
+
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request):
+#         """
+#         POST: Check if user has an open trade for given asset_symbol
+#         Body: {"asset_symbol": "abhjj"}
+#         """
+#         asset_symbol = request.data.get("asset_symbol")
+
+#         if not asset_symbol:
+#             return Response(
+#                 {
+#                     "error": "asset_symbol is required",
+#                     "message": "Please provide asset_symbol in request body",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         # Get the open trade for this symbol
+#         trade = Trade.objects.filter(
+#             user=request.user, asset_symbol=asset_symbol, status="OPEN"
+#         ).first()
+
+#         if not trade:
+#             return Response(
+#                 {
+#                     "message": f"No open trade found for {asset_symbol}",
+#                     "asset_symbol": asset_symbol,
+#                     "status": "not_found",
+#                     "is_open": False,
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         serializer = TradeSerializer(trade)
+#         return Response(
+#             {
+#                 "message": f"Open trade found for {asset_symbol}",
+#                 "asset_symbol": asset_symbol,
+#                 "status": "found",
+#                 "is_open": True,
+#                 "trade": serializer.data,
+#             },
+#             status=status.HTTP_200_OK,
+#         )
+
+#     def get(self, request):
+#         """
+#         GET: Check using query parameter
+#         URL: /api/trade/open/?asset_symbol=abhjj
+#         """
+#         asset_symbol = request.query_params.get("asset_symbol")
+
+#         if not asset_symbol:
+#             return Response(
+#                 {"error": "asset_symbol query parameter is required"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         trade = Trade.objects.filter(
+#             user=request.user, asset_symbol=asset_symbol, status="OPEN"
+#         ).first()
+
+#         if not trade:
+#             return Response(
+#                 {
+#                     "message": f"No open trade found for {asset_symbol}",
+#                     "asset_symbol": asset_symbol,
+#                     "is_open": False,
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         serializer = TradeSerializer(trade)
+#         return Response(
+#             {
+#                 "message": f"Open trade found for {asset_symbol}",
+#                 "is_open": True,
+#                 "trade": serializer.data,
+#             },
+#             status=status.HTTP_200_OK,
+#         )
 
 
 
