@@ -198,13 +198,18 @@ CORS_ALLOWED_ORIGINS = [
     # "https://www.zeuzcrypto.com",
     # "https://yourdomain.com",
 ]
+from corsheaders.defaults import default_headers
+
+# CORS_ALLOW_HEADERS = list(default_headers) + [
+#     "Content-Type",
+# ]
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
     "authorization",
-    "content-type",
+    "Content-type",
     "dnt",
     "origin",
     "user-agent",
