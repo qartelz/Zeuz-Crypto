@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.paginator import Paginator
 
 # from apps.challenges.models import ChallengeWallet, ChallengeWalletTransaction
-from apps.admin.challenge.models.challenge_models import ChallengeWallet, ChallengeWalletTransaction
+from apps.admin.challenge.models.wallet_models import ChallengeWallet, ChallengeWalletTransaction
 # from apps.challenges.serializers.wallet_serializers import (
 #     ChallengeWalletSerializer, ChallengeWalletTransactionSerializer
 # )

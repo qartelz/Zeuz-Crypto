@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from django.db import transaction
-from apps.admin.challenge.models.challenge_models   import ChallengeWallet, ChallengeWalletTransaction
+from apps.admin.challenge.models.wallet_models   import ChallengeWallet, ChallengeWalletTransaction
 
 
 class WalletService:

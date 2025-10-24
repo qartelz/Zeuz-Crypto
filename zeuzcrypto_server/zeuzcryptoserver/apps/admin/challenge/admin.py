@@ -15,8 +15,11 @@ from django.utils.html import format_html
 from apps.admin.challenge.models.challenge_models import (
     ChallengeProgram, ChallengeWeek, ChallengeTask, ChallengeReward,
     UserChallengeParticipation, ChallengeTaskCompletion, ChallengeStatistics,
-    ChallengeWallet, ChallengeWalletTransaction,
+    
 )   
+from apps.admin.challenge.models.wallet_models import (
+    ChallengeWallet, ChallengeWalletTransaction,
+)
 from apps.admin.challenge.models.trade_models import (
     ChallengeTrade, ChallengeTradeHistory,)
 from apps.admin.challenge.models.analytics_models import (
