@@ -78,12 +78,17 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
         """Join a challenge week"""
         week = self.get_object()
         user = request.user
+        print(week,week.is_ongoing(),",,,,,,")
         
-        if not week.is_ongoing():
-            return Response(
-                {'error': 'Challenge is not currently active'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
+        """
+        if monthly challange is required use this filter condition
+        """
+        # if not week.is_ongoing():
+        #     return Response(
+        #         {'error': 'Challenge is not currently active'},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
         
         if UserChallengeParticipation.objects.filter(user=user, week=week).exists():
             return Response(

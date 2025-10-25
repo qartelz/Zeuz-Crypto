@@ -1,4 +1,3 @@
-
 # ==================== FILE: apps/challenges/models/analytics_models.py ====================
 
 import uuid
