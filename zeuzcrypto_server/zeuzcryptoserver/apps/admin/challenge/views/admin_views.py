@@ -27,16 +27,59 @@ class ChallengeAdminViewSet(viewsets.ModelViewSet):
     queryset = ChallengeProgram.objects.all()
     serializer_class = ChallengeProgramAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({
+            "message": "Challenge created successfully",
+            "data": serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+    # def create(self, request, *args, **kwargs):
+    #     difficulty = request.data.get("difficulty")
+    #     is_active = request.data.get("is_active", True)
+
+    #     # Only check if new challenge is intended to be active
+    #     if is_active in [True, "true", "True", 1, "1"]:
+    #         existing_active = ChallengeProgram.objects.filter(
+    #             difficulty=difficulty, is_active=True
+    #         ).exists()
+    #         if existing_active:
+    #             return Response(
+    #                 {
+    #                     "error": f"An active challenge with difficulty '{difficulty}' already exists. "
+    #                              f"Deactivate it before creating a new one."
+    #                 },
+    #                 status=status.HTTP_400_BAD_REQUEST
+    #             )
+
+    #     # Continue with normal serializer validation & save
+    #     serializer = self.get_serializer(data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(
+    #             {
+    #                 "message": "Challenge created successfully",
+    #                 "data": serializer.data
+    #             },
+    #             status=status.HTTP_201_CREATED
+    #         )
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'])
     def program_list(self, request):
         """Get all programs with statistics"""
+        
         programs = AdminService.get_all_programs_with_stats()
         return Response(programs)
     
     @action(detail=True, methods=['get'])
     def program_details(self, request, pk=None):
         """Get detailed program information"""
+       
         program = self.get_object()
         details = AdminService.get_program_details(program)
         return Response(details)

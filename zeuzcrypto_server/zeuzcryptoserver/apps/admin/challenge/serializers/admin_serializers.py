@@ -17,6 +17,19 @@ class ChallengeProgramAdminSerializer(serializers.ModelSerializer):
         model = ChallengeProgram
         fields = '__all__'
     
+
+    def validate(self, attrs):
+        difficulty = attrs.get("difficulty")
+        is_active = attrs.get("is_active", True)
+
+        # Check if another active challenge of same difficulty exists
+        if is_active and ChallengeProgram.objects.filter(difficulty=difficulty, is_active=True).exists():
+            raise serializers.ValidationError(
+                f"An active challenge with difficulty '{difficulty}' already exists. "
+                "Please deactivate it before creating another one."
+            )
+        return attrs
+    
     def get_weeks(self, obj):
         return obj.weeks.count()
     
