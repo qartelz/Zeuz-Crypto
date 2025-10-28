@@ -195,6 +195,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 "https://www.zeuzcrypto.com",
 "https://zeuzcrypto.com",
+"https://radiant-tiramisu-e6e3c5.netlify.app",
     # "https://www.zeuzcrypto.com",
     # "https://yourdomain.com",
 ]

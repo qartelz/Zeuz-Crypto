@@ -1236,27 +1236,27 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
 #             return ChallengeTradeDetailSerializer
 #         return ChallengeTradeSerializer
     
-#     def list(self, request, *args, **kwargs):
-#         """List user's trades with filtering"""
-#         queryset = self.get_queryset()
+    def list(self, request, *args, **kwargs):
+        """List user's trades with filtering"""
+        queryset = self.get_queryset()
         
-#         participation_id = request.query_params.get('participation_id')
-#         if participation_id:
-#             queryset = queryset.filter(participation_id=participation_id)
-#         week_id = request.query_params.get('week_id')
-#         if week_id:
-#             queryset = queryset.filter(participation__week_id=week_id)
+        participation_id = request.query_params.get('participation_id')
+        if participation_id:
+            queryset = queryset.filter(participation_id=participation_id)
+        week_id = request.query_params.get('week_id')
+        if week_id:
+            queryset = queryset.filter(participation__week_id=week_id)
 
-#         status_filter = request.query_params.get('status')
-#         if status_filter:
-#             queryset = queryset.filter(status=status_filter)
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
         
-#         trade_type = request.query_params.get('trade_type')
-#         if trade_type:
-#             queryset = queryset.filter(trade_type=trade_type)
+        trade_type = request.query_params.get('trade_type')
+        if trade_type:
+            queryset = queryset.filter(trade_type=trade_type)
         
-#         serializer = self.get_serializer(queryset, many=True)
-#         return Response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
 #     def create(self, request, *args, **kwargs):
 #         """Execute a new trade"""
