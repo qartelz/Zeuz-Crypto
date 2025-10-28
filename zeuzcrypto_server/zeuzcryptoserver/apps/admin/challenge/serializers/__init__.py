@@ -4,6 +4,7 @@ from apps.admin.challenge.serializers.challenge_serializers import *
 from apps.admin.challenge.serializers.wallet_serializers import *
 from apps.admin.challenge.serializers.trade_serializers import *
 from apps.admin.challenge.serializers.admin_serializers import *
+from apps.admin.challenge.serializers.open_trade_serializers import *
 
 __all__ = [
     'ChallengeProgramSerializer',
@@ -21,5 +22,8 @@ __all__ = [
     'ChallengeProgramAdminSerializer',
     'ChallengeWeekAdminSerializer',
     'ChallengeStatisticsSerializer',
+    'ChallengeFuturesDetailsSerializer',
+    'ChallengeOptionsDetailsSerializer',
+    'ChallengeTradeDetailSerializer'
 ]
 

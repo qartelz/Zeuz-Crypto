@@ -17,7 +17,7 @@ from apps.admin.challenge.views import (
     leaderboard_views
 )
 
-
+from apps.admin.challenge.views.open_trade_views import TradeBySymbolView
 router = DefaultRouter()
 
 # Challenge endpoints
@@ -44,4 +44,7 @@ app_name = 'challenges'
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('challenge-trades/<str:symbol>/', TradeBySymbolView.as_view(), name='trades-by-symbol'),
+    # this is the above scenorio 
+    # http://127.0.0.1:8000/api/v1/challenges/challenge-trades/ALGO/?week_id=b5282ddb-f3ff-4a55-b398-f820697b3c2e&trade_type=SPOT
 ]
