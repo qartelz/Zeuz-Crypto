@@ -71,7 +71,11 @@ class ChallengeTradeHistorySerializer(serializers.ModelSerializer):
             'order_type', 'quantity', 'price', 'amount',
             'realized_pnl', 'created_at'
         ]
-        read_only_fields = '__all__'
+        # read_only_fields = '__all__'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+                field.read_only = True
 
 
 class ChallengeFuturesDetailsSerializer(serializers.ModelSerializer):
@@ -107,7 +111,12 @@ class ChallengeTradeDetailSerializer(serializers.ModelSerializer):
             'opened_at', 'closed_at', 'updated_at',
             'history', 'futures_details', 'options_details'
         ]
-        read_only_fields = '__all__'
+        read_only_fields = fields
+    # def __init__(self, *args, **kwargs):
+    #         super().__init__(*args, **kwargs)
+    #         for field in self.fields.values():
+    #             field.read_only = True
+        
 
 
 class ChallengeTradeAnalyticsSerializer(serializers.ModelSerializer):
@@ -129,4 +138,7 @@ class ChallengeTradeAnalyticsSerializer(serializers.ModelSerializer):
             'last_calculated_at'
         ]
         read_only_fields = '__all__'
-
+    # def __init__(self, *args, **kwargs):
+            # super().__init__(*args, **kwargs)
+            # for field in self.fields.values():
+            #     field.read_only = True

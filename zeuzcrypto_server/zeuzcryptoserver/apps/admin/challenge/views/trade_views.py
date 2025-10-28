@@ -10,6 +10,8 @@ from django.db import transaction
 from django.db.models import Q, Sum, F, Avg
 from datetime import datetime, timedelta
 
+
+
 from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
 from apps.admin.challenge.models.trade_models import (
     ChallengeTrade, ChallengeTradeHistory,
@@ -20,7 +22,7 @@ from apps.admin.challenge.serializers.trade_serializers import (
     ChallengeTradeDetailSerializer, ChallengeTradeHistorySerializer
 )
 
-
+import traceback
 class CompleteTradingViewSet(viewsets.ModelViewSet):
     """
     Complete Trading System ViewSet
@@ -86,11 +88,18 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
             )
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
         except Exception as e:
+            print("=== TRADE EXCEPTION START ===")
+            print(str(e))
+            traceback.print_exc()
+            print("=== TRADE EXCEPTION END ===")
             return Response(
                 {'error': f'Trade execution failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
     
     def _handle_spot_trade(self, user, participation, trade_data):
         """
@@ -214,8 +223,8 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
         
         remaining_qty = quantity
         total_pnl = Decimal('0')
-        
-        # Close existing opposite positions
+        fully_closed_trades = []
+
         for position in opposite_positions.order_by('opened_at'):
             if remaining_qty <= 0:
                 break
@@ -228,13 +237,13 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
             else:
                 pnl = (position.average_entry_price - price) * qty_to_close
             
-            # Update position
             position.remaining_quantity -= qty_to_close
             position.realized_pnl += pnl
             
             if position.remaining_quantity == 0:
                 position.status = 'CLOSED'
                 position.closed_at = timezone.now()
+                fully_closed_trades.append(position)
             else:
                 position.status = 'PARTIALLY_CLOSED'
             position.save()
@@ -262,7 +271,7 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
             total_pnl += pnl
             remaining_qty -= qty_to_close
         
-        # If quantity remains (overselling), create new position
+        # Handle remaining quantity (new position if oversold)
         if remaining_qty > 0:
             new_investment = remaining_qty * price
             self._validate_trade_constraints(participation, new_investment)
@@ -297,7 +306,109 @@ class CompleteTradingViewSet(viewsets.ModelViewSet):
             
             return new_trade
         
+        # If fully closed, return a proper message instead of first position
+        if fully_closed_trades:
+            return {
+                'message': 'All positions fully closed',
+                'closed_trades': [str(t.id) for t in fully_closed_trades],
+                'total_pnl': str(total_pnl)
+            }
+        
         return opposite_positions.first()
+
+    
+    # def _spot_covering(self, user, participation, wallet, trade_data, opposite_positions):
+    #     """Handle covering opposite SPOT positions (including overselling)"""
+    #     quantity = trade_data['total_quantity']
+    #     price = trade_data['entry_price']
+    #     direction = trade_data['direction']
+        
+    #     remaining_qty = quantity
+    #     total_pnl = Decimal('0')
+        
+    #     # Close existing opposite positions
+    #     for position in opposite_positions.order_by('opened_at'):
+    #         if remaining_qty <= 0:
+    #             break
+            
+    #         qty_to_close = min(remaining_qty, position.remaining_quantity)
+            
+    #         # Calculate P&L
+    #         if position.direction == 'BUY':
+    #             pnl = (price - position.average_entry_price) * qty_to_close
+    #         else:
+    #             pnl = (position.average_entry_price - price) * qty_to_close
+            
+    #         # Update position
+    #         position.remaining_quantity -= qty_to_close
+    #         position.realized_pnl += pnl
+            
+    #         if position.remaining_quantity == 0:
+    #             position.status = 'CLOSED'
+    #             position.closed_at = timezone.now()
+    #         else:
+    #             position.status = 'PARTIALLY_CLOSED'
+    #         position.save()
+            
+    #         # Unlock and settle P&L
+    #         unlock_amount = qty_to_close * position.average_entry_price
+    #         wallet.unlock_coins(unlock_amount)
+            
+    #         if pnl > 0:
+    #             wallet.add_profit(pnl)
+    #         else:
+    #             wallet.deduct_loss(abs(pnl))
+            
+    #         ChallengeTradeHistory.objects.create(
+    #             trade=position,
+    #             user=user,
+    #             action=direction,
+    #             order_type=trade_data.get('order_type', 'MARKET'),
+    #             quantity=qty_to_close,
+    #             price=price,
+    #             amount=qty_to_close * price,
+    #             realized_pnl=pnl
+    #         )
+            
+    #         total_pnl += pnl
+    #         remaining_qty -= qty_to_close
+        
+    #     # If quantity remains (overselling), create new position
+    #     if remaining_qty > 0:
+    #         new_investment = remaining_qty * price
+    #         self._validate_trade_constraints(participation, new_investment)
+            
+    #         new_trade = ChallengeTrade.objects.create(
+    #             user=user,
+    #             participation=participation,
+    #             wallet=wallet,
+    #             asset_symbol=trade_data['asset_symbol'],
+    #             asset_name=trade_data.get('asset_name', ''),
+    #             trade_type='SPOT',
+    #             direction=direction,
+    #             total_quantity=remaining_qty,
+    #             remaining_quantity=remaining_qty,
+    #             average_entry_price=price,
+    #             total_invested=new_investment,
+    #             holding_type=trade_data.get('holding_type', 'INTRADAY'),
+    #             status='OPEN'
+    #         )
+            
+    #         wallet.lock_coins(new_investment)
+            
+    #         ChallengeTradeHistory.objects.create(
+    #             trade=new_trade,
+    #             user=user,
+    #             action=direction,
+    #             order_type=trade_data.get('order_type', 'MARKET'),
+    #             quantity=remaining_qty,
+    #             price=price,
+    #             amount=new_investment
+    #         )
+            
+    #         return new_trade
+        
+    #     return opposite_positions.first()
     
     def _handle_futures_trade(self, user, participation, trade_data):
         """
