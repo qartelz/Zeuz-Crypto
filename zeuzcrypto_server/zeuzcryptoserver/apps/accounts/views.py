@@ -460,8 +460,7 @@ from apps.permission.permissions import IsAdminOrB2BAdmin
 class UserDetailWithTradesView(generics.RetrieveAPIView):
     """Public endpoint — Retrieve a single user's details with their trades"""
     serializer_class = UserDetailWithAllDataSerializer
-    permission_classes = [AllowAny]
-    authentication_classes = []  # optional: disable auth enforcement
+    permission_classes = [IsAdminOrB2BAdmin]
     lookup_field = "id"
 
     def get_object(self):
