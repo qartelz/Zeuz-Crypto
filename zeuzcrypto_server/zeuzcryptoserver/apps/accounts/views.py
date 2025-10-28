@@ -445,3 +445,31 @@ def activity_log(request):
     return Response({
         'activities': activities[:20]
     })
+
+# views.py
+
+from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
+from apps.accounts.models import User
+from apps.client.trading.models import TradeHistory
+from .serializers import UserDetailWithAllDataSerializer
+from apps.permission.permissions import IsAdminOrB2BAdmin
+
+
+class UserDetailWithTradesView(generics.RetrieveAPIView):
+    """Public endpoint — Retrieve a single user's details with their trades"""
+    serializer_class = UserDetailWithAllDataSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []  # optional: disable auth enforcement
+    lookup_field = "id"
+
+    def get_object(self):
+        user_id = self.kwargs.get("id")
+        try:
+            # Directly fetch the user with related models
+            return User.objects.select_related(
+                "profile", "wallet", "batch", "created_by"
+            ).get(id=user_id)
+        except User.DoesNotExist:
+            raise NotFound("User not found.")

@@ -2,6 +2,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
+from .views import UserDetailWithTradesView
 
 app_name = 'accounts'
 
@@ -17,6 +18,7 @@ urlpatterns = [
     # User Management
     path('users/', views.UserListView.as_view(), name='user_list'),
     path('me/', views.CurrentUserView.as_view(), name='current_user'),
+    path('users/<uuid:id>/details/', UserDetailWithTradesView.as_view(), name='user-detail-with-trades'),
     
     # Password Management
     path('password-reset/', views.PasswordResetView.as_view(), name='password_reset'),

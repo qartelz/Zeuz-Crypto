@@ -51,7 +51,10 @@ class ChallengeTradeViewSet(viewsets.ModelViewSet):
         participation_id = request.query_params.get('participation_id')
         if participation_id:
             queryset = queryset.filter(participation_id=participation_id)
-        
+        week_id = request.query_params.get('week_id')
+        if week_id:
+            queryset = queryset.filter(participation__week_id=week_id)
+
         status_filter = request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)

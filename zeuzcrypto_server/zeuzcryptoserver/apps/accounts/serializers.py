@@ -111,7 +111,7 @@ class LoginSerializer(serializers.Serializer):
             subscription_data = None
 
         attrs['subscription'] = subscription_data
-        print(subscription_data,"subscription data ************************")
+        # print(subscription_data,"subscription data ************************")
         return attrs
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -326,3 +326,46 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         
         return instance
+
+# serializers.py
+
+from rest_framework import serializers
+from apps.accounts.models import User
+from apps.client.trading.models import TradeHistory, Trade  # adjust import path as per your project
+
+from apps.client.trading.serializers import TradeHistorySerializer , TradeSerializer  # or your existing one
+# from .user_serializers import UserSerializer
+
+from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
+from apps.admin.challenge.serializers.challenge_serializers import UserChallengeParticipationSerializer
+
+class UserDetailWithAllDataSerializer(serializers.ModelSerializer):
+    trades = serializers.SerializerMethodField()
+    challenge_participations = serializers.SerializerMethodField()
+    wallet = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'mobile',
+            'is_active', 'is_approved', 'date_joined', 'created_by',
+            'wallet', 'trades', 'challenge_participations',
+        ]
+
+    def get_trades(self, obj):
+        """Return all trades by user"""
+        trades = Trade.objects.filter(user=obj).order_by('-opened_at')
+        return TradeSerializer(trades, many=True).data
+
+    def get_challenge_participations(self, obj):
+        """Return all challenge participations"""
+        participations = UserChallengeParticipation.objects.filter(user=obj).order_by('-joined_at')
+        return UserChallengeParticipationSerializer(participations, many=True).data
+
+    def get_wallet(self, obj):
+        """Return wallet details"""
+        try:
+            wallet = UserWallet.objects.get(user=obj)
+            return UserWalletSerializer(wallet).data
+        except UserWallet.DoesNotExist:
+            return None
