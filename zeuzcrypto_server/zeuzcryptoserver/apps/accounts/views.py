@@ -303,6 +303,17 @@ class BatchUsersView(generics.ListAPIView):
             return User.objects.filter(batch_id=batch_id, created_by=user)
         return User.objects.none()
 
+class BatchUsersByB2BAdminView(generics.ListAPIView):
+    """
+    List all users in batches created by a specific B2B admin.
+    URL param: /api/v1/batches/b2b-admin/<b2b_admin_id>/
+    """
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]  # Only admin or allowed roles
+
+    def get_queryset(self):
+        b2b_admin_id = self.kwargs['b2b_admin_id']
+        return User.objects.filter(created_by_id=b2b_admin_id)
 
 # Approval Views
 class B2BAdminApprovalListView(generics.ListAPIView):
