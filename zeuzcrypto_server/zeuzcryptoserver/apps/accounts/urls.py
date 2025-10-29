@@ -2,7 +2,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
-from .views import UserDetailWithTradesView, BatchUsersByB2BAdminView
+from .views import UserDetailWithTradesView, BatchUsersByB2BAdminView, BatchListByB2BAdminView
 
 app_name = 'accounts'
 
@@ -30,6 +30,7 @@ urlpatterns = [
     path('batch/create/', views.BatchCreateView.as_view(), name='batch_create'),
     path('batch/list/', views.BatchListView.as_view(), name='batch_list'),
     path('batch/users/<uuid:batch_id>/', views.BatchUsersView.as_view(), name='batch_users'),
+    path('batches/by-b2b-admin/<uuid:b2b_admin_id>/', BatchListByB2BAdminView.as_view(), name='batches-by-b2b-admin'),
     path('batches/b2b-admin/<uuid:b2b_admin_id>/', BatchUsersByB2BAdminView.as_view(), name='batch-users-by-b2b-admin'),
     
     # Approval & Roles

@@ -288,6 +288,19 @@ class BatchListView(generics.ListAPIView):
         return UserBatch.objects.none()
 
 
+class BatchListByB2BAdminView(generics.ListAPIView):
+    """List all batches created by a specific B2B admin"""
+    serializer_class = UserBatchListSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]  # or IsAdminOrB2BAdmin if you want both to access
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        b2b_admin_id = self.kwargs['b2b_admin_id']
+        return UserBatch.objects.filter(created_by_id=b2b_admin_id)
+
+
 class BatchUsersView(generics.ListAPIView):
     """List users in a specific batch"""
     serializer_class = UserSerializer
