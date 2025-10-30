@@ -36,10 +36,7 @@ const Topbar = ({ onToggleSidebar, sidebarOpen }) => {
         <img src={logo} alt="Logo" className="h-7 sm:h-8 w-auto" />
 
         {/* Navigation Dropdown */}
-        <div className="hidden sm:flex relative cursor-pointer items-center space-x-1 text-sm text-gray-300 hover:text-white">
-          <span>Markets</span>
-          <ChevronDown size={14} />
-        </div>
+        
       </div>
 
       {/* Right Section */}
@@ -94,10 +91,10 @@ const Topbar = ({ onToggleSidebar, sidebarOpen }) => {
         </div>
 
         {/* Notification Icon */}
-        <Bell className="w-5 h-5 text-gray-300 hover:text-white cursor-pointer" />
+        {/* <Bell className="w-5 h-5 text-gray-300 hover:text-white cursor-pointer" /> */}
 
         {/* Profile Dropdown */}
-        <div className="relative">
+        <div className="relative ">
           <div
             className="flex items-center cursor-pointer space-x-2"
             onClick={toggleDropdown}
@@ -116,7 +113,7 @@ const Topbar = ({ onToggleSidebar, sidebarOpen }) => {
 
           {/* Dropdown Menu */}
           {dropdownOpen && (
-            <div className="absolute right-0 mt-3 w-56 bg-[#1C1E2A] border border-gray-800 rounded-lg shadow-lg py-2 z-50">
+            <div className="absolute z-40 backdrop-blur-lg right-0 mt-3 w-56 bg-[#1C1E2A] border border-gray-800 rounded-lg shadow-lg py-2">
               <div className="px-4 py-2 border-b border-gray-700">
                 <p className="text-sm font-semibold text-white">
                   {user?.full_name || "User"}

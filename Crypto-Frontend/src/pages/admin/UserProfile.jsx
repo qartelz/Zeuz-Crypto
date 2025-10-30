@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -6,8 +7,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
   PieChart,
   Pie,
   Cell,
@@ -20,106 +19,190 @@ import {
   Calendar,
   MapPin,
   Mail,
-  User,
-  DollarSign,
   Activity,
-  Star,
   Trophy,
-  Eye,
   ArrowUpRight,
   ArrowDownRight,
   X,
+  ArrowLeft,
+  DollarSign,
+  TrendingUpIcon,
+  Loader,
+  Lock,
+  Unlock,
+  AlertCircle,
 } from "lucide-react";
 
+const baseURL = import.meta.env.VITE_API_BASE_URL;
+
+// Toast Component
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : "bg-yellow-500";
+  const icon = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+
+  return (
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 animate-fade-in`}>
+      <span className="text-xl font-bold">{icon}</span>
+      <span>{message}</span>
+    </div>
+  );
+};
+
 const UserProfile = () => {
+  const { userId } = useParams();
+  
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedChallenge, setSelectedChallenge] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Enhanced Data
-  const performanceData = [
-    { month: "Jan", profit: 400, trades: 25 },
-    { month: "Feb", profit: 800, trades: 32 },
-    { month: "Mar", profit: -200, trades: 18 },
-    { month: "Apr", profit: 600, trades: 28 },
-    { month: "May", profit: 1200, trades: 35 },
-    { month: "Jun", profit: 1800, trades: 42 },
-  ];
+  const showToast = (message, type) => {
+    setToast({ message, type });
+  };
 
-  const portfolioData = [
-    { name: "Crypto", value: 45, color: "#f59e0b" },
-    { name: "Forex", value: 30, color: "#10b981" },
-    { name: "Stocks", value: 25, color: "#3b82f6" },
-  ];
+  const handleBack = () => {
+    if (location.pathname.startsWith("/admin/users/")) {
+      navigate("/admin/userspage");
+    } else if (location.pathname.startsWith("/admin/reports/")) {
+      navigate("/admin/reports");
+    } else if (location.pathname.startsWith("/admin/settings/")) {
+      navigate("/admin/settings");
+    } else if (location.pathname.startsWith("/admin/adminspage/")) {
+      navigate("/admin/adminspage");
+    } else {
+      navigate(-1);
+    }
+  };
 
-  const closedTrades = [
-    { id: 1, symbol: "BTC/USDT", type: "Long", entry: 65000, exit: 67000, pnl: "+3.08%", amount: "+$2000", status: "Completed", date: "2025-09-08" },
-    { id: 2, symbol: "ETH/USDT", type: "Short", entry: 3200, exit: 3100, pnl: "+3.12%", amount: "+$1560", status: "Completed", date: "2025-09-07" },
-    { id: 3, symbol: "BNB/USDT", type: "Long", entry: 430, exit: 400, pnl: "-6.98%", amount: "-$1290", status: "Loss", date: "2025-09-06" },
-    { id: 4, symbol: "SOL/USDT", type: "Long", entry: 140, exit: 155, pnl: "+10.71%", amount: "+$2340", status: "Completed", date: "2025-09-05" },
-  ];
+  const tokens = JSON.parse(localStorage.getItem('authTokens'));
 
-  const activeTrades = [
-    { id: 1, symbol: "SOL/USDT", type: "Long", entry: 150, current: 165, pnl: "+10.0%", amount: "+$2250", status: "Ongoing", duration: "2d 4h" },
-    { id: 2, symbol: "XRP/USDT", type: "Short", entry: 0.55, current: 0.52, pnl: "+5.45%", amount: "+$327", status: "Ongoing", duration: "1d 12h" },
-    { id: 3, symbol: "ADA/USDT", type: "Long", entry: 0.45, current: 0.43, pnl: "-4.44%", amount: "-$178", status: "Ongoing", duration: "3h 25m" },
-  ];
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      setLoading(true);
+      setError(null);
 
-  const challenges = [
-    { 
-      id: 1, 
-      title: "10K Profit Challenge", 
-      status: "Ongoing", 
-      score: 60, 
-      progress: 60,
-      description: "Make $10,000 profit within 1 month.",
-      reward: "$500 Bonus",
-      timeLeft: "12 days left"
-    },
-    { 
-      id: 2, 
-      title: "Consistency Master", 
-      status: "Completed", 
-      score: 95, 
-      progress: 100,
-      description: "Trade daily for 30 days without breaking rules.",
-      reward: "$1000 Bonus",
-      timeLeft: "Completed!"
-    },
-    { 
-      id: 3, 
-      title: "Risk Management Pro", 
-      status: "Ongoing", 
-      score: 45, 
-      progress: 45,
-      description: "Maintain risk/reward ratio under 1:2 for 15 trades.",
-      reward: "$300 Bonus",
-      timeLeft: "8 days left"
-    },
-  ];
+      try {
+        const response = await fetch(
+          `${baseURL}account/users/${userId}/details/`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokens?.access}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Check if user is rejected
+        if (data.admin_users && data.admin_users.length > 0) {
+          const rejectedUser = data.admin_users.find(admin => admin.status === "rejected");
+          if (rejectedUser) {
+            showToast(
+              `This user was rejected. Reason: ${rejectedUser.rejection_reason || "No reason provided"}`,
+              "error"
+            );
+            setTimeout(() => {
+              handleBack();
+            }, 3000);
+            return;
+          }
+        }
+        
+        setUserData(data);
+      } catch (err) {
+        setError(err.message || "Failed to fetch user details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchUserDetails();
+    }
+  }, [userId]);
+
+  // Calculate portfolio distribution
+  const calculatePortfolioDistribution = () => {
+    if (!userData?.trades) return [];
+    
+    const typeCount = { SPOT: 0, FUTURES: 0, OPTIONS: 0 };
+    userData.trades.forEach(trade => {
+      if (trade.status === "OPEN") {
+        typeCount[trade.trade_type] = (typeCount[trade.trade_type] || 0) + 1;
+      }
+    });
+
+    const total = Object.values(typeCount).reduce((a, b) => a + b, 0);
+    if (total === 0) return [];
+
+    return [
+      { name: "Spot", value: Math.round((typeCount.SPOT / total) * 100), color: "#f59e0b" },
+      { name: "Futures", value: Math.round((typeCount.FUTURES / total) * 100), color: "#10b981" },
+      { name: "Options", value: Math.round((typeCount.OPTIONS / total) * 100), color: "#3b82f6" },
+    ].filter(item => item.value > 0);
+  };
+
+  // Calculate win rate
+  const calculateWinRate = () => {
+    if (!userData?.trades) return 0;
+    const closedTrades = userData.trades.filter(t => t.status === "CLOSED");
+    if (closedTrades.length === 0) return 0;
+    const winningTrades = closedTrades.filter(t => parseFloat(t.realized_pnl) > 0);
+    return ((winningTrades.length / closedTrades.length) * 100).toFixed(1);
+  };
+
+  // Calculate total PnL
+  const calculateTotalPnL = () => {
+    if (!userData?.trades) return 0;
+    const total = userData.trades.reduce((sum, trade) => {
+      return sum + parseFloat(trade.realized_pnl || 0) + parseFloat(trade.unrealized_pnl || 0);
+    }, 0);
+    return total.toFixed(2);
+  };
+
+  // Get trades by status
+  const getTradesByStatus = (status) => {
+    if (!userData?.trades) return [];
+    return userData.trades.filter(t => t.status === status);
+  };
 
   const StatCard = ({ icon, title, value, change, changeType, subtitle }) => (
-    <div className="group bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/20 hover:scale-105 transform">
+    <div className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-5 transition-all duration-300 hover:border-purple-400/40 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)]">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center mb-3">
-            <div className={`p-3 rounded-xl mr-4 text-white shadow-lg transition-all duration-300 ${
-              changeType === 'positive' ? 'bg-gradient-to-r from-emerald-500 to-teal-500' :
-              changeType === 'negative' ? 'bg-gradient-to-r from-red-500 to-pink-500' :
-              'bg-gradient-to-r from-indigo-500 to-purple-500'
+            <div className={`p-2.5 rounded-lg mr-3 transition-all duration-300 ${
+              changeType === 'positive' ? 'bg-emerald-500/20 text-emerald-400' :
+              changeType === 'negative' ? 'bg-red-500/20 text-red-400' :
+              'bg-purple-500/20 text-purple-400'
             }`}>
               {icon}
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{title}</h3>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-              {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+              <h3 className="text-xs font-medium text-purple-300/70 uppercase tracking-wide">{title}</h3>
+              <p className="text-xl font-bold text-white mt-0.5">{value}</p>
+              {subtitle && <p className="text-xs text-purple-300/60 mt-0.5">{subtitle}</p>}
             </div>
           </div>
           {change && (
             <div className={`flex items-center text-sm font-medium ${
-              changeType === 'positive' ? 'text-emerald-600' : 'text-red-500'
+              changeType === 'positive' ? 'text-emerald-400' : 'text-red-400'
             }`}>
-              {changeType === 'positive' ? <ArrowUpRight size={16} className="mr-1" /> : <ArrowDownRight size={16} className="mr-1" />}
+              {changeType === 'positive' ? <ArrowUpRight size={14} className="mr-1" /> : <ArrowDownRight size={14} className="mr-1" />}
               {change}
             </div>
           )}
@@ -128,244 +211,237 @@ const UserProfile = () => {
     </div>
   );
 
-  const TradeRow = ({ trade, isActive = false }) => (
-    <tr className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-indigo-50/30 hover:to-purple-50/30 transition-all duration-300">
-      <td className="p-4">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold mr-3">
-            {trade.symbol.split('/')[0].slice(0, 2)}
+  const TradeRow = ({ trade, isActive = false }) => {
+    const pnl = isActive ? parseFloat(trade.unrealized_pnl) : parseFloat(trade.realized_pnl);
+    const pnlPercent = trade.pnl_percentage ? `${trade.pnl_percentage.toFixed(2)}%` : '0.00%';
+    
+    return (
+      <tr className="border-b border-purple-500/10 hover:bg-purple-500/5 transition-all duration-200">
+        <td className="p-4">
+          <div className="flex items-center">
+            <div className="ml-3">
+              <span className="font-semibold text-white">{trade.asset_symbol}</span>
+              <p className="text-xs text-purple-300/70">{trade.trade_type}</p>
+            </div>
           </div>
-          <div>
-            <span className="font-semibold text-gray-900">{trade.symbol}</span>
-            {isActive && <p className="text-xs text-gray-500">{trade.duration}</p>}
+        </td>
+        <td className="p-4">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+          }`}>
+            {trade.direction}
+          </span>
+        </td>
+        <td className="p-4 font-medium text-purple-200">${parseFloat(trade.average_price).toFixed(2)}</td>
+        <td className="p-4 font-medium text-purple-200">{parseFloat(trade.total_quantity).toFixed(4)}</td>
+        <td className="p-4">
+          <div className="text-right">
+            <div className={`font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {pnl >= 0 ? '+' : ''}{pnlPercent}
+            </div>
+            <div className={`text-sm ${pnl >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
+              {pnl >= 0 ? '+' : ''}${Math.abs(pnl).toFixed(2)}
+            </div>
           </div>
-        </div>
-      </td>
-      <td className="p-4">
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-          trade.type === 'Long' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {trade.type}
-        </span>
-      </td>
-      <td className="p-4 font-medium text-gray-700">${trade.entry}</td>
-      <td className="p-4 font-medium text-gray-700">${isActive ? trade.current : trade.exit}</td>
-      <td className="p-4">
-        <div className="text-right">
-          <div className={`font-bold ${trade.pnl.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}>
-            {trade.pnl}
-          </div>
-          <div className={`text-sm ${trade.amount.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}>
-            {trade.amount}
-          </div>
-        </div>
-      </td>
-      <td className="p-4">
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-          trade.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-          trade.status === 'Ongoing' ? 'bg-blue-100 text-blue-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          {trade.status}
-        </span>
-      </td>
-    </tr>
-  );
+        </td>
+        <td className="p-4">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            trade.status === 'CLOSED' ? 'bg-gray-500/20 text-gray-400' :
+            trade.status === 'OPEN' ? 'bg-blue-500/20 text-blue-400' :
+            'bg-yellow-500/20 text-yellow-400'
+          }`}>
+            {trade.status}
+          </span>
+        </td>
+      </tr>
+    );
+  };
 
-  const ChallengeCard = ({ challenge }) => (
-    <div
-      className="group bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/20 hover:scale-105 transform cursor-pointer overflow-hidden"
-      onClick={() => setSelectedChallenge(challenge)}
-    >
-      <div className="p-6">
+  const ChallengeCard = ({ challenge }) => {
+    const progress = parseFloat(challenge.portfolio_return_pct || 0);
+    const targetGoal = parseFloat(challenge.week_details?.target_goal || 0);
+    const progressPercent = targetGoal > 0 ? Math.min((progress / targetGoal) * 100, 100) : 0;
+    
+    return (
+      <div
+        className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6 transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)] cursor-pointer"
+        onClick={() => setSelectedChallenge(challenge)}
+      >
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center">
-            <div className={`p-3 rounded-xl mr-4 text-white shadow-lg ${
-              challenge.status === 'Completed' ? 'bg-gradient-to-r from-emerald-500 to-teal-500' :
-              'bg-gradient-to-r from-indigo-500 to-purple-500'
+            <div className={`p-3 rounded-lg mr-3 ${
+              challenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+              'bg-purple-500/20 text-purple-400'
             }`}>
-              {challenge.status === 'Completed' ? <Trophy size={24} /> : <Target size={24} />}
+              {challenge.status === 'COMPLETED' ? <Trophy size={24} /> : <Target size={24} />}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">{challenge.title}</h3>
-              <p className="text-sm text-gray-500">{challenge.timeLeft}</p>
+              <h3 className="text-base font-bold text-white">{challenge.week_details?.title}</h3>
+              <p className="text-sm text-purple-300/70">{challenge.week_details?.program_name}</p>
             </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            challenge.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-            'bg-yellow-100 text-yellow-800'
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+            challenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+            'bg-yellow-500/20 text-yellow-400'
           }`}>
-            {challenge.status}
+            {challenge.status.replace('_', ' ')}
           </span>
         </div>
         
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm font-bold text-indigo-600">{challenge.score}%</span>
+            <span className="text-sm font-medium text-purple-300/70">Progress</span>
+            <span className="text-sm font-bold text-purple-400">{progressPercent.toFixed(1)}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-purple-500/10 rounded-full h-2">
             <div 
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-1000"
-              style={{ width: `${challenge.progress}%` }}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full transition-all duration-1000"
+              style={{ width: `${progressPercent}%` }}
             ></div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Reward: {challenge.reward}</span>
-          <Eye size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
+        <div className="flex justify-between items-center text-sm text-purple-300/70">
+          <span>Trades: {challenge.total_trades}/{challenge.week_details?.min_trades_required}</span>
+          <span>Return: {challenge.portfolio_return_pct}%</span>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  // Render Tab Content
   const renderTab = () => {
+    if (!userData) return null;
+
     switch (activeTab) {
       case "overview":
+        const totalPnL = parseFloat(calculateTotalPnL());
         return (
-          <div className="space-y-8">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
-                icon={<TrendingUp size={24} />} 
+                icon={<TrendingUp size={20} />} 
                 title="Win Rate" 
-                value="72.4%" 
-                change="+2.1% this month"
-                changeType="positive"
-              />
-              <StatCard 
-                icon={<Activity size={24} />} 
-                title="Total Trades" 
-                value="180" 
-                change="+15 this week"
-                changeType="positive"
-              />
-              <StatCard 
-                icon={<Award size={24} />} 
-                title="Challenges" 
-                value="8" 
-                subtitle="3 ongoing"
+                value={`${calculateWinRate()}%`} 
                 changeType="neutral"
               />
               <StatCard 
-                icon={<DollarSign size={24} />} 
+                icon={<Activity size={20} />} 
+                title="Total Trades" 
+                value={userData.trades?.length || 0} 
+                subtitle={`${getTradesByStatus("OPEN").length} active`}
+                changeType="neutral"
+              />
+              <StatCard 
+                icon={<Award size={20} />} 
+                title="Challenges" 
+                value={userData.challenge_participations?.length || 0} 
+                subtitle={`${userData.challenge_participations?.filter(c => c.status === "IN_PROGRESS").length || 0} ongoing`}
+                changeType="neutral"
+              />
+              <StatCard 
+                icon={<DollarSign size={20} />} 
                 title="Total PnL" 
-                value="+$18,650" 
-                change="+$3,200 this month"
-                changeType="positive"
+                value={`${totalPnL >= 0 ? '+' : ''}$${Math.abs(totalPnL)}`}
+                change={`${totalPnL >= 0 ? '+' : ''}${((totalPnL / parseFloat(userData.wallet?.balance || 1)) * 100).toFixed(2)}%`}
+                changeType={totalPnL >= 0 ? "positive" : "negative"}
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Performance Chart */}
-              <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl p-8 border border-white/20">
-                <div className="flex items-center justify-between mb-6">
+            <div className="grid grid-cols-1  lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6">
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Performance Overview</h2>
-                    <p className="text-gray-500 text-sm">Monthly profit trend</p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-gray-600">Profit</span>
-                    </div>
+                    <h2 className="text-xl font-bold text-white">Wallet Balance</h2>
+                    <p className="text-purple-300/70 text-sm">Available funds and trading capital</p>
                   </div>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={performanceData}>
-                    <defs>
-                      <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" stroke="#9ca3af" />
-                    <YAxis stroke="#9ca3af" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                        border: 'none', 
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
-                      }} 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="profit" 
-                      stroke="#8b5cf6" 
-                      fillOpacity={1} 
-                      fill="url(#profitGradient)" 
-                      strokeWidth={3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/20">
+                    <p className="text-sm text-purple-300/70 mb-1">Total Balance</p>
+                    <p className="text-2xl font-bold text-white">${userData.wallet?.balance || '0.00'}</p>
+                  </div>
+                  <div className="bg-emerald-500/10 p-4 rounded-lg border border-emerald-500/20">
+                    <p className="text-sm text-purple-300/70 mb-1">Total PnL</p>
+                    <p className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {totalPnL >= 0 ? '+' : ''}${Math.abs(totalPnL)}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Portfolio Distribution */}
-              <div className="bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl p-8 border border-white/20">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Portfolio Distribution</h2>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={portfolioData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {portfolioData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-4 space-y-2">
-                  {portfolioData.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: item.color }}
-                        ></div>
-                        <span className="text-sm text-gray-700">{item.name}</span>
+              {calculatePortfolioDistribution().length > 0 && (
+                <div className="rounded-xl  border border-purple-500/20 bg-[#120B20]/60 p-6">
+                  <h2 className="text-xl font-bold text-white mb-5">Portfolio Distribution</h2>
+                  <ResponsiveContainer width="100%" height={110}>
+                    <PieChart>
+                      <Pie
+                        data={calculatePortfolioDistribution()}
+                        cx="40%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={50}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {calculatePortfolioDistribution().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#1a0f2e', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '8px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-4 space-y-2">
+                    {calculatePortfolioDistribution().map((item, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                          <span className="text-sm text-purple-300/70">{item.name}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white">{item.value}%</span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">{item.value}%</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         );
 
       case "closed":
+        const closedTrades = getTradesByStatus("CLOSED");
         return (
-          <div className="bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-8 py-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">Closed Trades</h2>
-              <p className="text-gray-500 text-sm mt-1">Your trading history and performance</p>
+          <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
+            <div className="bg-purple-500/10 px-6 py-4 border-b border-purple-500/20">
+              <h2 className="text-xl font-bold text-white">Closed Trades</h2>
+              <p className="text-purple-300/70 text-sm mt-1">Trading history and performance</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50/50">
+                <thead className="bg-purple-500/5">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-gray-900">Symbol</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Type</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Entry</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Exit</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">PnL</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Status</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Symbol</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Direction</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Avg Price</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Quantity</th>
+                    <th className="text-right p-4 font-semibold text-purple-300">PnL</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {closedTrades.map((trade) => (
-                    <TradeRow key={trade.id} trade={trade} />
-                  ))}
+                  {closedTrades.length > 0 ? (
+                    closedTrades.map((trade) => (
+                      <TradeRow key={trade.id} trade={trade} />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-purple-300/70">
+                        No closed trades found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -373,28 +449,37 @@ const UserProfile = () => {
         );
 
       case "active":
+        const activeTrades = getTradesByStatus("OPEN");
         return (
-          <div className="bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-8 py-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">Active Trades</h2>
-              <p className="text-gray-500 text-sm mt-1">Currently open positions</p>
+          <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
+            <div className="bg-purple-500/10 px-6 py-4 border-b border-purple-500/20">
+              <h2 className="text-xl font-bold text-white">Active Trades</h2>
+              <p className="text-purple-300/70 text-sm mt-1">Currently open positions</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50/50">
+                <thead className="bg-purple-500/5">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-gray-900">Symbol</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Type</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Entry</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Current</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">PnL</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Status</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Symbol</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Direction</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Avg Price</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Quantity</th>
+                    <th className="text-right p-4 font-semibold text-purple-300">PnL</th>
+                    <th className="text-left p-4 font-semibold text-purple-300">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activeTrades.map((trade) => (
-                    <TradeRow key={trade.id} trade={trade} isActive={true} />
-                  ))}
+                  {activeTrades.length > 0 ? (
+                    activeTrades.map((trade) => (
+                      <TradeRow key={trade.id} trade={trade} isActive={true} />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-purple-300/70">
+                        No active trades found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -403,20 +488,29 @@ const UserProfile = () => {
 
       case "challenges":
         return (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {challenges.map((challenge) => (
-              <ChallengeCard key={challenge.id} challenge={challenge} />
-            ))}
+          <div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {userData.challenge_participations?.length > 0 ? (
+                userData.challenge_participations.map((challenge) => (
+                  <ChallengeCard key={challenge.id} challenge={challenge} />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-16 text-purple-300/70">
+                  <Trophy size={64} className="mx-auto mb-4 opacity-40" />
+                  <h3 className="text-xl font-medium mb-2">No Challenges Yet</h3>
+                  <p className="text-sm opacity-70">User hasn't participated in any challenges.</p>
+                </div>
+              )}
+            </div>
 
-            {/* Enhanced Challenge Details Modal */}
             {selectedChallenge && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-t-2xl">
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-[#120B20] border border-purple-500/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-2xl font-bold">{selectedChallenge.title}</h2>
-                        <p className="text-indigo-100 mt-1">{selectedChallenge.timeLeft}</p>
+                        <h2 className="text-2xl font-bold">{selectedChallenge.week_details?.title}</h2>
+                        <p className="text-white/80 mt-1">{selectedChallenge.week_details?.program_name}</p>
                       </div>
                       <button
                         className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -429,57 +523,59 @@ const UserProfile = () => {
                   
                   <div className="p-6 space-y-6">
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                      <p className="text-gray-700">{selectedChallenge.description}</p>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-semibold text-gray-900">Progress</h3>
-                        <span className="text-2xl font-bold text-indigo-600">{selectedChallenge.score}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-4">
-                        <div 
-                          className="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-1000 flex items-center justify-end pr-2"
-                          style={{ width: `${selectedChallenge.progress}%` }}
-                        >
-                          <span className="text-white text-xs font-bold">
-                            {selectedChallenge.progress >= 20 ? `${selectedChallenge.progress}%` : ''}
-                          </span>
-                        </div>
-                      </div>
+                      <h3 className="font-semibold text-white mb-2">Description</h3>
+                      <p className="text-purple-300/80">{selectedChallenge.week_details?.description}</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <h4 className="font-medium text-gray-700 mb-1">Status</h4>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          selectedChallenge.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-                          'bg-yellow-100 text-yellow-800'
+                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                        <h4 className="font-medium text-purple-300/70 mb-1 text-sm">Status</h4>
+                        <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${
+                          selectedChallenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                          'bg-yellow-500/20 text-yellow-400'
                         }`}>
-                          {selectedChallenge.status}
+                          {selectedChallenge.status.replace('_', ' ')}
                         </span>
                       </div>
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <h4 className="font-medium text-gray-700 mb-1">Reward</h4>
-                        <p className="text-indigo-600 font-semibold">{selectedChallenge.reward}</p>
+                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                        <h4 className="font-medium text-purple-300/70 mb-1 text-sm">Return</h4>
+                        <p className="text-purple-400 font-semibold text-lg">{selectedChallenge.portfolio_return_pct}%</p>
+                      </div>
+                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                        <h4 className="font-medium text-purple-300/70 mb-1 text-sm">Total Trades</h4>
+                        <p className="text-white font-semibold text-lg">{selectedChallenge.total_trades}</p>
+                      </div>
+                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                        <h4 className="font-medium text-purple-300/70 mb-1 text-sm">Starting Balance</h4>
+                        <p className="text-white font-semibold text-lg">${selectedChallenge.starting_balance}</p>
                       </div>
                     </div>
 
-                    <div className="flex space-x-3">
-                      <button
-                        className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
-                        onClick={() => setSelectedChallenge(null)}
-                      >
-                        Continue Challenge
-                      </button>
-                      <button
-                        className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                        onClick={() => setSelectedChallenge(null)}
-                      >
-                        Close
-                      </button>
-                    </div>
+                    {selectedChallenge.week_details?.tasks && (
+                      <div>
+                        <h3 className="font-semibold text-white mb-3">Tasks</h3>
+                        <div className="space-y-2">
+                          {selectedChallenge.week_details.tasks.map((task) => (
+                            <div key={task.id} className="flex items-center justify-between bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
+                              <div>
+                                <p className="font-medium text-white">{task.title}</p>
+                                <p className="text-sm text-purple-300/70">{task.description}</p>
+                              </div>
+                              {task.is_mandatory && (
+                                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Required</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-3 rounded-lg font-semibold transition-all duration-200"
+                      onClick={() => setSelectedChallenge(null)}
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               </div>
@@ -492,106 +588,162 @@ const UserProfile = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative">
-      {/* Animated Background */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-        <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style={{ animationDelay: '4s' }}></div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="inline-block animate-spin text-purple-400" size={48} />
+          <p className="text-purple-300 mt-4 text-lg">Loading user profile...</p>
+        </div>
       </div>
+    );
+  }
 
-      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-8">
-        {/* Enhanced Profile Header */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-8">
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-8 py-6 rounded-2xl max-w-md">
+          <h2 className="text-xl font-bold mb-2">Error Loading Profile</h2>
+          <p>{error}</p>
+          <button
+            onClick={() => navigate('/admin/userspage')}
+            className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
+          >
+            Back to Users
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen text-white">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-6">
+        {/* Back Button */}
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors duration-200 mb-4"
+        >
+          <ArrowLeft size={20} />
+          <span>Back</span>
+        </button>
+
+        {/* Profile Header */}
+        <div className="rounded-2xl border border-purple-500/30 bg-[#120B20]/60 overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
+              <div className="flex items-center gap-5">
                 <div className="relative">
-                  <img
-                    src="https://i.pravatar.cc/120"
-                    alt="User"
-                    className="w-24 h-24 rounded-2xl border-4 border-white/20 shadow-xl"
-                  />
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center">
-                    <div className="w-3 h-3 bg-white rounded-full"></div>
+                  <div className="w-20 h-20 bg-white/20 rounded-xl flex items-center justify-center text-white text-2xl font-bold">
+                    {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
+                  </div>
+                  <div className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 ${userData.is_active ? 'bg-emerald-500' : 'bg-red-500'} rounded-full border-4 border-[#120B20] flex items-center justify-center`}>
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
                   </div>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-white">John Doe</h1>
-                  <p className="text-indigo-100 text-lg">Professional Trader</p>
-                  <p className="text-indigo-200 text-sm">User ID: TRD12345</p>
+                  <h1 className="text-2xl font-bold text-white">
+                    {userData.full_name || `${userData.first_name} ${userData.last_name}`}
+                  </h1>
+                  <p className="text-white/80 text-base">{userData.role?.replace('_', ' ').toUpperCase()}</p>
+                  <p className="text-white/60 text-sm">User ID: {userData.id?.slice(0, 8)}...</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                  <p className="text-indigo-100 text-sm">Total Balance</p>
-                  <p className="text-2xl font-bold text-white">$15,230</p>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <p className="text-white/70 text-sm">Total Balance</p>
+                  <p className="text-2xl font-bold text-white">${userData.wallet?.balance || '0.00'}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-sm p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="flex items-center space-x-3">
-                <Mail className="text-indigo-500" size={20} />
+          <div className="bg-[#120B20]/80 p-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+              <div className="flex items-center gap-3">
+                <Mail className="text-purple-400" size={20} />
                 <div>
-                  <p className="text-xs text-gray-500">Email</p>
-                  <p className="font-medium text-gray-900">john@example.com</p>
+                  <p className="text-xs text-purple-300/70">Email</p>
+                  <p className="font-medium text-white text-sm">{userData.email}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <Calendar className="text-indigo-500" size={20} />
+              <div className="flex items-center gap-3">
+                <Calendar className="text-purple-400" size={20} />
                 <div>
-                  <p className="text-xs text-gray-500">Joined</p>
-                  <p className="font-medium text-gray-900">March 2024</p>
+                  <p className="text-xs text-purple-300/70">Joined</p>
+                  <p className="font-medium text-white text-sm">
+                    {new Date(userData.date_joined).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <Activity className="text-emerald-500" size={20} />
+              <div className="flex items-center gap-3">
+                <Activity className="text-emerald-400" size={20} />
                 <div>
-                  <p className="text-xs text-gray-500">Last Login</p>
-                  <p className="font-medium text-gray-900">Sep 8, 2025</p>
+                  <p className="text-xs text-purple-300/70">Last Login</p>
+                  <p className="font-medium text-white text-sm">
+                    {userData.last_login 
+                      ? new Date(userData.last_login).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric' 
+                        })
+                      : 'Never'
+                    }
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="text-indigo-500" size={20} />
+              <div className="flex items-center gap-3">
+                <MapPin className="text-purple-400" size={20} />
                 <div>
-                  <p className="text-xs text-gray-500">Location</p>
-                  <p className="font-medium text-gray-900">Kochi</p>
+                  <p className="text-xs text-purple-300/70">Mobile</p>
+                  <p className="font-medium text-white text-sm">{userData.mobile || 'N/A'}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Enhanced Tabs */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden">
+        {/* Tabs */}
+        <div className="rounded-2xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
           <div className="flex space-x-0">
             {[
-              { key: "overview", label: "Overview", icon: <Activity size={20} /> },
-              { key: "closed", label: "Closed Trades", icon: <TrendingUp size={20} /> },
-              { key: "active", label: "Active Trades", icon: <Star size={20} /> },
-              { key: "challenges", label: "Challenges", icon: <Trophy size={20} /> }
+              { key: "overview", label: "Overview", icon: <Activity size={18} /> },
+              { key: "closed", label: "Closed Trades", icon: <TrendingDown size={18} /> },
+              { key: "active", label: "Active Trades", icon: <TrendingUpIcon size={18} /> },
+              { key: "challenges", label: "Challenges", icon: <Trophy size={18} /> }
             ].map((tab) => (
               <button
                 key={tab.key}
-                className={`flex-1 flex items-center justify-center space-x-3 py-4 px-6 font-semibold transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 font-semibold transition-all duration-300 ${
                   activeTab === tab.key
-                    ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg"
-                    : "text-white/70 hover:text-white hover:bg-white/10"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+                    : "text-purple-300/70 hover:text-white hover:bg-purple-500/10"
                 }`}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline text-sm">{tab.label}</span>
               </button>
             ))}
           </div>
 
-                    {/* Tab content */}
-                    <div className="p-6">{renderTab()}</div>
+          {/* Tab content */}
+          <div className="p-6">{renderTab()}</div>
         </div>
       </div>
     </div>
@@ -599,5 +751,3 @@ const UserProfile = () => {
 };
 
 export default UserProfile;
-
-          

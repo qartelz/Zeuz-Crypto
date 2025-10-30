@@ -14,9 +14,12 @@ import {
 import toast from "react-hot-toast";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
-const OrderHistory = () => {
-
+const OrderHistory = ({selectedChallenge , walletData,
+walletLoading,}) => {
   const [orderHistory, setOrderHistory] = useState([]);
+
+  console.log(selectedChallenge,"the seleted data in holdings of challnge")
+
   const [holdings, setHoldings] = useState([]);
   // console.log(holdings, "the holdings");
   const [isloading, setLoading] = useState(false);
@@ -26,7 +29,7 @@ const OrderHistory = () => {
   const options = ["Spot", "Futures", "Options"];
 
   // console.log(selectedOrder, "the seleted order");
-  const { balance,refreshWallet ,loading } = useContext(WalletContext);
+  const { balance, refreshWallet, loading } = useContext(WalletContext);
   const [expandedRows, setExpandedRows] = useState([]);
   const [activeTab, setActiveTab] = useState("orderHistory");
   const [startDate, setStartDate] = useState("");
@@ -37,8 +40,7 @@ const OrderHistory = () => {
   const [lastTradePrice, setLastTradePrice] = useState(null);
   const [livePrices, setLivePrices] = useState({});
 
-
-  console.log(livePrices, "the live price");
+  // console.log(livePrices, "the live price");
 
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const navigate = useNavigate();
@@ -55,7 +57,7 @@ const OrderHistory = () => {
           >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="text-sm font-medium :text-gray-100">
                 Please enter a valid quantity
               </p>
             </div>
@@ -224,7 +226,7 @@ const OrderHistory = () => {
             ),
             { position: "top-right", duration: 2500 }
           );
-await refreshWallet();
+          await refreshWallet();
           setSelectedOrder(null);
           setAmount(0);
           await fetchData();
@@ -274,12 +276,14 @@ await refreshWallet();
 
   const [selectedFuturesOrder, setSelectedFuturesOrder] = useState(null);
 
-  const [futuresLeverage, setFuturesLeverage] = useState(20);
+  const [futuresLeverage, setFuturesLeverage] = useState(1);
   const [futuresMarginType, setFuturesMarginType] = useState("CROSS");
+  const [selectedOptionsOrder, setSelectedOptionsOrder] = useState(null);
 
+  // console.log(selectedOptionsOrder, "the seleted options order");
 
   const [optionsAmount, setOptionsAmount] = useState("");
-const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
+  const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
 
   const handleFuturesModalOrder = async (side) => {
     if (futuresAmount <= 0) {
@@ -292,7 +296,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="text-sm font-medium  text-gray-100">
                 Please enter a valid quantity
               </p>
             </div>
@@ -435,7 +439,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           quantity: futuresAmount.toString(),
           price: Number(futuresLastTradePrice).toFixed(2),
           order_type: "MARKET",
-          leverage: futuresLeverage.toFixed(2),
+          leverage: futuresLeverage,
           contract_size: parseFloat(
             selectedFuturesOrder?.contract_value || "0.001"
           ).toFixed(8),
@@ -521,69 +525,62 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
     }
   };
 
+  const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
+  const [optionsStrikePrice, setOptionsStrikePrice] = useState(null);
+
+  // console.log(optionsLastTradePrice,"the optionsLastTradePrice")
 
   const handleOptionsModalOrder = async (side) => {
     if (optionsAmount <= 0) {
       toast.custom(
         (t) => (
-          <div
-            className={`${
-              t.visible ? "animate-enter" : "animate-leave"
-            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-          >
-            <div className="flex-1 w-0 p-4 flex items-center">
-              <XCircle className="h-6 w-6 text-red-500 mr-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Please enter a valid quantity
-              </p>
-            </div>
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+            <XCircle className="h-6 w-6 text-red-500" />
+            <p className="text-sm text-gray-100 font-medium">Please enter a valid quantity</p>
           </div>
         ),
         { position: "top-right", duration: 2500 }
       );
       return;
     }
-  
+
     try {
       setIsPlacingOptionsOrder(true);
-  
+
       if (!tokens?.access) {
         toast.custom(
           (t) => (
-            <div
-              className={`${
-                t.visible ? "animate-enter" : "animate-leave"
-              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-            >
-              <div className="flex-1 w-0 p-4 flex items-center">
-                <XCircle className="h-6 w-6 text-red-500 mr-2" />
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  You must be logged in!
-                </p>
-              </div>
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+              <XCircle className="h-6 w-6 text-red-500" />
+              <p className="text-sm font-medium">You must be logged in!</p>
             </div>
           ),
           { position: "top-right", duration: 2500 }
         );
         return;
       }
-  
+
       let response;
-  
+
       if (side === "sell") {
-        // 🟥 SELL / CLOSE OPTIONS POSITION
+        // SELL / CLOSE OPTIONS POSITION
         const sellAmount = parseFloat(optionsAmount);
         const isFull = sellAmount >= selectedOptionsOrder.remaining_quantity;
-  
+
+        // Use live price from WebSocket or fallback to stored premium
+        const currentPrice = optionsLastTradePrice
+          ? parseFloat(optionsLastTradePrice)
+          : parseFloat(selectedOptionsOrder.options_details?.premium || 0);
+
         const payload = {
-          quantity: sellAmount.toFixed(3),
-          price: Number(selectedOptionsOrder.options_details?.premium || 0).toFixed(2),
+          quantity: sellAmount.toFixed(8),
+          price: currentPrice.toFixed(2),
         };
-  
+
         const url = isFull
-          ? `${baseURL}trading/close-options/${selectedOptionsOrder.id}/`
-          : `${baseURL}trading/partial-close-options/${selectedOptionsOrder.id}/`;
-  
+          ? `${baseURL}trading/close-trade/${selectedOptionsOrder.id}/`
+          : `${baseURL}trading/partial-close/${selectedOptionsOrder.id}/`;
+
         response = await fetch(url, {
           method: "POST",
           headers: {
@@ -592,32 +589,28 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           },
           body: JSON.stringify(payload),
         });
-  
+
         const data = await response.json();
-  
+
+        console.log(data,"the repose of option data")
+
         if (response.ok) {
           toast.custom(
             (t) => (
-              <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-              >
-                <div className="flex-1 w-0 p-4 flex items-center">
-                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {isFull
-                      ? "Option position closed successfully!"
-                      : `Closed ${sellAmount} contracts @ ${Number(
-                          selectedOptionsOrder.options_details?.premium
-                        ).toFixed(2)}`}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {isFull
+                    ? "Option position closed successfully!"
+                    : `Closed ${sellAmount} contracts @ ${currentPrice.toFixed(
+                        2
+                      )}`}
+                </p>
               </div>
             ),
             { position: "top-right", duration: 2500 }
           );
-  
+
           await refreshWallet();
           setSelectedOptionsOrder(null);
           setOptionsAmount("");
@@ -625,44 +618,47 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         } else {
           toast.custom(
             (t) => (
-              <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-              >
-                <div className="flex-1 w-0 p-4 flex items-center">
-                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Error: {data.detail || data.message || "Something went wrong"}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+                <XCircle className="h-6 w-6 text-red-500" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Error: {data.detail || data.message || "Something went wrong"}
+                </p>
               </div>
             ),
             { position: "top-right", duration: 2500 }
           );
         }
       } else {
-        // 🟩 BUY / OPEN OPTIONS POSITION
-        const expiryDate =
-          selectedOptionsOrder?.options_details?.expiry_date ||
-          new Date().toISOString().split("T")[0];
-  
+        // BUY / OPEN OPTIONS POSITION
+
+        // Use live price from WebSocket or fallback
+        const currentPrice = optionsLastTradePrice
+          ? parseFloat(optionsLastTradePrice)
+          : parseFloat(selectedOptionsOrder.options_details?.premium || 0);
+
         const payload = {
           asset_symbol: selectedOptionsOrder.asset_symbol.toUpperCase(),
           asset_name: selectedOptionsOrder.asset_name || "Options Contract",
-          asset_exchange: "NFO",
           trade_type: "OPTIONS",
           direction: "BUY",
-          holding_type: "SHORTTERM",
-          quantity: optionsAmount.toString(),
-          price: Number(selectedOptionsOrder.options_details?.premium || 0).toFixed(2),
-          order_type: "MARKET",
-          option_type: selectedOptionsOrder.options_details?.option_type,
-          strike_price: selectedOptionsOrder.options_details?.strike_price,
-          expiry_date: expiryDate,
+          quantity: parseFloat(optionsAmount).toFixed(8),
+          price: currentPrice.toFixed(3),
+          option_type:
+            selectedOptionsOrder.options_details?.option_type || "CALL",
+          holding_type: selectedOptionsOrder.holding_type || "INTRADAY",
+          option_position: "LONG",
+          strike_price: optionsStrikePrice,
+          expiry_date:
+            selectedOptionsOrder.options_details?.expiry_date ||
+            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              .toISOString()
+              .split("T")[0],
+          premium: (parseFloat(optionsAmount) * currentPrice).toFixed(7),
         };
-  
-        response = await fetch(`${baseURL}trading/place-options-order/`, {
+
+        console.log("Options BUY Payload:", payload);
+
+        response = await fetch(`${baseURL}trading/place-order/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -670,27 +666,24 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           },
           body: JSON.stringify(payload),
         });
-  
+
         const data = await response.json();
-  
+        console.log("Options BUY Response:", data);
+
         if (response.ok) {
           toast.custom(
             (t) => (
-              <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-              >
-                <div className="flex-1 w-0 p-4 flex items-center">
-                  <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Bought {data.quantity} {data.option_type} contracts @ {data.price}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Bought {optionsAmount} {payload.option_type} contracts @{" "}
+                  {currentPrice.toFixed(2)}
+                </p>
               </div>
             ),
             { position: "top-right", duration: 2500 }
           );
+
           await refreshWallet();
           setSelectedOptionsOrder(null);
           setOptionsAmount("");
@@ -698,17 +691,11 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         } else {
           toast.custom(
             (t) => (
-              <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-              >
-                <div className="flex-1 w-0 p-4 flex items-center">
-                  <XCircle className="h-6 w-6 text-red-500 mr-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Error: {data.detail || "Something went wrong"}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+                <XCircle className="h-6 w-6 text-red-500" />
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Error: {data.detail || data.error || "Something went wrong"}
+                </p>
               </div>
             ),
             { position: "top-right", duration: 2500 }
@@ -716,20 +703,14 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Options order error:", error);
       toast.custom(
         (t) => (
-          <div
-            className={`${
-              t.visible ? "animate-enter" : "animate-leave"
-            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
-          >
-            <div className="flex-1 w-0 p-4 flex items-center">
-              <XCircle className="h-6 w-6 text-red-500 mr-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Failed to place options order
-              </p>
-            </div>
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+            <XCircle className="h-6 w-6 text-red-500" />
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Failed to place options order
+            </p>
           </div>
         ),
         { position: "top-right", duration: 2500 }
@@ -746,10 +727,9 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
     const spotHoldings = holdings.filter((h) => h.trade_type === "SPOT");
     const futuresHoldings = holdings.filter((h) => h.trade_type === "FUTURES");
     const optionsHoldings = holdings.filter((h) => h.trade_type === "OPTIONS");
-    console.log(optionsHoldings,"the options holdings")
+    console.log(optionsHoldings, "the options holdings");
 
-    let binanceWs, deltaWs;
-
+    let binanceWs, deltaWs, deltaOptionsWs;
     // ===========================
     // 🔸 1. BINANCE (SPOT)
     // ===========================
@@ -801,7 +781,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         };
         deltaWs.send(JSON.stringify(payload));
 
-        console.log(payload,"the payload of options")
+        console.log(payload, "the payload of options");
       };
       deltaWs.onmessage = (event) => {
         const response = JSON.parse(event.data);
@@ -817,7 +797,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           const symbol = response.symbol;
           setLivePrices((prev) => ({
             ...prev,
-            [symbol]: response.close,
+            [symbol]: response.spot_price,
           }));
         }
       };
@@ -827,8 +807,8 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
     }
 
     if (optionsHoldings.length > 0) {
-      const deltaOptionsWs = new WebSocket("wss://socket.delta.exchange");
-    
+      deltaOptionsWs = new WebSocket("wss://socket.delta.exchange");
+
       deltaOptionsWs.onopen = () => {
         const payload = {
           type: "subscribe",
@@ -836,33 +816,36 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
             channels: [
               {
                 name: "v2/ticker",
-                symbols: optionsHoldings.map((h) => h.asset_symbol),
+                symbols: optionsHoldings.map((h) => h.asset_symbol), // Use full symbol
               },
             ],
           },
         };
         deltaOptionsWs.send(JSON.stringify(payload));
-    
-        console.log(payload, "OPTIONS payload");
+        console.log("Options WS Subscribed:", payload);
       };
-    
+
       deltaOptionsWs.onmessage = (event) => {
         const response = JSON.parse(event.data);
-    
-        // Only process ticker updates
-        if (response?.type === "v2/ticker" && response?.symbol && response?.mark_price) {
+
+        // Process ticker updates for options
+        if (response?.type === "v2/ticker" && response?.symbol) {
           const symbol = response.symbol;
+
+          // Use mark_price for options (most accurate for premium)
+          const price =
+            response.mark_price || response.close || response.spot_price;
+
           setLivePrices((prev) => ({
             ...prev,
-            [symbol]: response.mark_price,  //
+            [symbol]: price,
           }));
         }
       };
-    
+
       deltaOptionsWs.onerror = (error) =>
         console.error("Delta Options WebSocket error:", error);
     }
-    
 
     // ===========================
     // 🔹 Cleanup
@@ -880,7 +863,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
   const totalValue =
     amount * Number(spotSide === "buy" ? lastTradePrice : lastTradePrice);
 
-    // console.log(totalValue,"the total value")
+  // console.log(totalValue,"the total value")
 
   useEffect(() => {
     if (!selectedOrder?.asset_symbol) return;
@@ -940,30 +923,70 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
   }, [selectedFuturesOrder]);
 
   useEffect(() => {
+    if (!selectedOptionsOrder?.asset_symbol) return;
+
+    const ws = new WebSocket("wss://socket.delta.exchange");
+
+    ws.onopen = () => {
+      const payload = {
+        type: "subscribe",
+        payload: {
+          channels: [
+            {
+              name: "v2/ticker",
+              symbols: [selectedOptionsOrder.asset_symbol], // Full symbol like "C-BTC-95000-231224"
+            },
+          ],
+        },
+      };
+      ws.send(JSON.stringify(payload));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // console.log(data, "theeeeeeeeeeeeeeeeeee dataaaaaaaaaaaa");
+
+      if (data?.type === "v2/ticker" && data?.mark_price) {
+        setOptionsLastTradePrice(data.mark_price);
+        setOptionsStrikePrice(data.strike_price);
+      }
+    };
+
+    ws.onerror = (error) =>
+      console.error("Options Modal WebSocket error:", error);
+
+    return () => {
+      ws.close();
+    };
+  }, [selectedOptionsOrder]);
+
+  useEffect(() => {
     setAmount("");
   }, [spotSide]);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-
+  
     try {
-      const response = await fetch(`${baseURL}trading/api/trading/trades/`, {
+      // Determine which API endpoint to use based on selectedChallenge
+      const apiUrl = selectedChallenge?.weekData?.id
+        ? `${baseURL}challenges/trades/?week_id=${selectedChallenge.weekData.id}`
+        : `${baseURL}trading/api/trading/trades/`;
+  
+      const response = await fetch(apiUrl, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${tokens?.access}`,
         },
       });
-
-      console.log(response,"responseresponseresponse")
-
-     
-
+  
+      console.log(response, "responseresponseresponse");
+  
       if (response.status === 401) {
         const errorData = await response.json();
-        
-
-       
+  
         if (
           errorData?.code === "token_not_valid" ||
           errorData?.detail === "Given token not valid for any token type"
@@ -974,21 +997,36 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         }
         throw new Error("Unauthorized access");
       }
-
+  
       if (!response.ok) {
-        // Try to parse JSON even when response is not ok
         const errorData = await response.json().catch(() => ({}));
-        const message = errorData?.detail || `HTTP error! status: ${response.status}`;
+        const message =
+          errorData?.detail || `HTTP error! status: ${response.status}`;
         throw new Error(message);
       }
-
+  
       const data = await response.json();
-
-      console.log(data, "Holdings and History");
-
+  
+      console.log(data, "Holdings and History RAW DATA");
+  
+      let tradesArray;
+      if (selectedChallenge?.weekData?.id) {
+        // Challenges API - check if data is array or has results
+        tradesArray = Array.isArray(data) ? data : (data.results || []);
+      } else {
+        // Regular API
+        tradesArray = data.results || [];
+      }
+  
+      console.log(tradesArray, "the trades array", typeof tradesArray, Array.isArray(tradesArray));
+// Ensure tradesArray is actually an array
+if (!Array.isArray(tradesArray)) {
+  console.error("tradesArray is not an array:", tradesArray);
+  tradesArray = [];
+}  
       // Format order history from nested history array
-      const formattedHistory = data.results.flatMap((trade) =>
-        trade.history.map((h) => ({
+      const formattedHistory = tradesArray.flatMap((trade) =>
+        (trade.history || []).map((h) => ({
           asset_symbol: trade.asset_symbol,
           asset_name: trade.asset_name,
           trade_type: trade.trade_type,
@@ -996,7 +1034,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           holding_type: trade.holding_type,
           status: trade.status,
           total_quantity: trade.total_quantity,
-          average_price: trade.average_price,
+          average_price: trade.average_entry_price || trade.average_price,
           total_invested: trade.total_invested,
           opened_at: trade.opened_at,
           closed_at: trade.closed_at,
@@ -1009,9 +1047,9 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
           created_at: h.created_at,
         }))
       );
-
+  
       // Format holdings from main trade data
-      const formattedHoldings = data.results.map((trade) => ({
+      const formattedHoldings = tradesArray.map((trade) => ({
         id: trade.id,
         asset_symbol: trade.asset_symbol,
         asset_name: trade.asset_name,
@@ -1022,7 +1060,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         holding_type: trade.holding_type,
         total_quantity: trade.total_quantity,
         remaining_quantity: trade.remaining_quantity,
-        average_price: trade.average_price,
+        average_price: trade.average_entry_price || trade.average_price,
         realized_pnl: trade.realized_pnl,
         unrealized_pnl: trade.unrealized_pnl,
         total_invested: trade.total_invested,
@@ -1033,7 +1071,7 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
         pnl_percentage: trade.pnl_percentage,
         history: trade.history || [],
       }));
-
+  
       setOrderHistory(formattedHistory);
       setHoldings(formattedHoldings);
     } catch (err) {
@@ -1044,40 +1082,35 @@ const [isPlacingOptionsOrder, setIsPlacingOptionsOrder] = useState(false);
   };
 
   useEffect(() => {
-
     fetchData();
   }, [navigate]);
 
   const [optionsSellQty, setOptionsSellQty] = useState(0);
   const [isClosingOptions, setIsClosingOptions] = useState(false);
-  const [selectedOptionsOrder, setSelectedOptionsOrder] = useState(null);
-const [optionsQuantity, setOptionsQuantity] = useState(1);
-const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
 
+  const [optionsQuantity, setOptionsQuantity] = useState(1);
 
   const [futuresSpotSide, setFuturesSpotSide] = useState("buy");
   const [futuresAmount, setFuturesAmount] = useState("");
   const [futuresLastTradePrice, setFuturesLastTradePrice] = useState(null);
   const [isPlacingFuturesOrder, setIsPlacingFuturesOrder] = useState(false);
 
-
-
   const handleTradeClick = (holding) => {
-  if (holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED") {
-    if (holding.trade_type === "SPOT") {
-      setSelectedOrder(holding);
-      setAmount(holding.remaining_quantity);
-      setSpotSide("buy");
-    } else if (holding.trade_type === "FUTURES") {
-      setSelectedFuturesOrder(holding);
-      setFuturesAmount(holding.remaining_quantity);
-      setFuturesSpotSide("buy");
-    } else if (holding.trade_type === "OPTIONS") {
-      setSelectedOptionsOrder(holding);
-      setOptionsQuantity(holding.remaining_quantity);
+    if (holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED") {
+      if (holding.trade_type === "SPOT") {
+        setSelectedOrder(holding);
+        setAmount(holding.remaining_quantity);
+        setSpotSide("buy");
+      } else if (holding.trade_type === "FUTURES") {
+        setSelectedFuturesOrder(holding);
+        setFuturesAmount(holding.remaining_quantity);
+        setFuturesSpotSide("buy");
+      } else if (holding.trade_type === "OPTIONS") {
+        setSelectedOptionsOrder(holding);
+        setOptionsQuantity(holding.remaining_quantity);
+      }
     }
-  }
-};
+  };
 
   const handleStart = () => setShowTooltip(true);
   const handleEnd = () => setShowTooltip(false);
@@ -1181,6 +1214,8 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
               </button>
             ))}
           </div>
+
+          
         </div>
 
         {/* Date Filter - Only show for Order History */}
@@ -1230,11 +1265,7 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
         )}
 
         {/* Error State */}
-        {error && (
-          <div className=" text-red-400">
-            {error}
-          </div>
-        )}
+        {error && <div className=" text-red-400">{error}</div>}
 
         {/* Order History Table */}
         {!isloading && !error && activeTab === "orderHistory" && (
@@ -1321,7 +1352,6 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                           <td className="py-4 font-bold px-4 text-sm text-right text-gray-300">
                             {Number(order.amount).toFixed(4)}
                           </td>
-                      
                         </tr>
                       ))
                   ) : (
@@ -1997,8 +2027,6 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
           </div>
         )}
 
-        
-
         {selectedOrder && (
           <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
             <div
@@ -2270,8 +2298,24 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                       min={1}
                       max={100}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setFuturesLeverage(val > 100 ? 100 : val < 1 ? 1 : val);
+                        const val = e.target.value;
+                        // Allow empty input temporarily
+                        if (val === "") {
+                          setFuturesLeverage("");
+                          return;
+                        }
+                        // Only allow numbers
+                        const num = Number(val);
+                        if (!isNaN(num)) {
+                          setFuturesLeverage(val);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Clamp when leaving the input
+                        const num = Number(futuresLeverage);
+                        if (isNaN(num) || num < 1) setFuturesLeverage("1");
+                        else if (num > 100) setFuturesLeverage("100");
+                        else setFuturesLeverage(String(num));
                       }}
                       className="w-16 bg-gray-800/50 border border-gray-700 rounded text-center text-white focus:border-purple-400 focus:outline-none py-1"
                     />
@@ -2320,7 +2364,7 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                 {/* Quantity Input */}
                 <div className="mb-4">
                   <label className="text-sm font-medium text-gray-400 mb-2 block">
-                    Quantity (Contracts)
+                    Quantity
                   </label>
                   <input
                     type="number"
@@ -2423,7 +2467,7 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                     onClick={() => handleFuturesModalOrder("buy")}
                     disabled={
                       futuresAmount <= 0 ||
-                      futuresLastTradePrice <=0 ||
+                      futuresLastTradePrice <= 0 ||
                       isPlacingFuturesOrder ||
                       (() => {
                         const contractValue = 0.001;
@@ -2437,7 +2481,7 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                     }
                     className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
                       futuresAmount <= 0 ||
-                      futuresLastTradePrice <=0 ||
+                      futuresLastTradePrice <= 0 ||
                       isPlacingFuturesOrder ||
                       (() => {
                         const contractValue = 0.001;
@@ -2471,14 +2515,14 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
                     onClick={() => handleFuturesModalOrder("sell")}
                     disabled={
                       futuresAmount <= 0 ||
-                      futuresLastTradePrice <=0 ||
+                      futuresLastTradePrice <= 0 ||
                       isPlacingFuturesOrder ||
                       parseFloat(futuresAmount) >
                         selectedFuturesOrder.remaining_quantity
                     }
                     className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
                       futuresAmount <= 0 ||
-                      futuresLastTradePrice <=0 ||
+                      futuresLastTradePrice <= 0 ||
                       isPlacingFuturesOrder ||
                       parseFloat(futuresAmount) >
                         selectedFuturesOrder.remaining_quantity
@@ -2498,163 +2542,268 @@ const [optionsLastTradePrice, setOptionsLastTradePrice] = useState(null);
             </div>
           </div>
         )}
+        {selectedOptionsOrder && (
+          <div className="fixed bottom-6 top-2 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="rounded-xl shadow-2xl w-[420px] transition-all duration-300 border bg-[#0A1628] border-blue-500/30">
+              {/* Header */}
+              <div className="px-6 pt-2 border-b border-gray-700/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedOptionsOrder.asset_symbol}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {selectedOptionsOrder.asset_name} - Options (
+                      {selectedOptionsOrder.options_details?.option_type})
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedOptionsOrder(null);
+                      setOptionsAmount("");
+                    }}
+                    className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-gray-400" />
+                  </button>
+                </div>
+              </div>
 
-{selectedOptionsOrder && (
-  <div className="fixed bottom-6 top-2 left-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
-    <div className="rounded-xl shadow-2xl w-[420px] transition-all duration-300 border bg-[#0A1628] border-blue-500/30">
-      {/* Header */}
-      <div className="px-6 pt-2 border-b border-gray-700/50">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-xl font-bold text-white">
-              {selectedOptionsOrder.asset_symbol}
-            </h3>
-            <p className="text-sm text-gray-400">
-              {selectedOptionsOrder.asset_name} - Options (
-              {selectedOptionsOrder.options_details?.option_type})
-            </p>
-          </div>
-          <button
-            onClick={() => setSelectedOptionsOrder(null)}
-            className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
-          >
-            <X size={20} className="text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="px-6 py-5">
-        {/* Strike & Expiry Info */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
-            <div className="text-xs text-gray-400 mb-1">Strike Price</div>
-            <div className="text-lg font-semibold text-white">
-              {parseFloat(
-                selectedOptionsOrder.options_details?.strike_price || 0
-              ).toLocaleString()}
-            </div>
-          </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
+              {/* Body */}
+              <div className="px-6 py-5">
+                {/* Strike & Expiry Info */}
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  <div className="bg-gray-800/50 w-full border border-gray-700 rounded-lg p-3 text-center">
+                    <div className="text-md text-gray-400 mb-1">
+                      Strike Price
+                    </div>
+                    <div className="text-lg font-bold text-white">
+                      {/* {parseFloat(
+                selectedOptionsOrder.optionsStrikePrice || 0
+              ).toLocaleString()} */}
+                      {optionsStrikePrice
+                        ? parseFloat(optionsStrikePrice).toFixed(2)
+                        : parseFloat(0).toFixed(2)}{" "}
+                    </div>
+                  </div>
+                  {/* <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400 mb-1">Expiry Date</div>
             <div className="text-lg font-semibold text-white">
               {selectedOptionsOrder.options_details?.expiry_date}
             </div>
-          </div>
-        </div>
+          </div> */}
+                </div>
 
-        {/* Quantity Input */}
-        <div className="mb-4">
-          <label className="text-sm font-medium text-gray-400 mb-2 block">
-            Quantity to Sell
-          </label>
-          <input
-            type="number"
-            value={optionsSellQty}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*\.?\d*$/.test(val)) setOptionsSellQty(val);
-            }}
-            onWheel={(e) => e.currentTarget.blur()}
-            className="w-full bg-gray-800/50 border-2 border-gray-700 rounded-lg px-4 py-3 text-white font-semibold text-lg focus:outline-none focus:border-blue-500 transition"
-            placeholder="0"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1.5">
-            <span>
-              Available: {selectedOptionsOrder.remaining_quantity || 0}
-            </span>
-          </div>
-        </div>
+                {/* Current Premium Price Display */}
+                <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-400">
+                      Current Premium
+                    </span>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-white">
+                        {optionsLastTradePrice
+                          ? parseFloat(optionsLastTradePrice).toFixed(2)
+                          : parseFloat(
+                              selectedOptionsOrder.options_details?.premium || 0
+                            ).toFixed(2)}{" "}
+                        USDT
+                      </span>
+                      {optionsLastTradePrice && (
+                        <div className="text-xs text-green-400 mt-1">
+                          ● Live
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-        {/* Slider */}
-        <div className="relative mb-5">
-          <div className="flex justify-between text-xs text-gray-400 mb-2">
-            <span>0%</span>
-            <span>25%</span>
-            <span>50%</span>
-            <span>75%</span>
-            <span>100%</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max={selectedOptionsOrder.remaining_quantity}
-            step={selectedOptionsOrder.remaining_quantity / 100}
-            value={optionsSellQty}
-            onChange={(e) => setOptionsSellQty(Number(e.target.value))}
-            className="w-full h-2 rounded-full appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #3b82f6 ${
-                (optionsSellQty / selectedOptionsOrder.remaining_quantity) * 100
-              }%, #374151 ${
-                (optionsSellQty / selectedOptionsOrder.remaining_quantity) * 100
-              }%)`,
-            }}
-          />
-        </div>
+                {/* Quantity Input */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-gray-400 mb-2 block">
+                    Quantity (Contracts)
+                  </label>
+                  <input
+                    type="number"
+                    value={optionsAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*\.?\d*$/.test(val)) {
+                        setOptionsAmount(val);
+                      }
+                    }}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className="w-full bg-gray-800/50 border-2 border-gray-700 rounded-lg px-4 py-3 text-white font-semibold text-lg focus:outline-none focus:border-blue-500 transition"
+                    placeholder="0"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1.5">
+                    <span>
+                      Available: {selectedOptionsOrder.remaining_quantity || 0}
+                    </span>
+                    <span className="font-semibold text-blue-400">
+                      {(
+                        (optionsAmount /
+                          selectedOptionsOrder.remaining_quantity) *
+                          100 || 0
+                      ).toFixed(1)}
+                      %
+                    </span>
+                  </div>
+                </div>
 
-        {/* Premium Display */}
-        <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Average Premium</span>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-white">
-                {parseFloat(
-                  selectedOptionsOrder.options_details?.premium || 0
-                ).toFixed(2)}{" "}
-                USDT
-              </span>
+                {/* Slider */}
+                <div className="relative mb-5">
+                  <div className="flex justify-between text-xs text-gray-400 mb-2">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={selectedOptionsOrder.remaining_quantity}
+                    step={selectedOptionsOrder.remaining_quantity / 100}
+                    value={optionsAmount || 0}
+                    onChange={(e) => setOptionsAmount(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, #3b82f6 ${
+                        (optionsAmount /
+                          selectedOptionsOrder.remaining_quantity) *
+                          100 || 0
+                      }%, #374151 ${
+                        (optionsAmount /
+                          selectedOptionsOrder.remaining_quantity) *
+                          100 || 0
+                      }%)`,
+                    }}
+                  />
+                </div>
+
+                {/* Total Value Display */}
+                <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-400">
+                      Total Value
+                    </span>
+                    <span className="text-xl font-bold text-white">
+                      {(() => {
+                        const currentPrice = optionsLastTradePrice
+                          ? parseFloat(optionsLastTradePrice)
+                          : parseFloat(
+                              selectedOptionsOrder.options_details?.premium || 0
+                            );
+
+                        return (
+                          parseFloat(optionsAmount || 0) * currentPrice
+                        ).toFixed(2);
+                      })()}{" "}
+                      USDT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Balance Info */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Available Balance</span>
+                    <span className="text-white font-semibold">
+                      {balance} USDT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Buy and Sell Buttons in Same Row */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleOptionsModalOrder("buy")}
+                    disabled={
+                      isPlacingOptionsOrder ||
+                      parseFloat(optionsAmount) <= 0 ||
+                      !optionsLastTradePrice ||
+                      (() => {
+                        const currentPrice = optionsLastTradePrice
+                          ? parseFloat(optionsLastTradePrice)
+                          : parseFloat(
+                              selectedOptionsOrder.options_details?.premium || 0
+                            );
+                        const totalCost =
+                          parseFloat(optionsAmount || 0) * currentPrice;
+                        return totalCost > balance;
+                      })()
+                    }
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                      parseFloat(optionsAmount) <= 0 ||
+                      isPlacingOptionsOrder ||
+                      !optionsLastTradePrice ||
+                      (() => {
+                        const currentPrice = optionsLastTradePrice
+                          ? parseFloat(optionsLastTradePrice)
+                          : parseFloat(
+                              selectedOptionsOrder.options_details?.premium || 0
+                            );
+                        const totalCost =
+                          parseFloat(optionsAmount || 0) * currentPrice;
+                        return totalCost > balance;
+                      })()
+                        ? "bg-gray-600"
+                        : "bg-green-600 hover:bg-green-700 shadow-green-500/30"
+                    }`}
+                  >
+                    {isPlacingOptionsOrder
+                      ? "Placing..."
+                      : !optionsLastTradePrice
+                      ? "Loading Price..."
+                      : (() => {
+                          const currentPrice = optionsLastTradePrice
+                            ? parseFloat(optionsLastTradePrice)
+                            : parseFloat(
+                                selectedOptionsOrder.options_details?.premium ||
+                                  0
+                              );
+                          const totalCost =
+                            parseFloat(optionsAmount || 0) * currentPrice;
+                          return totalCost > balance
+                            ? "Insufficient Balance"
+                            : "Buy";
+                        })()}
+                  </button>
+
+                  <button
+                    onClick={() => handleOptionsModalOrder("sell")}
+                    disabled={
+                      isPlacingOptionsOrder ||
+                      parseFloat(optionsAmount) <= 0 ||
+                      !optionsLastTradePrice ||
+                      parseFloat(optionsAmount) >
+                        parseFloat(selectedOptionsOrder.remaining_quantity)
+                    }
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                      parseFloat(optionsAmount) <= 0 ||
+                      isPlacingOptionsOrder ||
+                      !optionsLastTradePrice ||
+                      parseFloat(optionsAmount) >
+                        parseFloat(selectedOptionsOrder.remaining_quantity)
+                        ? "bg-gray-600"
+                        : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
+                    }`}
+                  >
+                    {isPlacingOptionsOrder
+                      ? "Placing..."
+                      : !optionsLastTradePrice
+                      ? "Loading Price..."
+                      : parseFloat(optionsAmount) >
+                        parseFloat(selectedOptionsOrder.remaining_quantity)
+                      ? "Exceeds Position"
+                      : "Sell / Close"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Total Value */}
-        <div className="rounded-lg p-4 mb-4 border bg-blue-500/10 border-blue-500/30">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-400">
-              Total Value
-            </span>
-            <span className="text-xl font-bold text-white">
-              {(
-                parseFloat(optionsSellQty || 0) *
-                parseFloat(
-                  selectedOptionsOrder.options_details?.premium || 0
-                )
-              ).toFixed(2)}{" "}
-              USDT
-            </span>
-          </div>
-        </div>
-
-        {/* Sell Button */}
-        <button
-          onClick={() => handleCloseOptionsPosition(selectedOptionsOrder)}
-          disabled={
-            isClosingOptions ||
-            parseFloat(optionsSellQty) <= 0 ||
-            parseFloat(optionsSellQty) >
-              parseFloat(selectedOptionsOrder.remaining_quantity)
-          }
-          className={`w-full py-3 rounded-lg font-semibold transition-all text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-            parseFloat(optionsSellQty) <= 0 ||
-            parseFloat(optionsSellQty) >
-              parseFloat(selectedOptionsOrder.remaining_quantity)
-              ? "bg-gray-600"
-              : "bg-red-600 hover:bg-red-700 shadow-red-500/30"
-          }`}
-        >
-          {isClosingOptions
-            ? "Closing..."
-            : parseFloat(optionsSellQty) >
-              parseFloat(selectedOptionsOrder.remaining_quantity)
-            ? "Exceeds Holding"
-            : "Sell / Close Position"}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+        )}
       </div>
     </div>
   );

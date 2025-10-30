@@ -15,7 +15,7 @@ const DashboardLayout = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-40 flex flex-col h-full">
         {/* Topbar */}
         <Topbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}

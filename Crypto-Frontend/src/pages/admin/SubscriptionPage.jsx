@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Trash2, CheckCircle, XCircle, X, Plus, Calendar } from "lucide-react";
+import { Eye, Trash2, CheckCircle, XCircle, X, Plus, Calendar, Search, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -15,9 +15,26 @@ const SubscriptionPage = () => {
   const [createLoading, setCreateLoading] = useState(false);
 
   // Create form fields
-  const [userId, setUserId] = useState('');
-  const [planId, setPlanId] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [startDate, setStartDate] = useState('');
+  
+  // Lists for dropdowns
+  const [users, setUsers] = useState([]);
+  console.log(users,"the filtered users")
+  const [plans, setPlans] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(false);
+  
+  // Search states
+  const [userSearch, setUserSearch] = useState('');
+  const [planSearch, setPlanSearch] = useState('');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showPlanDropdown, setShowPlanDropdown] = useState(false);
+
+  // Refs for click outside
+  const userDropdownRef = useRef(null);
+  const planDropdownRef = useRef(null);
 
   const navigate = useNavigate();
   const tokens = JSON.parse(localStorage.getItem("authTokens"));
@@ -77,9 +94,94 @@ const SubscriptionPage = () => {
     }
   }, [subscriptions, filterStatus]);
 
+  // Fetch users and plans when modal opens
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchUsers();
+      fetchPlans();
+    }
+  }, [showCreateModal]);
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+      if (planDropdownRef.current && !planDropdownRef.current.contains(event.target)) {
+        setShowPlanDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch Users
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const response = await fetch(`${baseURL}account/users/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens?.access}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only b2b_user and b2c_user roles
+        const filteredUsers = (data.results || []).filter(
+          user => user.role === 'b2b_user' || user.role === 'b2c_user'
+        );
+        setUsers(filteredUsers);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Fetch Plans
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const response = await fetch(`${baseURL}admin/subscriptions/plans/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens?.access}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPlans(data.results || []);
+      }
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  // Filter users based on search
+  const filteredUsers = users.filter(user => 
+    user.full_name.toLowerCase().includes(userSearch.toLowerCase()) ||
+    user.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+    user.mobile.includes(userSearch)
+  );
+
+  // Filter plans based on search
+  const filteredPlans = plans.filter(plan => 
+    plan.name.toLowerCase().includes(planSearch.toLowerCase()) ||
+    plan.price.includes(planSearch) ||
+    plan.user_type.toLowerCase().includes(planSearch.toLowerCase())
+  );
+
   // Create Subscription
   const handleCreateSubscription = async () => {
-    if (!userId.trim() || !planId.trim() || !startDate.trim()) {
+    if (!selectedUser || !selectedPlan || !startDate.trim()) {
       toast.error("All fields are required", { position: "top-right" });
       return;
     }
@@ -96,8 +198,8 @@ const SubscriptionPage = () => {
             Authorization: `Bearer ${tokens?.access}`,
           },
           body: JSON.stringify({
-            user_id: userId,
-            plan: planId,
+            user_id: selectedUser.id,
+            plan: selectedPlan.id,
             start_date: startDate,
           }),
         }
@@ -142,9 +244,13 @@ const SubscriptionPage = () => {
   // Close Create Modal
   const closeCreateModal = () => {
     setShowCreateModal(false);
-    setUserId('');
-    setPlanId('');
+    setSelectedUser(null);
+    setSelectedPlan(null);
     setStartDate('');
+    setUserSearch('');
+    setPlanSearch('');
+    setShowUserDropdown(false);
+    setShowPlanDropdown(false);
   };
 
   const handleView = (subscription) => {
@@ -227,7 +333,7 @@ const SubscriptionPage = () => {
         {/* Create Subscription Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto">
-            <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d2654] rounded-2xl shadow-2xl border border-white/20 max-w-md w-full p-6 my-8">
+            <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d2654] rounded-2xl shadow-2xl border border-white/20 max-w-lg w-full p-6 my-8">
               {/* Header */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">Create Subscription</h2>
@@ -240,33 +346,164 @@ const SubscriptionPage = () => {
               </div>
 
               {/* Form */}
-              <div className="space-y-4 mb-6">
-                <div>
+              <div className="space-y-5 mb-6">
+                {/* User Selection */}
+                <div ref={userDropdownRef}>
                   <label className="block text-white/80 text-sm font-medium mb-2">
-                    User ID *
+                    Select User *
                   </label>
-                  <input
-                    type="text"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
-                    placeholder="Enter user ID (UUID)"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <div 
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white flex items-center justify-between cursor-pointer hover:bg-white/15 transition-all"
+                      onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    >
+                      {selectedUser ? (
+                        <div className="flex-1">
+                          <div className="font-medium">{selectedUser.full_name}</div>
+                          <div className="text-xs text-white/60">{selectedUser.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-white/50">Choose a user...</span>
+                      )}
+                      <ChevronDown size={20} className={`text-white/60 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+
+                    {showUserDropdown && (
+                      <div className="absolute z-10 w-full mt-2 bg-[#1a1a2e] border border-white/20 rounded-xl shadow-2xl max-h-64 overflow-hidden">
+                        <div className="p-3 border-b border-white/10 sticky top-0 bg-[#1a1a2e]">
+                          <div className="relative">
+                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+                            <input
+                              type="text"
+                              value={userSearch}
+                              onChange={(e) => setUserSearch(e.target.value)}
+                              placeholder="Search by name, email, or mobile..."
+                              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <div className="overflow-y-auto max-h-48">
+                          {usersLoading ? (
+                            <div className="p-4 text-center text-white/60">Loading users...</div>
+                          ) : filteredUsers.length > 0 ? (
+                            filteredUsers.map(user => (
+                              <div
+                                key={user.id}
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setShowUserDropdown(false);
+                                  setUserSearch('');
+                                }}
+                                className="p-3 hover:bg-white/10 cursor-pointer transition-colors border-b border-white/5"
+                              >
+                                <div className="font-medium text-white">{user.full_name}</div>
+                                <div className="text-xs text-white/60 mt-0.5">{user.email}</div>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-xs text-white/50">{user.mobile}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    user.role === 'b2b_user' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
+                                  }`}>
+                                    {user.role === 'b2b_user' ? 'B2B User' : 'B2C User'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-white/60">No users found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
+                {/* Plan Selection */}
+                <div ref={planDropdownRef}>
                   <label className="block text-white/80 text-sm font-medium mb-2">
-                    Plan ID *
+                    Select Plan *
                   </label>
-                  <input
-                    type="text"
-                    value={planId}
-                    onChange={(e) => setPlanId(e.target.value)}
-                    placeholder="Enter plan ID (UUID)"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <div 
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white flex items-center justify-between cursor-pointer hover:bg-white/15 transition-all"
+                      onClick={() => setShowPlanDropdown(!showPlanDropdown)}
+                    >
+                      {selectedPlan ? (
+                        <div className="flex-1">
+                          <div className="font-medium">{selectedPlan.name}</div>
+                          <div className="text-xs text-white/60">
+                            ${selectedPlan.price} • {selectedPlan.duration_days} days • {selectedPlan.user_type}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-white/50">Choose a plan...</span>
+                      )}
+                      <ChevronDown size={20} className={`text-white/60 transition-transform ${showPlanDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+
+                    {showPlanDropdown && (
+                      <div className="absolute z-10 w-full mt-2 bg-[#1a1a2e] border border-white/20 rounded-xl shadow-2xl max-h-64 overflow-hidden">
+                        <div className="p-3 border-b border-white/10 sticky top-0 bg-[#1a1a2e]">
+                          <div className="relative">
+                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+                            <input
+                              type="text"
+                              value={planSearch}
+                              onChange={(e) => setPlanSearch(e.target.value)}
+                              placeholder="Search by name, price, or type..."
+                              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <div className="overflow-y-auto max-h-48">
+                          {plansLoading ? (
+                            <div className="p-4 text-center text-white/60">Loading plans...</div>
+                          ) : filteredPlans.length > 0 ? (
+                            filteredPlans.map(plan => (
+                              <div
+                                key={plan.id}
+                                onClick={() => {
+                                  setSelectedPlan(plan);
+                                  setShowPlanDropdown(false);
+                                  setPlanSearch('');
+                                }}
+                                className="p-3 hover:bg-white/10 cursor-pointer transition-colors border-b border-white/5"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-white">{plan.name}</div>
+                                    <div className="text-xs text-white/60 mt-0.5 line-clamp-1">{plan.description}</div>
+                                  </div>
+                                  <div className="text-right ml-3">
+                                    <div className="font-bold text-green-400">${plan.price}</div>
+                                    <div className="text-xs text-white/50">{plan.duration_days}d</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    plan.user_type === 'B2B' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
+                                  }`}>
+                                    {plan.user_type}
+                                  </span>
+                                  {plan.is_active && (
+                                    <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-300">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-white/60">No plans found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
+                {/* Start Date */}
                 <div>
                   <label className="block text-white/80 text-sm font-medium mb-2">
                     Start Date *
@@ -277,8 +514,33 @@ const SubscriptionPage = () => {
                     onChange={(e) => setStartDate(e.target.value)}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
                   />
-                  <p className="text-white/50 text-xs mt-1">Format: ISO 8601 (e.g., 2025-10-20T10:00:00Z)</p>
+                  <p className="text-white/50 text-xs mt-1.5">Select the subscription start date and time</p>
                 </div>
+
+                {/* Summary Card */}
+                {selectedUser && selectedPlan && (
+                  <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl">
+                    <div className="text-sm text-white/70 mb-2 font-medium">Summary</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-white/60">User:</span>
+                        <span className="text-white font-medium">{selectedUser.full_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/60">Plan:</span>
+                        <span className="text-white font-medium">{selectedPlan.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/60">Duration:</span>
+                        <span className="text-white font-medium">{selectedPlan.duration_days} days</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-white/10">
+                        <span className="text-white/60">Price:</span>
+                        <span className="text-green-400 font-bold text-lg">${selectedPlan.price}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
@@ -291,7 +553,7 @@ const SubscriptionPage = () => {
                 </button>
                 <button
                   onClick={handleCreateSubscription}
-                  disabled={createLoading}
+                  disabled={createLoading || !selectedUser || !selectedPlan || !startDate}
                   className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createLoading ? 'Creating...' : 'Create Subscription'}
@@ -360,9 +622,6 @@ const SubscriptionPage = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase">
                       Days Remaining
                     </th>
-                    {/* <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase">
-                      Actions
-                    </th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -405,28 +664,12 @@ const SubscriptionPage = () => {
                             {subscription.days_remaining} days
                           </span>
                         </td>
-                        {/* <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleView(subscription)}
-                              className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(subscription)}
-                              className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-md"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td> */}
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         className="px-6 py-16 text-center text-white/70 text-lg"
                       >
                         No subscriptions found for this status.

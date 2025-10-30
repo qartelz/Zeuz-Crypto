@@ -195,6 +195,10 @@ export const AuthProvider = ({ children }) => {
       });
   
       const data = await response.json();
+
+      console.log(data,"thhhhhhhhhhhhhhhhhhhh")
+
+
   
       if (response.ok) {
         const userRole = data.user?.role;
@@ -206,6 +210,7 @@ export const AuthProvider = ({ children }) => {
   
         localStorage.setItem('authTokens', JSON.stringify({ access: data.access, refresh: data.refresh }));
         localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('subscription', JSON.stringify(data.subscription));
   
         // ✅ Only show success toast if role matches the login route
         const showToast =

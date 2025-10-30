@@ -5,19 +5,7 @@ import AdminSidebar from "../components/admin/AdminSidebar";
 function AdminLayout() {
   const navigate = useNavigate();
 
-  // useEffect(() => {
-  //   const accessToken = localStorage.getItem("admin_access_token");
-  //   console.log(accessToken,"the acess token")
-
-  //   const adminUser = JSON.parse(localStorage.getItem("admin_user"));
-  //   console.log(adminUser,"the admin acess")
-
-
-  //   if (!accessToken || !adminUser || adminUser.role !== "admin") {
-  //     // 🚫 Not authenticated or not admin
-  //     navigate("/admin-login");
-  //   }
-  // }, [navigate]);
+;
 
   return (
     <div className="flex min-h-screen">

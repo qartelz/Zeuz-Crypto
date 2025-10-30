@@ -15,6 +15,7 @@ export const PnLProvider = ({ children }) => {
   const [totalPnL, setTotalPnL] = useState(0);
   const [totalPnLPercentage, setTotalPnLPercentage] = useState(0);
   const [holdings, setHoldings] = useState([]);
+
   const [livePrices, setLivePrices] = useState({});
   const [isLoading, setisLoading] = useState(false);
 
@@ -60,6 +61,10 @@ export const PnLProvider = ({ children }) => {
 
     const spotHoldings = holdings.filter((h) => h.trade_type === "SPOT");
     const futuresHoldings = holdings.filter((h) => h.trade_type === "FUTURES");
+    const optionsHoldings = holdings.filter((h) => h.trade_type === "OPTIONS");
+
+
+
 
     let binanceWs, deltaWs;
 
@@ -119,6 +124,44 @@ export const PnLProvider = ({ children }) => {
           setLivePrices((prev) => ({
             ...prev,
             [response.symbol]: response.close,
+          }));
+        }
+      };
+
+      deltaWs.onerror = (error) =>
+        console.error("Delta PnL WebSocket error:", error);
+    }
+
+
+     // DELTA (OPTIONS)
+     if (optionsHoldings.length > 0) {
+      deltaWs = new WebSocket("wss://socket.delta.exchange");
+
+      deltaWs.onopen = () => {
+        const payload = {
+          type: "subscribe",
+          payload: {
+            channels: [
+              {
+                name: "v2/ticker",
+                symbols: optionsHoldings.map((h) => h.asset_symbol),
+              },
+            ],
+          },
+        };
+        deltaWs.send(JSON.stringify(payload));
+      };
+
+      deltaWs.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+
+      
+        if (
+          response?.type === "v2/ticker" 
+        ) {
+          setLivePrices((prev) => ({
+            ...prev,
+            [response.symbol]: response.mark_price,
           }));
         }
       };

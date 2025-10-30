@@ -1,5 +1,12 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, CheckCircle, XCircle } from "lucide-react";
+import {
+  BarChart3,
+  CheckCircle,
+  XCircle,
+  Wallet,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 import { WalletContext } from "../../contexts/WalletContext";
 import toast from "react-hot-toast";
 import orderBookSvg from "../../assets/svg/order-book.svg";
@@ -30,10 +37,22 @@ import throttle from "lodash/throttle";
 import OptionsChain from "../OptionChain";
 import OptionsChainFinal from "../OptionschainNew";
 import axios from "axios";
-const Trading = () => {
+const Trading = ({
+  isChallengeStarted = false,
+  selectedChallenge = null,
+  walletData,
+  walletLoading,
+  setIsChallengeStarted,
+  refreshChallengeWallet
+}) => {
   const [mode, setMode] = useState("spot"); // "spot" | "futures"
   const [spotSide, setSpotSide] = useState("buy"); // "buy" | "sell"
   const [isSliderActive, setIsSliderActive] = useState(false);
+
+  // console.log(isChallengeStarted, "the challenge started ");
+  // console.log(JSON.stringify(selectedChallenge, null, 2), "the selected challenge");
+
+  console.log(selectedChallenge,"the selected challenge")
 
   const { balance, loading, refreshWallet } = useContext(WalletContext);
 
@@ -70,6 +89,13 @@ const Trading = () => {
     quoteAsset: "USDT",
   });
 
+  // useEffect(() => {
+  //   if (selectedChallenge?.mission?.allowedPairs?.length > 0) {
+  //     // You can pick the first allowed pair or any default logic
+  //     setSelected({ symbol: selectedChallenge.mission.allowedPairs });
+  //   }
+  // }, [selectedChallenge]);
+
   const showToast = (message, type = "success") => {
     console.log(`${type}: ${message}`);
   };
@@ -89,6 +115,12 @@ const Trading = () => {
     setAmount("");
     setSliderValue(0);
   }, [spotSide]);
+
+  useEffect(() => {
+    if (selectedChallenge?.category) {
+      setMode(selectedChallenge.category.toLowerCase());
+    }
+  }, [selectedChallenge, setMode]);
 
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const tokens = JSON.parse(localStorage.getItem("authTokens"));
@@ -201,7 +233,7 @@ const Trading = () => {
         setFuturesPrice(data.close);
 
         setFuturesPriceTicker({
-          c: parseFloat(data.close), // last price
+          c: parseFloat(data.spot_price), // last price
           h: parseFloat(data.high), // 24h high
           l: parseFloat(data.low), // 24h low
           v: parseFloat(data.volume), // base volume
@@ -431,6 +463,9 @@ const Trading = () => {
           );
 
           await refreshWallet();
+          if (selectedChallenge && refreshChallengeWallet) {
+            await refreshChallengeWallet(selectedChallenge.participationId);
+          }
           fetchSpotBalance();
           setAmount("");
           setSliderValue(0);
@@ -454,24 +489,120 @@ const Trading = () => {
             { position: "top-right", duration: 2500 }
           );
         }
-      } else {
+      }
+      //  else {
+      //   // Handle BUY logic
+      //   const payload = {
+      //     asset_symbol: selected.baseAsset,
+      //     asset_name: "Btc" || "",
+      //     asset_exchange: selected.exchange || "BINANCE",
+      //     trade_type: mode === "spot" ? "SPOT" : "FUT",
+      //     direction: spotSide.toUpperCase(),
+      //     holding_type:
+      //       mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
+      //     quantity: amount,
+      //     price: price.toFixed(2),
+      //     order_type: "MARKET",
+      //   };
+
+      //   console.log(payload, "the payload");
+
+      //   const response = await fetch(`${baseURL}trading/place-order/`, {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       Authorization: `Bearer ${tokens.access}`,
+      //     },
+      //     body: JSON.stringify(payload),
+      //   });
+
+      //   const data = await response.json();
+
+      //   console.log(data, "the buy data response");
+
+      //   if (response.ok) {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               Order placed: {data.action} {data.quantity} @ {data.price}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+
+      //     await refreshWallet();
+      //     fetchSpotBalance();
+      //     setAmount("");
+      //     setSliderValue(0);
+      //   } else {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <XCircle className="h-6 w-6 text-red-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               {data.detail || "Something went wrong"}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+      //   }
+      // }
+      else {
         // Handle BUY logic
-        const payload = {
-          asset_symbol: selected.baseAsset,
-          asset_name: "Btc" || "",
-          asset_exchange: selected.exchange || "BINANCE",
-          trade_type: mode === "spot" ? "SPOT" : "FUT",
-          direction: spotSide.toUpperCase(),
-          holding_type:
-            mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
-          quantity: amount,
-          price: price.toFixed(2),
-          order_type: "MARKET",
-        };
+        let payload;
+        let endpoint;
+
+        if (selectedChallenge) {
+          // 🔹 Challenge Mode
+          endpoint = `${baseURL}challenges/trades/`;
+          payload = {
+            participation_id: selectedChallenge.participationId,
+            asset_symbol: selected.baseAsset,
+            asset_name: selected.baseAsset,
+            trade_type: mode === "spot" ? "SPOT" : "FUT",
+            direction: spotSide.toUpperCase(),
+            total_quantity: parseFloat(amount),
+            entry_price: parseFloat(price.toFixed(2)),
+            holding_type:
+              mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
+            order_type: "MARKET",
+          };
+        } else {
+          // 🔹 Normal Mode
+          endpoint = `${baseURL}trading/place-order/`;
+          payload = {
+            asset_symbol: selected.baseAsset,
+            asset_name: selected.baseAsset,
+            asset_exchange: selected.exchange || "BINANCE",
+            trade_type: mode === "spot" ? "SPOT" : "FUT",
+            direction: spotSide.toUpperCase(),
+            holding_type:
+              mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
+            quantity: amount,
+            price: price.toFixed(2),
+            order_type: "MARKET",
+          };
+        }
 
         console.log(payload, "the payload");
 
-        const response = await fetch(`${baseURL}trading/place-order/`, {
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -481,7 +612,6 @@ const Trading = () => {
         });
 
         const data = await response.json();
-
         console.log(data, "the buy data response");
 
         if (response.ok) {
@@ -495,7 +625,8 @@ const Trading = () => {
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Order placed: {data.action} {data.quantity} @ {data.price}
+                    Order placed: {data.action || spotSide.toUpperCase()}{" "}
+                    {data.quantity || amount} @ {data.price || price.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -504,6 +635,9 @@ const Trading = () => {
           );
 
           await refreshWallet();
+          if (selectedChallenge && refreshChallengeWallet) {
+            await refreshChallengeWallet(selectedChallenge.participationId);
+          }
           fetchSpotBalance();
           setAmount("");
           setSliderValue(0);
@@ -518,7 +652,7 @@ const Trading = () => {
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {data.detail || "Something went wrong"}
+                    {data.error || "Something went wrong"}
                   </p>
                 </div>
               </div>
@@ -1134,6 +1268,11 @@ const Trading = () => {
             );
 
             await refreshWallet();
+            if (selectedChallenge && refreshChallengeWallet) {
+              await refreshChallengeWallet(selectedChallenge.participationId);
+            }
+  
+            
             fetchFuturesPosition();
             setFuturesAmount("");
             setFuturesSliderValue(0);
@@ -1215,6 +1354,9 @@ const Trading = () => {
           );
 
           await refreshWallet();
+          if (selectedChallenge && refreshChallengeWallet) {
+            await refreshChallengeWallet(selectedChallenge.participationId);
+          }
           fetchFuturesPosition();
           setFuturesAmount("");
           setFuturesSliderValue(0);
@@ -1378,7 +1520,6 @@ const Trading = () => {
 
   useEffect(() => {
     if (mode === "spot") {
-      
       fetch(`${REST_BASE}/api/v3/exchangeInfo`)
         .then((r) => r.json())
         .then((data) => {
@@ -1399,90 +1540,82 @@ const Trading = () => {
           }
         })
         .catch((err) => console.error("Error fetching spot symbols:", err));
-    // } else if (mode === "futures") {
-    //   // ✅ FUTURES — Only Perpetual contracts from Delta
-    //   const fetchSymbols = async () => {
-    //     try {
-    //       const res = await axios.get(
-    //         "https://api.delta.exchange/v2/products?contract_types=perpetual_futures"
-    //       );
-          
-    //       const perpetuals = res.data.result;
+      // } else if (mode === "futures") {
+      //   // ✅ FUTURES — Only Perpetual contracts from Delta
+      //   const fetchSymbols = async () => {
+      //     try {
+      //       const res = await axios.get(
+      //         "https://api.delta.exchange/v2/products?contract_types=perpetual_futures"
+      //       );
 
-    //       perpetuals.map((s) => ({
-            
-    //         baseAsset: s.short_description
-            
-            
-    //       }))
+      //       const perpetuals = res.data.result;
 
-    //       console.log(perpetuals, "the symbols first in perp");
+      //       perpetuals.map((s) => ({
 
-    //       setSymbols(perpetuals);
+      //         baseAsset: s.short_description
 
-         
+      //       }))
 
-    //       if (!perpetuals.find((x) => x.symbol === selected.symbol)) {
-    //         if (perpetuals[0]) setSelected(perpetuals[0]);
-    //       }
-    //     } catch (err) {
-    //       console.error("Error fetching futures symbols:", err);
-    //     }
-    //   };
-    //   fetchSymbols();
-    // }
+      //       console.log(perpetuals, "the symbols first in perp");
 
-  } else if (mode === "futures") {
-    const fetchSymbols = async () => {
-      try {
-        const res = await axios.get(
-          "https://api.delta.exchange/v2/products?contract_types=perpetual_futures"
-        );
-  
-        const perpetuals = res.data.result;
-  
-        const normalizedFutures = perpetuals
-        .filter((s) => s.symbol?.toUpperCase().endsWith("USDT")) // ✅ only USDT pairs
-        .map((s) => ({
-          symbol: s.symbol?.toLowerCase() || "",  // fallback to empty string
-          baseAsset: (s.short_description || "").toUpperCase(),
-          quoteAsset: s.quoting_asset?.symbol || s.quoting_asset?.id || "USDT",
-          expiry: s.contract_type || "perpetual_futures",
-          tickSize: s.tick_size || "",
-          contractValue: s.contract_value || "",
-          leverage: s.default_leverage || "",
-        }));
-      
+      //       setSymbols(perpetuals);
 
-        console.log(normalizedFutures,"the normalized")
-  
-        setSymbols(normalizedFutures);
-  
-        if (!list.find((x) => x.symbol === selected?.symbol)) {
-          if (list[0]) setSelected(list[0]);
+      //       if (!perpetuals.find((x) => x.symbol === selected.symbol)) {
+      //         if (perpetuals[0]) setSelected(perpetuals[0]);
+      //       }
+      //     } catch (err) {
+      //       console.error("Error fetching futures symbols:", err);
+      //     }
+      //   };
+      //   fetchSymbols();
+      // }
+    } else if (mode === "futures") {
+      const fetchSymbols = async () => {
+        try {
+          const res = await axios.get(
+            "https://api.delta.exchange/v2/products?contract_types=perpetual_futures"
+          );
+
+          const perpetuals = res.data.result;
+
+          const normalizedFutures = perpetuals
+            .filter((s) => s.symbol?.toUpperCase().endsWith("USDT")) // ✅ only USDT pairs
+            .map((s) => ({
+              symbol: s.symbol?.toLowerCase() || "", // fallback to empty string
+              baseAsset: (s.short_description || "").toUpperCase(),
+              quoteAsset:
+                s.quoting_asset?.symbol || s.quoting_asset?.id || "USDT",
+              expiry: s.contract_type || "perpetual_futures",
+              tickSize: s.tick_size || "",
+              contractValue: s.contract_value || "",
+              leverage: s.default_leverage || "",
+            }));
+
+          console.log(normalizedFutures, "the normalized");
+
+          setSymbols(normalizedFutures);
+
+          if (!list.find((x) => x.symbol === selected?.symbol)) {
+            if (list[0]) setSelected(list[0]);
+          }
+        } catch (err) {
+          console.error("Error fetching futures symbols:", err);
         }
-      } catch (err) {
-        console.error("Error fetching futures symbols:", err);
-      }
-    };
-    fetchSymbols();
-  }
-  
+      };
+      fetchSymbols();
+    }
   }, [mode]);
 
   // ✅ Same filter logic
   const filteredSymbols = useMemo(() => {
-    const q = search.trim().toLowerCase(); // convert search to lowercase
+    const q = search.trim().toLowerCase();
     if (!q) return symbols;
     return symbols.filter(
       (s) =>
-        (s?.baseAsset?.toLowerCase().includes(q)) || 
-        (s?.symbol?.toLowerCase().includes(q))
+        s?.baseAsset?.toLowerCase().includes(q) ||
+        s?.symbol?.toLowerCase().includes(q)
     );
   }, [symbols, search]);
-  
-
-
 
   // console.log(filteredSymbols,"the filtered symbols")
 
@@ -1500,7 +1633,6 @@ const Trading = () => {
       tickerWS.current?.close();
     } catch {}
     tickerWS.current = new WebSocket(`${WS_BASE}/${tickerStream}`);
-    // tickerWS.current.onmessage = (e) => setTicker(JSON.parse(e.data));
     tickerWS.current.onmessage = throttle((e) => {
       setTicker(JSON.parse(e.data));
     }, 6000);
@@ -1844,7 +1976,7 @@ const Trading = () => {
                 <div className="bg-[#1E1F36] rounded p-2 flex justify-between items-center text-xs sm:text-sm">
                   <span className="text-gray-400">Mark Price</span>
                   <span className="text-yellow-400 font-mono font-semibold">
-                    {futuresPrice.toFixed(2)}
+                    {futuresPriceTicker?.markPrice.toFixed(2)}
                   </span>
                   <span className="text-gray-400">{selected.quoteAsset}</span>
                 </div>
@@ -2147,7 +2279,7 @@ const Trading = () => {
                   {/* Price */}
                   <div className="bg-[#1E1F36] rounded p-2 flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-gray-400">Price</span>
-                    <span className="text-white">{price.toFixed(2)}</span>
+                    <span className="text-white">{price}</span>
                     <span className="text-gray-400">{selected.quoteAsset}</span>
                   </div>
 
@@ -2392,75 +2524,214 @@ const Trading = () => {
 
   const fetchSpotBalance = async () => {
     try {
-      const response = await fetch(
-        `${baseURL}trading/trade/open/?asset_symbol=${selected.baseAsset}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${tokens?.access}`,
-          },
-        }
-      );
-
+      let response;
+      
+      if (selectedChallenge) {
+        // Challenge mode API
+        response = await fetch(
+          `${baseURL}challenges/challenge-trades/${selected.baseAsset.toUpperCase()}/?week_id=${selectedChallenge?.weekData.id}&trade_type=${mode.toUpperCase()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokens?.access}`,
+            },
+          }
+        );
+      } else {
+        // Normal mode API
+        response = await fetch(
+          `${baseURL}trading/trade/open/?asset_symbol=${selected.baseAsset}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokens?.access}`,
+            },
+          }
+        );
+      }
+  
       const data = await response.json();
       console.log(data, "the fetchSpotBalance data");
-
-      if (data.is_open && data.trade && data.trade.trade_type === "SPOT") {
-        setSpotBalance(parseFloat(data.trade.total_quantity));
-        setTradeId(data.trade.id);
+  
+      if (selectedChallenge) {
+        // Handle challenge response
+        if (data.open_and_partial_trades && data.open_and_partial_trades.length > 0) {
+          const totalQuantity = data.open_and_partial_trades.reduce(
+            (sum, trade) => sum + parseFloat(trade.total_quantity),
+            0
+          );
+          setSpotBalance(totalQuantity);
+          // Set the first trade's ID (or handle multiple trades as needed)
+          setTradeId(data.open_and_partial_trades[0].id);
+        } else {
+          setSpotBalance(0);
+          setTradeId(null);
+        }
       } else {
-        setSpotBalance(0);
+        // Handle normal response
+        if (data.is_open && data.trade && data.trade.trade_type === "SPOT") {
+          setSpotBalance(parseFloat(data.trade.total_quantity));
+          setTradeId(data.trade.id);
+        } else {
+          setSpotBalance(0);
+          setTradeId(null);
+        }
       }
     } catch (error) {
       console.error("Error fetching spot balance:", error);
       setSpotBalance(0);
+      setTradeId(null);
     }
   };
-
   // Call it in useEffect
   useEffect(() => {
     fetchSpotBalance();
-  }, [selected]);
+  }, [selected, selectedChallenge, mode]); // Added selectedChallenge and mode
 
   return (
     <div className="text-white h-full w-full px-2 sm:px-4">
-      <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-[#A93EF8] to-[#E75469] text-transparent bg-clip-text mb-4 sm:mb-3">
-        Virtual Trading ({mode.toUpperCase()})
-      </h1>
+      <div className="flex justify-between">
+        <div>
+          {isChallengeStarted && (
+            
 
-      {/* Mode Toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setMode("spot")}
-          className={`px-3 py-1 rounded-md ${
-            mode === "spot"
-              ? "bg-purple-500/20 px-3 font-semibold"
-              : "text-gray-400"
-          }`}
-        >
-          Spot
-        </button>
-        <button
-          onClick={() => setMode("futures")}
-          className={`px-3 py-1 rounded ${
-            mode === "futures"
-              ? "bg-purple-500/20 px-3 font-semibold"
-              : "text-gray-400"
-          }`}
-        >
-          Futures
-        </button>
-        <button
-          onClick={() => setMode("options")}
-          className={`px-3 py-1 rounded ${
-            mode === "options"
-              ? "bg-purple-500/20 px-3 font-semibold"
-              : "text-gray-400"
-          }`}
-        >
-          Options
-        </button>
+            <button
+            onClick={() => setIsChallengeStarted(false)}
+            className="flex items-center gap-2 font-medium transition-all duration-200 hover:scale-105"
+          >
+            <ArrowLeft size={20} className="text-[#A93EF8] drop-shadow-[0_0_6px_rgba(169,62,248,0.5)]" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A93EF8] to-[#E75469] ">
+              Back to Challenge
+            </span>
+          </button>
+          )}
+
+          <div></div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-[#A93EF8] to-[#E75469] text-transparent bg-clip-text mb-4 sm:mb-3">
+            {isChallengeStarted ? "Challenge" : "Virtual"} Trading (
+            {selectedChallenge?.category?.toUpperCase() || mode.toUpperCase()})
+          </h1>
+
+          {/* Mode Toggle */}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedChallenge
+              ? (() => {
+                  const weekNumber =
+                    selectedChallenge?.weekData?.week_number || 1;
+
+                  // Allowed modes based on week number
+                  let allowedModes = [];
+                  if (weekNumber === 1) allowedModes = ["spot"];
+                  else if (weekNumber === 2) allowedModes = ["spot", "futures"];
+                  else allowedModes = ["spot", "futures", "options"];
+
+                  // If current mode isn’t allowed, fallback to the first allowed one
+                  if (!allowedModes.includes(mode)) {
+                    setMode(allowedModes[0]);
+                  }
+
+                  return (
+                    <div className="flex gap-2">
+                      {allowedModes.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setMode(m)}
+                          className={`px-3 py-1 rounded-md transition ${
+                            mode === m
+                              ? "bg-purple-500/20 font-semibold text-white"
+                              : "text-gray-400 hover:bg-purple-500/10"
+                          }`}
+                        >
+                          {m.charAt(0).toUpperCase() + m.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()
+              : // Normal mode toggle when no challenge selected
+                ["spot", "futures", "options"].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`px-3 py-1 rounded-md transition ${
+                      mode === m
+                        ? "bg-purple-500/20 font-semibold text-white"
+                        : "text-gray-400 hover:bg-purple-500/10"
+                    }`}
+                  >
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </button>
+                ))}
+          </div>
+        </div>
+
+        {walletData && (
+          <div className="  rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all  min-w-[420px]">
+            {walletLoading ? (
+              <div className="flex flex-col items-center justify-center h-[120px]">
+                <Loader2
+                  className="animate-spin text-purple-400 mb-3"
+                  size={32}
+                />
+                <p className="text-sm text-gray-300 font-medium">
+                  Loading wallet...
+                </p>
+              </div>
+            ) : (
+              <div className="h-[120px] flex flex-col justify-">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-purple-400" />
+                    {walletData.week_title} Wallet
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-1 border border-gray-700/50 hover:border-green-500/30 transition-all">
+                    <p className="text-[10px] text-gray-400 font-medium mb-1.5 uppercase tracking-wide">
+                      Available
+                    </p>
+                    <p className="text-lg font-bold text-green-400 tabular-nums">
+                      {parseFloat(walletData.available_balance).toLocaleString(
+                        undefined,
+                        {
+                          maximumFractionDigits: 2,
+                        }
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-1 border border-gray-700/50 hover:border-yellow-500/30 transition-all">
+                    <p className="text-[10px] text-gray-400 font-medium mb-1.5 uppercase tracking-wide">
+                      Locked
+                    </p>
+                    <p className="text-lg font-bold text-yellow-400 tabular-nums">
+                      {parseFloat(walletData.locked_balance).toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 2 }
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-1 border border-gray-700/50 hover:border-blue-500/30 transition-all">
+                    <p className="text-[10px] text-gray-400 font-medium mb-1.5 uppercase tracking-wide">
+                      Earned
+                    </p>
+                    <p className="text-lg font-bold text-blue-400 tabular-nums">
+                      {parseFloat(walletData.earned_balance).toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 2 }
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {mode === "spot" || mode === "futures" ? (
@@ -2473,16 +2744,17 @@ const Trading = () => {
             {/* Left: Pair Selector */}
             <div className=" w-fit flex-shrink-0">
               <button
-                onClick={() => setShowDropdown((v) => !v)}
-                className="flex items-center justify-start sm:justify-between w-full px-0 sm:px-4 py-3 
-        
-               rounded-lg text-xl   uppercase transition"
+                onClick={() => {
+                  setShowDropdown((v) => !v); // only toggle if no challenge
+                }}
+                className="flex items-center justify-start sm:justify-between w-full px-0 sm:px-4 py-3 rounded-lg text-xl uppercase transition cursor-pointer"
                 title="Select Pair"
               >
-                <div>
+                <div className="flex items-center">
                   <span className="font-extrabold text-3xl font-mono">
                     {selected.symbol}
                   </span>
+
                   <span className="ml-2 text-sm sm:text-base opacity-70">
                     ▼
                   </span>
@@ -2519,9 +2791,7 @@ const Trading = () => {
                         className="px-3  py-2 hover:bg-white/5 cursor-pointer 
                 flex items-center justify-between uppercase text-sm transition"
                       >
-                       <span className="font-semibold">
-  {s.baseAsset}
-</span>
+                        <span className="font-semibold">{s.baseAsset}</span>
 
                         <span className="text-xs text-gray-400">
                           {s.symbol}

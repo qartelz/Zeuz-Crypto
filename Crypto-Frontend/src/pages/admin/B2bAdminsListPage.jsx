@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 const B2bAdminsListPage = () => {
   const [admins, setAdmins] = useState([]);
+  console.log(admins,"b2b-admin list")
   const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [filterStatus, setFilterStatus] = useState("all");
   const [useCustomReason, setUseCustomReason] = useState(false);
@@ -297,8 +298,42 @@ const B2bAdminsListPage = () => {
   };
 
   const handleView = (admin) => {
-    alert(`View B2B Admin: ${admin.user.full_name}`);
+    if (admin.status === "rejected") {
+      toast.custom(
+        (t) => (
+          <div
+            className={`${
+              t.visible ? "animate-enter" : "animate-leave"
+            } max-w-md w-full bg-gradient-to-br from-[#1a1a2e] to-[#2d2654] text-white border border-red-500/30 shadow-xl rounded-2xl p-4 flex flex-col gap-2`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-red-400 flex items-center gap-2">
+                <XCircle size={18} /> Rejected Admin
+              </span>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-white/80">
+              This admin was rejected. <br />
+              <span className="text-red-300 font-medium">
+                Reason: {admin.rejection_reason || "No reason provided"}
+              </span>
+            </p>
+          </div>
+        ),
+        { position: "top-right", duration: 4000 }
+      );
+      return; // 🚫 Prevent navigation
+    }
+  
+    // ✅ Navigate only if not rejected
+    navigate(`/admin/adminspage/b2b-admin-details/${admin.user.id}`);
   };
+  
 
   const handleDelete = (admin) => {
     alert(`Delete B2B Admin: ${admin.user.full_name}`);

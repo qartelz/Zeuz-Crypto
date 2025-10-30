@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Eye, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const UsersListPage = () => {
+  const navigate = useNavigate();
   const [usersList, setUsersList] = useState([]);
-  console.log(usersList,"the userlist")
-
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +31,6 @@ const UsersListPage = () => {
           }
         );
 
-        
         if (response.status === 401) {
           const errorData = await response.json();
 
@@ -67,14 +67,12 @@ const UsersListPage = () => {
   useEffect(() => {
     let filtered = usersList;
 
-    // Filter by status
     if (filterStatus === "active") {
       filtered = filtered.filter((u) => u.is_active === true);
     } else if (filterStatus === "inactive") {
       filtered = filtered.filter((u) => u.is_active === false);
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       filtered = filtered.filter((u) => {
         const name = u.full_name || `${u.first_name} ${u.last_name}`;
@@ -93,7 +91,8 @@ const UsersListPage = () => {
   }, [usersList, filterStatus, searchQuery]);
 
   const handleView = (user) => {
-    alert(`View user: ${user.full_name || user.email}`);
+    // Navigate to user profile with user ID
+    navigate(`/admin/userspage/user-profile/${user.id}`);
   };
 
   const handleDelete = (user) => {
@@ -170,7 +169,6 @@ const UsersListPage = () => {
               <table className="min-w-full divide-y divide-white/10">
                 <thead className="bg-[#2b2676]">
                   <tr>
-                   
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Name
                     </th>
@@ -197,7 +195,6 @@ const UsersListPage = () => {
                       key={u.id}
                       className="hover:bg-white/5 transition-colors"
                     >
-                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-white font-semibold text-sm">
                           {u.full_name || `${u.first_name} ${u.last_name}`}

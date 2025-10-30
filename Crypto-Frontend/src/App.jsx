@@ -29,6 +29,8 @@ import Achievements from "./pages/Achievements";
 import { PnLProvider } from "./contexts/PnLContext";
 import ProfilePage from "./pages/ProfilePage";
 import SubscriptionPage from "./pages/admin/SubscriptionPage";
+import ChallengesManagement from "./pages/admin/ChallengesManagement";
+import B2bAdminDetailsPage from "./pages/admin/B2bAdminDetailsPage";
 
 function App() {
   return (
@@ -63,20 +65,22 @@ function App() {
 
           {/*Protected Routes - Admin */}
           <Route element={<PrivateRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="userspage" element={<UsersListPage />} />
-              <Route path="adminspage" element={<B2bAdminsListPage />} />
-              <Route path="plans" element={<PlansManagement />} />
-              <Route path="plans/:id" element={<PlanDetails />} />
-              <Route path="coupons" element={<CouponsManagement />} />
-              <Route path="subscriptions" element={<SubscriptionPage />} />
+  <Route path="/admin" element={<AdminLayout />}>
+    <Route path="dashboard" element={<AdminDashboard />} />
+    <Route path="userspage" element={<UsersListPage />} />
+    <Route path="adminspage" element={<B2bAdminsListPage />} />
+    <Route path="plans" element={<PlansManagement />} />
+    <Route path="plans/:id" element={<PlanDetails />} />
+    <Route path="coupons" element={<CouponsManagement />} />
+    <Route path="subscriptions" element={<SubscriptionPage />} />
+    <Route path="challenges" element={<ChallengesManagement />} />
+    <Route path="adminspage/b2b-admin-details/:adminId" element={<B2bAdminDetailsPage />} />
+    
+    <Route path="userspage/user-profile/:userId" element={<UserProfile />} />
+    <Route path="adminspage/user-profile/:userId" element={<UserProfile />} />
 
-
-
-              <Route path="user-profile" element={<UserProfile />} />
-            </Route>
-          </Route>
+  </Route>
+</Route>
 
           <Route element={<PrivateRoute allowedRoles={["b2b_admin"]} />}>
             <Route path="/b2b" element={<B2bAdminLayout />}>

@@ -58,6 +58,8 @@ const PlansManagement = () => {
 
       const data = await response.json();
 
+      
+
       console.log(data,"the response ofthe plan")
       setPlans(data.results || data);
     } catch (err) {

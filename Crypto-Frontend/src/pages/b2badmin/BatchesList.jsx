@@ -8,10 +8,13 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-const baseURL = import.meta.env.VITE_API_baseURL;
+const baseURL = import.meta.env.VITE_API_BASE_URL;
+
 
 const BatchesList = () => {
   const [batches, setBatches] = useState([]);
+
+  console.log(batches,"the batches")
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,43 +36,82 @@ const BatchesList = () => {
     mobile: "",
     password: "",
   });
+
+  console.log(userForm,"the  user form")
   const [userFormResponse, setUserFormResponse] = useState(null);
   const [addingUser, setAddingUser] = useState(false);
 
   const [showAddUserForm, setShowAddUserForm] = useState(false);
 
-  const tokens = JSON.parse(localStorage.getItem("authTokens"));
+ 
   const navigate = useNavigate();
 
   // Move fetchBatches out to call anywhere
+  // const fetchBatches = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const tokens = JSON.parse(localStorage.getItem("authTokens"));
+  //     const res = await fetch(`${baseURL}account/batch/list/`, {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${tokens?.access}`,
+  //       },
+  //     });
+
+  //     console.log(res,"the res of the")
+
+  //     if (res.status === 401) {
+  //       localStorage.clear();
+  //       navigate("/b2badmin-login");
+  //       return;
+  //     }
+
+  //     const data = await res.json();
+
+  //     console.log(data,"the sadaddataaaa")
+
+     
+  //     setBatches(data.results );
+  //   } catch (err) {
+  //     setError(err.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchBatches = async () => {
     setLoading(true);
     try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const res = await fetch(`${baseURL}account/batch/list/`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${tokens?.access}`,
         },
       });
-
+  
       if (res.status === 401) {
         localStorage.clear();
         navigate("/b2badmin-login");
         return;
       }
-
+  
       const data = await res.json();
-      setBatches(data.results || []);
+      console.log("📦 Batch List Response:", data);
+  
+      setBatches(data.results);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+  
 
   useEffect(() => {
+    
     fetchBatches();
-  }, [navigate, tokens?.access]);
+  }, [navigate]);
 
   const handleToggleActive = (batchId) => {
     setBatches((prev) =>
@@ -83,6 +125,7 @@ const BatchesList = () => {
     setCreating(true);
     setCreateResponse(null);
     try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const res = await fetch(`${baseURL}account/batch/create/`, {
         method: "POST",
         headers: {
@@ -124,6 +167,7 @@ const BatchesList = () => {
     });
 
     try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const res = await fetch(
         `${baseURL}account/batch/users/${batch.id}/`,
         {
@@ -149,6 +193,7 @@ const BatchesList = () => {
     setUserFormResponse(null);
 
     try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const res = await fetch(`${baseURL}account/b2b-user/register/`, {
         method: "POST",
         headers: {
@@ -160,9 +205,12 @@ const BatchesList = () => {
           batch_id: viewingBatch.id,
           send_email: true,
         }),
+        
       });
 
       const data = await res.json();
+
+      console.log(data,"the data from the create b2b user")
 
       if (!res.ok) {
         throw new Error(data.detail || "Failed to add user");

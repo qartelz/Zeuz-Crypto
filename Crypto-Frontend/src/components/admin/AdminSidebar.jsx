@@ -7,6 +7,7 @@ import {
   DollarSign,
   Tag,
   CreditCard,
+  Flag,
 } from "lucide-react";
 import { useContext, useState } from "react";
 import {AuthContext} from "../../contexts/AuthContext";
@@ -21,6 +22,7 @@ function AdminSidebar() {
 
   const links = [
     { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/admin/challenges", label: "Challenges", icon: Flag },  
     { to: "/admin/userspage", label: "B2C Users", icon: Users },
     { to: "/admin/adminspage", label: "Admins", icon: Crown },
     { to: "/admin/plans", label: "Plans", icon: DollarSign },
