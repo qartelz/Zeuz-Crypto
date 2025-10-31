@@ -46,80 +46,252 @@ class ChallengeProgramViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChallengeProgramSerializer
     permission_classes = [IsAuthenticated]
 
+#
+# class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
+#     """Challenge week management"""
+#     queryset = ChallengeWeek.objects.all()
+#     serializer_class = ChallengeWeekSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def list(self, request, *args, **kwargs):
+#         """List challenge weeks with optional filtering"""
+#         queryset = self.get_queryset()
+#
+#         program_id = request.query_params.get('program_id')
+#         if program_id:
+#             queryset = queryset.filter(program_id=program_id)
+#
+#         is_active = request.query_params.get('is_active')
+#         if is_active is not None:
+#             queryset = queryset.filter(is_active=is_active.lower() == 'true')
+#
+#         is_ongoing = request.query_params.get('is_ongoing')
+#         if is_ongoing and is_ongoing.lower() == 'true':
+#             now = timezone.now()
+#             queryset = queryset.filter(start_date__lte=now, end_date__gte=now)
+#
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=['post'])
+#     def join(self, request, pk=None):
+#         """Join a challenge week"""
+#         week = self.get_object()
+#         user = request.user
+#         print(week,week.is_ongoing(),",,,,,,")
+#
+#
+#         """
+#         if monthly challange is required use this filter condition
+#         """
+#         # if not week.is_ongoing():
+#         #     return Response(
+#         #         {'error': 'Challenge is not currently active'},
+#         #         status=status.HTTP_400_BAD_REQUEST
+#         #     )
+#
+#         if UserChallengeParticipation.objects.filter(user=user, week=week).exists():
+#             return Response(
+#                 {'error': 'Already participating in this challenge'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#         participation = UserChallengeParticipation.objects.create(
+#             user=user,
+#             week=week,
+#             status='IN_PROGRESS'
+#         )
+#
+#         initial_balance = request.data.get('initial_balance', 10000)
+#         wallet = WalletService.create_wallet_for_participation(participation, initial_balance)
+#
+#         participation.join_challenge(initial_balance)
+#
+#         serializer = UserChallengeParticipationSerializer(participation)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+#
+#     @action(detail=True, methods=['get'])
+#     def user_progress(self, request, pk=None):
+#         """Get user's progress in challenge"""
+#         week = self.get_object()
+#         user = request.user
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(user=user, week=week)
+#             TradeService.update_participation_metrics(participation)
+#
+#             serializer = UserChallengeParticipationSerializer(participation)
+#             return Response(serializer.data)
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response(
+#                 {'error': 'Not participating in this challenge'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
+#     @action(detail=True, methods=['post'])
+#     def calculate_score(self, request, pk=None):
+#         """Calculate challenge score"""
+#         week = self.get_object()
+#         user = request.user
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(user=user, week=week)
+#
+#             if participation.status != 'IN_PROGRESS':
+#                 return Response(
+#                     {'error': 'Challenge not in progress'},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+#
+#             score_data = ScoringService.calculate_scores(participation)
+#             return Response(score_data)
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response(
+#                 {'error': 'Not participating in this challenge'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
+#     @action(detail=True, methods=['post'])
+#     def complete_challenge(self, request, pk=None):
+#         """Complete challenge and claim rewards"""
+#         week = self.get_object()
+#         user = request.user
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(user=user, week=week)
+#
+#             if participation.status == 'COMPLETED':
+#                 return Response(
+#                     {'error': 'Challenge already completed'},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+#
+#             result = RewardService.complete_and_reward(participation)
+#             return Response(result)
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response(
+#                 {'error': 'Not participating in this challenge'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
+#     @action(detail=True, methods=['post'])
+#     def verify_tasks(self, request, pk=None):
+#         """Verify all tasks for participation"""
+#         week = self.get_object()
+#         user = request.user
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(user=user, week=week)
+#             all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
+#
+#             return Response({
+#                 'all_tasks_completed': all_completed,
+#                 'task_results': results
+#             })
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response(
+#                 {'error': 'Not participating in this challenge'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
 
 class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
     """Challenge week management"""
     queryset = ChallengeWeek.objects.all()
     serializer_class = ChallengeWeekSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def list(self, request, *args, **kwargs):
         """List challenge weeks with optional filtering"""
         queryset = self.get_queryset()
-        
+
         program_id = request.query_params.get('program_id')
         if program_id:
             queryset = queryset.filter(program_id=program_id)
-        
+
         is_active = request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        
+
         is_ongoing = request.query_params.get('is_ongoing')
         if is_ongoing and is_ongoing.lower() == 'true':
             now = timezone.now()
             queryset = queryset.filter(start_date__lte=now, end_date__gte=now)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
+    # ✅ Updated join method with sequential completion rule
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
-        """Join a challenge week"""
+        """Join a challenge week (must complete previous week first)"""
         week = self.get_object()
         user = request.user
-        print(week,week.is_ongoing(),",,,,,,")
-        
+        print(week, week.is_ongoing(), ",,,,,,")
 
-        """
-        if monthly challange is required use this filter condition
-        """
+        # If you want to enforce active week only, uncomment this block
         # if not week.is_ongoing():
         #     return Response(
         #         {'error': 'Challenge is not currently active'},
         #         status=status.HTTP_400_BAD_REQUEST
         #     )
-        
+
+        # Check if already participating
         if UserChallengeParticipation.objects.filter(user=user, week=week).exists():
             return Response(
                 {'error': 'Already participating in this challenge'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        # ✅ Sequential join validation (must complete previous week)
+        previous_week = ChallengeWeek.objects.filter(
+            program=week.program,
+            week_number=week.week_number - 1
+        ).first()
+
+        if previous_week:
+            prev_participation = UserChallengeParticipation.objects.filter(
+                user=user,
+                week=previous_week
+            ).first()
+
+            if not prev_participation:
+                return Response(
+                    {'error': f"You must first complete Week {previous_week.week_number} "
+                              f"({previous_week.title}) before joining Week {week.week_number}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if prev_participation.status != 'COMPLETED':
+                return Response(
+                    {'error': f"You must complete Week {previous_week.week_number} "
+                              f"({previous_week.title}) before joining Week {week.week_number}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Proceed with joining
         participation = UserChallengeParticipation.objects.create(
             user=user,
             week=week,
             status='IN_PROGRESS'
         )
-        
+
         initial_balance = request.data.get('initial_balance', 10000)
         wallet = WalletService.create_wallet_for_participation(participation, initial_balance)
-        
         participation.join_challenge(initial_balance)
-        
+
         serializer = UserChallengeParticipationSerializer(participation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     @action(detail=True, methods=['get'])
     def user_progress(self, request, pk=None):
         """Get user's progress in challenge"""
         week = self.get_object()
         user = request.user
-        
+
         try:
             participation = UserChallengeParticipation.objects.get(user=user, week=week)
             TradeService.update_participation_metrics(participation)
-            
             serializer = UserChallengeParticipationSerializer(participation)
             return Response(serializer.data)
         except UserChallengeParticipation.DoesNotExist:
@@ -127,22 +299,22 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
-    
+
     @action(detail=True, methods=['post'])
     def calculate_score(self, request, pk=None):
         """Calculate challenge score"""
         week = self.get_object()
         user = request.user
-        
+
         try:
             participation = UserChallengeParticipation.objects.get(user=user, week=week)
-            
+
             if participation.status != 'IN_PROGRESS':
                 return Response(
                     {'error': 'Challenge not in progress'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             score_data = ScoringService.calculate_scores(participation)
             return Response(score_data)
         except UserChallengeParticipation.DoesNotExist:
@@ -150,22 +322,22 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
-    
+
     @action(detail=True, methods=['post'])
     def complete_challenge(self, request, pk=None):
         """Complete challenge and claim rewards"""
         week = self.get_object()
         user = request.user
-        
+
         try:
             participation = UserChallengeParticipation.objects.get(user=user, week=week)
-            
+
             if participation.status == 'COMPLETED':
                 return Response(
                     {'error': 'Challenge already completed'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             result = RewardService.complete_and_reward(participation)
             return Response(result)
         except UserChallengeParticipation.DoesNotExist:
@@ -173,17 +345,17 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
-    
+
     @action(detail=True, methods=['post'])
     def verify_tasks(self, request, pk=None):
         """Verify all tasks for participation"""
         week = self.get_object()
         user = request.user
-        
+
         try:
             participation = UserChallengeParticipation.objects.get(user=user, week=week)
             all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
-            
+
             return Response({
                 'all_tasks_completed': all_completed,
                 'task_results': results
@@ -193,8 +365,6 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-
 class ChallengeTaskViewSet(viewsets.ReadOnlyModelViewSet):
     """Challenge task management"""
     queryset = ChallengeTask.objects.all()
