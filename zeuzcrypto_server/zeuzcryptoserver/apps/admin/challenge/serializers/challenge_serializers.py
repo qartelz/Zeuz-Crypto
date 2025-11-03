@@ -26,17 +26,59 @@ class ChallengeProgramSerializer(serializers.ModelSerializer):
     def get_weeks_count(self, obj):
         return obj.weeks.count()
 
-
+#
+# class ChallengeTaskSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ChallengeTask
+#         fields = [
+#             'id', 'title', 'description', 'task_type',
+#             'target_value', 'is_mandatory', 'order'
+#         ]
+#         read_only_fields = ['id']
+#
 class ChallengeTaskSerializer(serializers.ModelSerializer):
+    # Allow passing week as an ID
+    week = serializers.PrimaryKeyRelatedField(
+        queryset=ChallengeWeek.objects.all(),
+        required=True
+    )
+
     class Meta:
         model = ChallengeTask
         fields = [
-            'id', 'title', 'description', 'task_type',
-            'target_value', 'is_mandatory', 'order'
+            'id', 'week', 'title', 'description',
+            'task_type', 'target_value',
+            'is_mandatory', 'order',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate(self, data):
+        """Extra validation for task creation and update"""
+        task_type = data.get('task_type')
+        target_value = data.get('target_value')
 
+        # Enforce target_value for numeric tasks
+        if task_type in ['TRADE_COUNT', 'PORTFOLIO_BALANCE', 'PROFIT_TARGET', 'HOLDING_PERIOD']:
+            if target_value is None:
+                raise serializers.ValidationError({
+                    "target_value": f"Target value is required for {task_type} tasks."
+                })
+            if target_value <= 0:
+                raise serializers.ValidationError({
+                    "target_value": "Target value must be greater than zero."
+                })
+
+        # Optional: enforce unique order per week
+        week = data.get('week')
+        order = data.get('order')
+        if week and order is not None:
+            if ChallengeTask.objects.filter(week=week, order=order).exists():
+                raise serializers.ValidationError({
+                    "order": "A task with this order already exists in the same week."
+                })
+
+        return data
 class ChallengeRewardSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChallengeReward

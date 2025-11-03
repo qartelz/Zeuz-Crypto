@@ -6,13 +6,15 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from django.db import IntegrityError
 
 # from apps.challenges.models import (
 #     ChallengeProgram, ChallengeWeek, ChallengeTask,
 #     UserChallengeParticipation
 # )
 from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeTask
-from apps.admin.challenge.models.challenge_models import UserChallengeParticipation 
+from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
+from apps.permission.permissions import IsAdmin
 
 # from apps.challenges.serializers.challenge_serializers import (
 #     ChallengeProgramSerializer, ChallengeWeekSerializer,
@@ -365,49 +367,182 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
-class ChallengeTaskViewSet(viewsets.ReadOnlyModelViewSet):
-    """Challenge task management"""
+#
+# class ChallengeTaskViewSet(viewsets.ReadOnlyModelViewSet):
+#     """Challenge task management"""
+#     queryset = ChallengeTask.objects.all()
+#     serializer_class = ChallengeTaskSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def list(self, request, *args, **kwargs):
+#         """List tasks with optional week filtering"""
+#         queryset = self.get_queryset()
+#
+#         week_id = request.query_params.get('week_id')
+#         if week_id:
+#             queryset = queryset.filter(week_id=week_id)
+#
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=['post'])
+#     def verify(self, request, pk=None):
+#         """Verify single task completion"""
+#         task = self.get_object()
+#         participation_id = request.data.get('participation_id')
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(
+#                 id=participation_id,
+#                 user=request.user
+#             )
+#
+#             completed, actual_value = TaskVerificationEngine.verify_task(participation, task)
+#
+#             return Response({
+#                 'completed': completed,
+#                 'actual_value': str(actual_value),
+#                 'target_value': str(task.target_value)
+#             })
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response(
+#                 {'error': 'Participation not found'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
+
+class ChallengeTaskViewSet(viewsets.ModelViewSet):
+    """Challenge task management (Admin CRUD + User verification)"""
     queryset = ChallengeTask.objects.all()
     serializer_class = ChallengeTaskSerializer
     permission_classes = [IsAuthenticated]
-    
+
+    def get_permissions(self):
+        """Admins can create/edit/delete, others only read and verify."""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
     def list(self, request, *args, **kwargs):
         """List tasks with optional week filtering"""
         queryset = self.get_queryset()
-        
+
         week_id = request.query_params.get('week_id')
         if week_id:
             queryset = queryset.filter(week_id=week_id)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
+    # ✅ CREATE
+    def create(self, request, *args, **kwargs):
+        """Admin: Create a new challenge task"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Basic validation
+        if not serializer.validated_data.get('week'):
+            return Response({'error': 'Week is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task = serializer.save()
+        return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
+
+    # ✅ UPDATE
+    def update(self, request, *args, **kwargs):
+        """Admin: Update a challenge task"""
+        task = self.get_object()
+        serializer = self.get_serializer(task, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_at=timezone.now())
+        return Response(serializer.data)
+
+    # ✅ DELETE
+    def destroy(self, request, *args, **kwargs):
+        """Admin: Delete a challenge task"""
+        task = self.get_object()
+        task.delete()
+        return Response({'success': 'Task deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+    # ✅ VERIFY SINGLE TASK COMPLETION
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
-        """Verify single task completion"""
+        """Verify and mark a single task as completed for a user"""
         task = self.get_object()
+        user = request.user
         participation_id = request.data.get('participation_id')
-        
+
+        if not participation_id:
+            return Response({'error': 'Participation ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            participation = UserChallengeParticipation.objects.get(
-                id=participation_id,
-                user=request.user
-            )
-            
-            completed, actual_value = TaskVerificationEngine.verify_task(participation, task)
-            
-            return Response({
-                'completed': completed,
-                'actual_value': str(actual_value),
-                'target_value': str(task.target_value)
-            })
+            participation = UserChallengeParticipation.objects.get(id=participation_id, user=user)
         except UserChallengeParticipation.DoesNotExist:
-            return Response(
-                {'error': 'Participation not found'},
-                status=status.HTTP_404_NOT_FOUND
+            return Response({'error': 'Participation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if task belongs to the same week as the participation
+        if participation.week_id != task.week_id:
+            return Response({'error': 'Task does not belong to this challenge week.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if already completed
+        existing_completion = ChallengeTaskCompletion.objects.filter(participation=participation, task=task).first()
+        if existing_completion and existing_completion.is_completed:
+            return Response({'message': 'Task already completed.'}, status=status.HTTP_200_OK)
+
+        # Verify using engine
+        completed, actual_value = TaskVerificationEngine.verify_task(participation, task)
+
+        # Save completion result
+        try:
+            completion, created = ChallengeTaskCompletion.objects.get_or_create(
+                participation=participation, task=task
             )
+            if completed:
+                completion.complete_task(actual_value=actual_value)
+            else:
+                completion.actual_value = actual_value
+                completion.save()
+        except IntegrityError:
+            return Response({'error': 'Task completion entry already exists.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        return Response({
+            'completed': completed,
+            'actual_value': str(actual_value),
+            'target_value': str(task.target_value),
+            'task_type': task.task_type,
+            'status': 'COMPLETED' if completed else 'PENDING'
+        })
 
+    # ✅ VERIFY ALL TASKS IN A WEEK
+    @action(detail=False, methods=['post'])
+    def verify_all(self, request):
+        """Verify all tasks for a given participation"""
+        participation_id = request.data.get('participation_id')
+
+        if not participation_id:
+            return Response({'error': 'Participation ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            participation = UserChallengeParticipation.objects.get(id=participation_id, user=request.user)
+        except UserChallengeParticipation.DoesNotExist:
+            return Response({'error': 'Participation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verify all tasks using engine
+        all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
+
+        # Save task completions
+        for task_id, data in results.items():
+            task = ChallengeTask.objects.get(id=task_id)
+            completion, _ = ChallengeTaskCompletion.objects.get_or_create(participation=participation, task=task)
+            if data.get('completed'):
+                completion.complete_task(actual_value=data.get('actual_value'))
+            else:
+                completion.actual_value = data.get('actual_value')
+                completion.save()
+
+        return Response({
+            'all_tasks_completed': all_completed,
+            'results': results
+        })
 class UserChallengeParticipationViewSet(viewsets.ReadOnlyModelViewSet):
     """User participation management"""
     serializer_class = UserChallengeParticipationSerializer
