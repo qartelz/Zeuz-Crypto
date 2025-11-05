@@ -12,7 +12,7 @@ from django.db import IntegrityError
 #     ChallengeProgram, ChallengeWeek, ChallengeTask,
 #     UserChallengeParticipation
 # )
-from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeTask
+from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeTask , ChallengeReward
 from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
 from apps.permission.permissions import IsAdmin
 
@@ -24,7 +24,7 @@ from apps.permission.permissions import IsAdmin
 from apps.admin.challenge.serializers.challenge_serializers import (
     ChallengeProgramSerializer, ChallengeWeekSerializer,
     ChallengeTaskSerializer, UserChallengeParticipationSerializer,
-    UserChallengeParticipationListSerializer
+    UserChallengeParticipationListSerializer,ChallengeRewardSerializer
 )
 # from apps.challenges.services.wallet_service import WalletService
 from apps.admin.challenge.services.wallet_service import WalletService
@@ -410,7 +410,140 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
 #                 status=status.HTTP_404_NOT_FOUND
 #             )
 #
-
+#
+# class ChallengeTaskViewSet(viewsets.ModelViewSet):
+#     """Challenge task management (Admin CRUD + User verification)"""
+#     queryset = ChallengeTask.objects.all()
+#     serializer_class = ChallengeTaskSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_permissions(self):
+#         """Admins can create/edit/delete, others only read and verify."""
+#         if self.action in ['create', 'update', 'partial_update', 'destroy']:
+#             return [IsAdmin()]
+#         return [IsAuthenticated()]
+#
+#     def list(self, request, *args, **kwargs):
+#         """List tasks with optional week filtering"""
+#         queryset = self.get_queryset()
+#
+#         week_id = request.query_params.get('week_id')
+#         if week_id:
+#             queryset = queryset.filter(week_id=week_id)
+#
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
+#
+#     # ✅ CREATE
+#     def create(self, request, *args, **kwargs):
+#         """Admin: Create a new challenge task"""
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#
+#         # Basic validation
+#         if not serializer.validated_data.get('week'):
+#             return Response({'error': 'Week is required.'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         task = serializer.save()
+#         return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
+#
+#     # ✅ UPDATE
+#     def update(self, request, *args, **kwargs):
+#         """Admin: Update a challenge task"""
+#         task = self.get_object()
+#         serializer = self.get_serializer(task, data=request.data, partial=True)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save(updated_at=timezone.now())
+#         return Response(serializer.data)
+#
+#     # ✅ DELETE
+#     def destroy(self, request, *args, **kwargs):
+#         """Admin: Delete a challenge task"""
+#         task = self.get_object()
+#         task.delete()
+#         return Response({'success': 'Task deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+#
+#     # ✅ VERIFY SINGLE TASK COMPLETION
+#     @action(detail=True, methods=['post'])
+#     def verify(self, request, pk=None):
+#         """Verify and mark a single task as completed for a user"""
+#         task = self.get_object()
+#         user = request.user
+#         participation_id = request.data.get('participation_id')
+#
+#         if not participation_id:
+#             return Response({'error': 'Participation ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(id=participation_id, user=user)
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response({'error': 'Participation not found.'}, status=status.HTTP_404_NOT_FOUND)
+#
+#         # Check if task belongs to the same week as the participation
+#         if participation.week_id != task.week_id:
+#             return Response({'error': 'Task does not belong to this challenge week.'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         # Check if already completed
+#         existing_completion = ChallengeTaskCompletion.objects.filter(participation=participation, task=task).first()
+#         if existing_completion and existing_completion.is_completed:
+#             return Response({'message': 'Task already completed.'}, status=status.HTTP_200_OK)
+#
+#         # Verify using engine
+#         completed, actual_value = TaskVerificationEngine.verify_task(participation, task)
+#
+#         # Save completion result
+#         try:
+#             completion, created = ChallengeTaskCompletion.objects.get_or_create(
+#                 participation=participation, task=task
+#             )
+#             if completed:
+#                 completion.complete_task(actual_value=actual_value)
+#             else:
+#                 completion.actual_value = actual_value
+#                 completion.save()
+#         except IntegrityError:
+#             return Response({'error': 'Task completion entry already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         return Response({
+#             'completed': completed,
+#             'actual_value': str(actual_value),
+#             'target_value': str(task.target_value),
+#             'task_type': task.task_type,
+#             'status': 'COMPLETED' if completed else 'PENDING'
+#         })
+#
+#     # ✅ VERIFY ALL TASKS IN A WEEK
+#     @action(detail=False, methods=['post'])
+#     def verify_all(self, request):
+#         """Verify all tasks for a given participation"""
+#         participation_id = request.data.get('participation_id')
+#
+#         if not participation_id:
+#             return Response({'error': 'Participation ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         try:
+#             participation = UserChallengeParticipation.objects.get(id=participation_id, user=request.user)
+#         except UserChallengeParticipation.DoesNotExist:
+#             return Response({'error': 'Participation not found.'}, status=status.HTTP_404_NOT_FOUND)
+#
+#         # Verify all tasks using engine
+#         all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
+#
+#         # Save task completions
+#         for task_id, data in results.items():
+#             task = ChallengeTask.objects.get(id=task_id)
+#             completion, _ = ChallengeTaskCompletion.objects.get_or_create(participation=participation, task=task)
+#             if data.get('completed'):
+#                 completion.complete_task(actual_value=data.get('actual_value'))
+#             else:
+#                 completion.actual_value = data.get('actual_value')
+#                 completion.save()
+#
+#         return Response({
+#             'all_tasks_completed': all_completed,
+#             'results': results
+#         })
+#
 class ChallengeTaskViewSet(viewsets.ModelViewSet):
     """Challenge task management (Admin CRUD + User verification)"""
     queryset = ChallengeTask.objects.all()
@@ -436,14 +569,22 @@ class ChallengeTaskViewSet(viewsets.ModelViewSet):
 
     # ✅ CREATE
     def create(self, request, *args, **kwargs):
-        """Admin: Create a new challenge task"""
+        """Admin: Create a new challenge task (only one per week allowed)"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Basic validation
-        if not serializer.validated_data.get('week'):
+        week = serializer.validated_data.get('week')
+        if not week:
             return Response({'error': 'Week is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 🔒 Validate: Only one task per week
+        if ChallengeTask.objects.filter(week=week).exists():
+            return Response(
+                {'error': f'A challenge task already exists for week {week.id}.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Create task
         task = serializer.save()
         return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
 
@@ -484,7 +625,9 @@ class ChallengeTaskViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Task does not belong to this challenge week.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if already completed
-        existing_completion = ChallengeTaskCompletion.objects.filter(participation=participation, task=task).first()
+        existing_completion = ChallengeTaskCompletion.objects.filter(
+            participation=participation, task=task
+        ).first()
         if existing_completion and existing_completion.is_completed:
             return Response({'message': 'Task already completed.'}, status=status.HTTP_200_OK)
 
@@ -543,6 +686,63 @@ class ChallengeTaskViewSet(viewsets.ModelViewSet):
             'all_tasks_completed': all_completed,
             'results': results
         })
+class ChallengeRewardViewSet(viewsets.ModelViewSet):
+    """Manage challenge rewards (CRUD + filter by week)"""
+    queryset = ChallengeReward.objects.all()
+    serializer_class = ChallengeRewardSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Optionally filter rewards by week_id"""
+        queryset = super().get_queryset()
+        week_id = self.request.query_params.get('week_id')
+
+        if week_id:
+            queryset = queryset.filter(week_id=week_id)
+
+        return queryset.order_by('-id')
+
+    def create(self, request, *args, **kwargs):
+        """Create a new reward for a week"""
+        week_id = request.data.get('week')
+        if not week_id:
+            return Response({'error': 'Week is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            week = ChallengeWeek.objects.get(id=week_id)
+        except ChallengeWeek.DoesNotExist:
+            return Response({'error': 'Invalid week ID.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(week=week)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update reward details"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a reward"""
+        instance = self.get_object()
+        instance.delete()
+        return Response({'message': 'Reward deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='week/(?P<week_id>[^/.]+)')
+    def list_by_week(self, request, week_id=None):
+        """List rewards for a specific week"""
+        rewards = ChallengeReward.objects.filter(week_id=week_id)
+        serializer = self.get_serializer(rewards, many=True)
+        return Response(serializer.data)
+
+
 class UserChallengeParticipationViewSet(viewsets.ReadOnlyModelViewSet):
     """User participation management"""
     serializer_class = UserChallengeParticipationSerializer
