@@ -544,6 +544,7 @@ class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
 #             'results': results
 #         })
 #
+
 class ChallengeTaskViewSet(viewsets.ModelViewSet):
     """Challenge task management (Admin CRUD + User verification)"""
     queryset = ChallengeTask.objects.all()
@@ -588,15 +589,34 @@ class ChallengeTaskViewSet(viewsets.ModelViewSet):
         task = serializer.save()
         return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
 
-    # ✅ UPDATE
+    # # ✅ UPDATE
+    # def update(self, request, *args, **kwargs):
+    #     """Admin: Update a challenge task"""
+    #     task = self.get_object()
+    #     serializer = self.get_serializer(task, data=request.data, partial=True)
+    #     serializer.is_valid(raise_exception=True)
+    #     serializer.save(updated_at=timezone.now())
+    #     return Response(serializer.data)
+
+
+    # ✅ UPDATE (PUT)
     def update(self, request, *args, **kwargs):
-        """Admin: Update a challenge task"""
+        """Admin: Full update of a challenge task"""
+        task = self.get_object()
+        serializer = self.get_serializer(task, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_at=timezone.now())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ✅ PARTIAL UPDATE (PATCH)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Admin: Partial update of a challenge task"""
         task = self.get_object()
         serializer = self.get_serializer(task, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(updated_at=timezone.now())
-        return Response(serializer.data)
-
+        return Response(serializer.data, status=status.HTTP_200_OK)
     # ✅ DELETE
     def destroy(self, request, *args, **kwargs):
         """Admin: Delete a challenge task"""
