@@ -349,421 +349,6 @@ class OrderCancellationSerializer(serializers.Serializer):
         instance.cancel_order(reason)
         return instance
 
-#
-# class SubscriptionCreateSerializer(serializers.ModelSerializer):
-#     """Serializer for creating subscriptions"""
-#
-#     coupon_code = serializers.CharField(
-#         required=False, allow_blank=True, write_only=True
-#     )
-#
-#     class Meta:
-#         model = Subscription
-#         fields = ["plan", "coupon_code", "start_date"]
-#
-#     def validate_start_date(self, value):
-#         if value < timezone.now().date():
-#             raise serializers.ValidationError("Start date cannot be in the past")
-#         return value
-#
-#     def validate(self, data):
-#         user = self.context["request"].user
-#         plan = data["plan"]
-#         start_date = data.get("start_date", timezone.now().date())
-#
-#         # Convert start_date to datetime if it's a date
-#         if hasattr(start_date, "date"):
-#             start_datetime = start_date
-#         else:
-#             start_datetime = timezone.datetime.combine(
-#                 start_date, timezone.datetime.min.time()
-#             )
-#             start_datetime = timezone.make_aware(start_datetime)
-#
-#         end_datetime = start_datetime + timezone.timedelta(days=plan.duration_days)
-#
-#         # Check for overlapping active subscriptions
-#         overlapping_subscriptions = Subscription.objects.filter(
-#             user=user,
-#             status="ACTIVE",
-#             start_date__lt=end_datetime,
-#             end_date__gt=start_datetime,
-#         )
-#
-#         if overlapping_subscriptions.exists():
-#             raise serializers.ValidationError(
-#                 "You already have an active subscription that overlaps with this period"
-#             )
-#
-#         # Validate coupon if provided
-#         coupon_code = data.get("coupon_code")
-#         if coupon_code:
-#             try:
-#                 coupon = Coupon.objects.get(code=coupon_code.upper())
-#                 if not coupon.is_valid():
-#                     raise serializers.ValidationError(
-#                         "Coupon is not valid or has expired"
-#                     )
-#
-#                 # Check if coupon is applicable to this plan
-#                 if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
-#                     raise serializers.ValidationError(
-#                         "This coupon is not applicable to the selected plan"
-#                     )
-#
-#                 data["coupon"] = coupon
-#             except Coupon.DoesNotExist:
-#                 raise serializers.ValidationError("Invalid coupon code")
-#
-#         return data
-#
-#     def create(self, validated_data):
-#         user = self.context["request"].user
-#         coupon_code = validated_data.pop("coupon_code", None)
-#
-#         # Set user
-#         validated_data["user"] = user
-#
-#         # Set start_date as datetime if not already
-#         start_date = validated_data.get("start_date", timezone.now())
-#         if hasattr(start_date, "date") and not hasattr(start_date, "hour"):
-#             validated_data["start_date"] = timezone.datetime.combine(
-#                 start_date, timezone.datetime.min.time()
-#             )
-#             validated_data["start_date"] = timezone.make_aware(
-#                 validated_data["start_date"]
-#             )
-#
-#         subscription = Subscription.objects.create(**validated_data)
-#
-#         # Create subscription history
-#         SubscriptionHistory.objects.create(
-#             subscription=subscription,
-#             action="CREATED",
-#             details={
-#                 "plan_name": subscription.plan.name,
-#                 "original_price": str(subscription.original_price),
-#                 "final_price": str(subscription.final_price),
-#                 "coupon_used": (
-#                     subscription.coupon.code if subscription.coupon else None
-#                 ),
-#             },
-#         )
-#
-#         return subscription
-
-# from django.utils import timezone
-# from rest_framework import serializers
-# from .models import Subscription, Coupon, PlanCoupon, SubscriptionHistory
-#
-# class SubscriptionCreateSerializer(serializers.ModelSerializer):
-#     """Serializer for creating subscriptions"""
-#
-#     coupon_code = serializers.CharField(
-#         required=False, allow_blank=True, write_only=True
-#     )
-#
-#     class Meta:
-#         model = Subscription
-#         fields = ["plan", "coupon_code", "start_date"]
-#
-#     def validate_start_date(self, value):
-#         """Ensure start date is not in the past, handle both date and datetime"""
-#         now = timezone.now()
-#         # If the field is a datetime, compare directly
-#         if isinstance(value, timezone.datetime):
-#             if value < now:
-#                 raise serializers.ValidationError("Start date cannot be in the past.")
-#         else:
-#             # If it’s a date, compare to current date
-#             if value < now.date():
-#                 raise serializers.ValidationError("Start date cannot be in the past.")
-#         return value
-#
-#     def validate(self, data):
-#         user = self.context["request"].user
-#         plan = data["plan"]
-#         start_date = data.get("start_date", timezone.now())
-#
-#         # Normalize start_date to a datetime object
-#         if isinstance(start_date, timezone.datetime):
-#             start_datetime = start_date
-#         else:
-#             start_datetime = timezone.make_aware(
-#                 timezone.datetime.combine(start_date, timezone.datetime.min.time())
-#             )
-#
-#         end_datetime = start_datetime + timezone.timedelta(days=plan.duration_days)
-#
-#         # Check for overlapping active subscriptions
-#         overlapping_subscriptions = Subscription.objects.filter(
-#             user=user,
-#             status="ACTIVE",
-#             start_date__lt=end_datetime,
-#             end_date__gt=start_datetime,
-#         )
-#
-#         if overlapping_subscriptions.exists():
-#             raise serializers.ValidationError(
-#                 "You already have an active subscription that overlaps with this period."
-#             )
-#
-#         # Validate coupon if provided
-#         coupon_code = data.get("coupon_code")
-#         if coupon_code:
-#             try:
-#                 coupon = Coupon.objects.get(code=coupon_code.upper())
-#                 if not coupon.is_valid():
-#                     raise serializers.ValidationError(
-#                         "Coupon is not valid or has expired."
-#                     )
-#
-#                 if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
-#                     raise serializers.ValidationError(
-#                         "This coupon is not applicable to the selected plan."
-#                     )
-#
-#                 data["coupon"] = coupon
-#             except Coupon.DoesNotExist:
-#                 raise serializers.ValidationError("Invalid coupon code.")
-#
-#         return data
-#
-#     def create(self, validated_data):
-#         user = self.context["request"].user
-#         validated_data["user"] = user
-#         coupon_code = validated_data.pop("coupon_code", None)
-#
-#         # Normalize start_date to datetime
-#         start_date = validated_data.get("start_date", timezone.now())
-#         if isinstance(start_date, timezone.datetime):
-#             validated_data["start_date"] = timezone.make_aware(start_date)
-#         else:
-#             validated_data["start_date"] = timezone.make_aware(
-#                 timezone.datetime.combine(start_date, timezone.datetime.min.time())
-#             )
-#
-#         subscription = Subscription.objects.create(**validated_data)
-#
-#         # Create subscription history
-#         SubscriptionHistory.objects.create(
-#             subscription=subscription,
-#             action="CREATED",
-#             details={
-#                 "plan_name": subscription.plan.name,
-#                 "original_price": str(subscription.original_price),
-#                 "final_price": str(subscription.final_price),
-#                 "coupon_used": (
-#                     subscription.coupon.code if subscription.coupon else None
-#                 ),
-#             },
-#         )
-#
-#         return subscription
-#
-# from django.utils import timezone
-# from rest_framework import serializers
-# from .models import Subscription, SubscriptionHistory
-#
-#
-# class SubscriptionCreateSerializer(serializers.ModelSerializer):
-#     """Serializer for creating subscriptions"""
-#
-#     class Meta:
-#         model = Subscription
-#         fields = ["plan", "coupon_code", "start_date"]
-#
-#     def create(self, validated_data):
-#         user = self.context["request"].user
-#         coupon_code = validated_data.pop("coupon_code", None)
-#
-#         validated_data["user"] = user
-#         start_date = validated_data.get("start_date")
-#
-#         # ✅ Only make aware if datetime is naive
-#         if start_date:
-#             if timezone.is_naive(start_date):
-#                 start_date = timezone.make_aware(start_date)
-#
-#         validated_data["start_date"] = start_date
-#
-#         # Let your model logic calculate end_date or handle price
-#         subscription = Subscription.objects.create(**validated_data)
-#
-#         SubscriptionHistory.objects.create(
-#             subscription=subscription,
-#             action="CREATED",
-#             details={
-#                 "plan_name": subscription.plan.name,
-#                 "original_price": str(subscription.original_price),
-#                 "final_price": str(subscription.final_price),
-#                 "coupon_used": (
-#                     subscription.coupon.code if subscription.coupon else None
-#                 ),
-#             },
-#         )
-#
-#         return subscription
-#
-# from django.utils import timezone
-# from rest_framework import serializers
-# from .models import Subscription
-#
-#
-# class SubscriptionSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Subscription
-#         fields = "__all__"
-#
-#     def validate_start_date(self, value):
-#         """
-#         Ensure the start date is not in the past.
-#         """
-#         now = timezone.now()
-#         if value < now:
-#             raise serializers.ValidationError("Start date cannot be in the past.")
-#         return value
-#
-#     def create(self, validated_data):
-#         """
-#         Create a subscription instance ensuring the start_date is timezone-safe.
-#         """
-#         start_date = validated_data.get("start_date")
-#
-#         # ✅ Fix: only make aware if datetime is naive
-#         if start_date:
-#             if timezone.is_naive(start_date):
-#                 validated_data["start_date"] = timezone.make_aware(start_date)
-#             else:
-#                 # Already aware — just use it as is
-#                 validated_data["start_date"] = start_date
-#
-#         subscription = Subscription.objects.create(**validated_data)
-#         return subscription
-
-
-#
-# from django.utils import timezone
-# from rest_framework import serializers
-# from .models import Subscription
-#
-#
-# class SubscriptionSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Subscription
-#         fields = "__all__"
-#
-#     def validate_start_date(self, value):
-#         """
-#         Ensure the start date is not in the past.
-#         """
-#         # Convert aware datetime to date before comparison
-#         current_date = timezone.now().date()
-#         if isinstance(value, timezone.datetime):
-#             value_date = value.date()
-#         else:
-#             value_date = value
-#
-#         if value_date < current_date:
-#             raise serializers.ValidationError("Start date cannot be in the past.")
-#         return value
-#
-#     def create(self, validated_data):
-#         """
-#         Create a subscription instance ensuring the start_date is timezone-aware.
-#         """
-#         start_date = validated_data.get("start_date")
-#
-#         # Ensure start_date is timezone-aware (avoid double awareness)
-#         if start_date:
-#             if timezone.is_naive(start_date):
-#                 validated_data["start_date"] = timezone.make_aware(start_date)
-#             else:
-#                 validated_data["start_date"] = start_date
-#
-#         subscription = Subscription.objects.create(**validated_data)
-#         return subscription
-
-#
-# class SubscriptionSerializer(serializers.ModelSerializer):
-#     """Serializer for displaying subscriptions"""
-#
-#     plan_name = serializers.CharField(source="plan.name", read_only=True)
-#     plan_duration_days = serializers.IntegerField(
-#         source="plan.duration_days", read_only=True
-#     )
-#     coupon_code = serializers.CharField(source="coupon.code", read_only=True)
-#     user_username = serializers.CharField(source="user.username", read_only=True)
-#     is_currently_active = serializers.SerializerMethodField()
-#     days_remaining = serializers.SerializerMethodField()
-#
-#     class Meta:
-#         model = Subscription
-#         fields = [
-#             "id",
-#             "user_username",
-#             "plan_name",
-#             "plan_duration_days",
-#             "coupon_code",
-#             "start_date",
-#             "end_date",
-#             "status",
-#             "original_price",
-#             "discount_amount",
-#             "final_price",
-#             "is_currently_active",
-#             "days_remaining",
-#             "created_at",
-#             "updated_at",
-#         ]
-#         read_only_fields = [
-#             "id",
-#             "original_price",
-#             "discount_amount",
-#             "final_price",
-#             "created_at",
-#             "updated_at",
-#         ]
-#
-#     def get_is_currently_active(self, obj):
-#         return obj.is_active()
-#
-#     def get_days_remaining(self, obj):
-#         if obj.status != "ACTIVE":
-#             return 0
-#
-#         now = timezone.now()
-#         if now > obj.end_date:
-#             return 0
-#
-#         return (obj.end_date - now).days
-#
-#
-# class SubscriptionHistorySerializer(serializers.ModelSerializer):
-#     """Serializer for subscription history"""
-#
-#     event_type_display = serializers.CharField(
-#         source="get_event_type_display", read_only=True
-#     )
-#     subscription_id = serializers.UUIDField(source="subscription.id", read_only=True)
-#     user_username = serializers.CharField(source="user.username", read_only=True)
-#     coupon_code = serializers.CharField(source="coupon.code", read_only=True)
-#
-#     class Meta:
-#         model = SubscriptionHistory
-#         fields = [
-#             "id",
-#             "subscription_id",
-#             "user_username",
-#             "event_type",
-#             "event_type_display",
-#             "previous_values",
-#             "new_values",
-#             "coupon_code",
-#             "timestamp",
-#         ]
-#         read_only_fields = fields  # All fields are read-only
-#
 
 class CouponValidationSerializer(serializers.Serializer):
     """Serializer for validating coupon codes"""
@@ -831,18 +416,6 @@ class PlanWithCouponsSerializer(PlanSerializer):
 
         return valid_coupons
 
-#
-# class CreateSubscriptionSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Subscription
-#         fields = [
-#             "plan",
-#             "coupon",
-#             "subscription_source",
-#             "start_date",
-#             "end_date",
-#             "status",
-#         ]
 
 
 from django.utils import timezone
@@ -852,80 +425,12 @@ from apps.accounts.models import User
 from .models import Subscription, SubscriptionHistory, Plan, Coupon, PlanCoupon, SubscriptionOrder
 
 
-# For admin and user creation
-# class SubscriptionCreateSerializer(serializers.ModelSerializer):
-#     coupon_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
-#
-#     class Meta:
-#         model = Subscription
-#         fields = ["plan", "coupon_code", "start_date"]
-#
-#     def validate_start_date(self, value):
-#         if value < timezone.now():
-#             raise serializers.ValidationError("Start date cannot be in the past.")
-#         return value
-#
-#     def validate(self, data):
-#         user = self.context.get("user") or self.context["request"].user
-#         plan = data.get("plan")
-#         coupon_code = data.get("coupon_code")
-#         start_date = data.get("start_date", timezone.now())
-#
-#         # Handle coupon
-#         coupon = None
-#         if coupon_code:
-#             try:
-#                 coupon = Coupon.objects.get(code=coupon_code.upper(), is_active=True)
-#                 if not coupon.is_valid():
-#                     raise serializers.ValidationError("Coupon is not valid or expired")
-#             except Coupon.DoesNotExist:
-#                 raise serializers.ValidationError("Invalid coupon code")
-#
-#             # Check if coupon is applicable to plan
-#             if not PlanCoupon.objects.filter(plan=plan, coupon=coupon).exists():
-#                 raise serializers.ValidationError(
-#                     "Coupon is not applicable to selected plan"
-#                 )
-#         data["coupon"] = coupon
-#
-#         # Check overlapping subscriptions
-#         end_date = start_date + timezone.timedelta(days=plan.duration_days)
-#         overlapping = Subscription.objects.filter(user=user, status="ACTIVE").filter(
-#             Q(start_date__lt=end_date) & Q(end_date__gt=start_date)
-#         )
-#         if overlapping.exists():
-#             raise serializers.ValidationError(
-#                 "User already has an active subscription during this period"
-#             )
-#
-#         return data
-#
-#     def create(self, validated_data):
-#         user = self.context.get("user") or self.context["request"].user
-#         coupon = validated_data.pop("coupon", None)
-#         start_date = validated_data.pop("start_date", timezone.now())
-#
-#         if timezone.is_naive(start_date):
-#             start_date = timezone.make_aware(start_date)
-#
-#         subscription = Subscription.objects.create(
-#             user=user, coupon=coupon, start_date=start_date, **validated_data
-#         )
-#
-#         # Create subscription history
-#         SubscriptionHistory.objects.create(
-#             subscription=subscription,
-#             action="CREATED",
-#             details={
-#                 "plan_name": subscription.plan.name,
-#                 "original_price": str(subscription.original_price),
-#                 "final_price": str(subscription.final_price),
-#                 "coupon_used": coupon.code if coupon else None,
-#             },
-#         )
-#
-#         return subscription
-#
+class UserMiniSerializer(serializers.ModelSerializer):
+    """Minimal user details for display inside subscription"""
+    class Meta:
+        model = User
+        fields = ["id",  "email", "first_name", "last_name"]
+
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
     # Write-only fields for creation
     user_id = serializers.UUIDField(write_only=True, required=False)
@@ -994,7 +499,8 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
         return subscription
 # Serializer for displaying subscriptions
 class SubscriptionSerializer(serializers.ModelSerializer):
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    # user_username = serializers.CharField(source="user.username", read_only=True)
+    user = UserMiniSerializer(read_only=True)
     plan_name = serializers.CharField(source="plan.name", read_only=True)
     # coupon_code = serializers.CharField(source="coupon.code", read_only=True)
     is_currently_active = serializers.SerializerMethodField()
@@ -1004,7 +510,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = [
             "id",
-            "user_username",
+            # "user_username",
+            "user",
             "plan_name",
 
             "start_date",
@@ -1036,7 +543,8 @@ class SubscriptionHistorySerializer(serializers.ModelSerializer):
         source="get_event_type_display", read_only=True
     )
     subscription_id = serializers.UUIDField(source="subscription.id", read_only=True)
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    user = UserMiniSerializer(read_only=True)
+    # user_username = serializers.CharField(source="user.username", read_only=True)
     # coupon_code = serializers.CharField(source="coupon.code", read_only=True)
 
     class Meta:
@@ -1044,7 +552,8 @@ class SubscriptionHistorySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "subscription_id",
-            "user_username",
+            # "user_username",
+            "user",
             "event_type",
             "event_type_display",
             "previous_values",
