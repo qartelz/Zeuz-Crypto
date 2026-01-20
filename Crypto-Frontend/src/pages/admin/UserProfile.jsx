@@ -72,10 +72,10 @@ const UserProfile = () => {
   const handleBack = () => {
     if (location.pathname.startsWith("/admin/users/")) {
       navigate("/admin/userspage");
-    } else if (location.pathname.startsWith("/admin/reports/")) {
-      navigate("/admin/reports");
-    } else if (location.pathname.startsWith("/admin/settings/")) {
-      navigate("/admin/settings");
+    // } else if (location.pathname.startsWith("/admin/reports/")) {
+    //   navigate("/admin/reports");
+    // } else if (location.pathname.startsWith("/admin/settings/")) {
+    //   navigate("/admin/settings");
     } else if (location.pathname.startsWith("/admin/adminspage/")) {
       navigate("/admin/adminspage");
     } else {
@@ -180,6 +180,7 @@ const UserProfile = () => {
     return userData.trades.filter(t => t.status === status);
   };
 
+  // A card for key statistics
   const StatCard = ({ icon, title, value, change, changeType, subtitle }) => (
     <div className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-5 transition-all duration-300 hover:border-purple-400/40 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)]">
       <div className="flex items-start justify-between">
@@ -211,6 +212,7 @@ const UserProfile = () => {
     </div>
   );
 
+  // A row for the trades table
   const TradeRow = ({ trade, isActive = false }) => {
     const pnl = isActive ? parseFloat(trade.unrealized_pnl) : parseFloat(trade.realized_pnl);
     const pnlPercent = trade.pnl_percentage ? `${trade.pnl_percentage.toFixed(2)}%` : '0.00%';
@@ -257,57 +259,64 @@ const UserProfile = () => {
     );
   };
 
+  // *** NEW: Refactored ChallengeCard to match Frame 19.png ***
   const ChallengeCard = ({ challenge }) => {
-    const progress = parseFloat(challenge.portfolio_return_pct || 0);
-    const targetGoal = parseFloat(challenge.week_details?.target_goal || 0);
-    const progressPercent = targetGoal > 0 ? Math.min((progress / targetGoal) * 100, 100) : 0;
+    const status = challenge.status === 'COMPLETED' ? 'Completed' :
+                   challenge.status === 'IN_PROGRESS' ? 'In Progress' :
+                   'Pending';
+    
+    // We don't have date/time from the API data, so we'll use other relevant data
+    // in the spots where date/time would go, matching the layout style.
     
     return (
       <div
-        className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6 transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)] cursor-pointer"
-        onClick={() => setSelectedChallenge(challenge)}
+        className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-5 flex flex-col justify-between transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)]"
       >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center">
-            <div className={`p-3 rounded-lg mr-3 ${
-              challenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-              'bg-purple-500/20 text-purple-400'
-            }`}>
-              {challenge.status === 'COMPLETED' ? <Trophy size={24} /> : <Target size={24} />}
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">{challenge.week_details?.title}</h3>
-              <p className="text-sm text-purple-300/70">{challenge.week_details?.program_name}</p>
-            </div>
+        <div>
+          <h3 className="text-lg font-bold text-white mb-3 truncate">{challenge.week_details?.title || 'Challenge Title'}</h3>
+          
+          {/* Batch Name */}
+          <div className="mb-4">
+            <span className="inline-block bg-purple-500/20 text-purple-300 text-xs font-medium px-2.5 py-1 rounded">
+              {challenge.week_details?.program_name || 'Program Name'}
+            </span>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-            challenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-            'bg-yellow-500/20 text-yellow-400'
-          }`}>
-            {challenge.status.replace('_', ' ')}
-          </span>
+          
+          {/* Substitute for Time/Date from Frame 19, using available data */}
+          <div className="flex items-center text-sm text-purple-300/70 mb-2 space-x-4">
+            <span className="flex items-center">
+              <Activity size={14} className="mr-1.5" />
+              {challenge.total_trades} Trades
+            </span>
+            <span className="flex items-center">
+              <TrendingUp size={14} className="mr-1.5" />
+              {parseFloat(challenge.portfolio_return_pct || 0).toFixed(1)}%
+            </span>
+          </div>
+
+          {/* Status */}
+          <div className="mt-4 pt-4 border-t border-purple-500/10">
+            <span className="text-sm font-medium text-purple-300/70 mr-2">Status:</span>
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+              status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' :
+              status === 'IN_PROGRESS' ? 'bg-yellow-500/20 text-yellow-400' :
+              'bg-gray-500/20 text-gray-400'
+            }`}>
+              {status}
+            </span>
+          </div>
         </div>
         
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-purple-300/70">Progress</span>
-            <span className="text-sm font-bold text-purple-400">{progressPercent.toFixed(1)}%</span>
-          </div>
-          <div className="w-full bg-purple-500/10 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full transition-all duration-1000"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center text-sm text-purple-300/70">
-          <span>Trades: {challenge.total_trades}/{challenge.week_details?.min_trades_required}</span>
-          <span>Return: {challenge.portfolio_return_pct}%</span>
-        </div>
+        <button
+          onClick={() => setSelectedChallenge(challenge)}
+          className="mt-5 w-full bg-purple-600/50 hover:bg-purple-600 text-white py-2.5 rounded-lg font-semibold transition-all duration-200"
+        >
+          View Details
+        </button>
       </div>
     );
   };
+
 
   const renderTab = () => {
     if (!userData) return null;
@@ -341,13 +350,13 @@ const UserProfile = () => {
               <StatCard 
                 icon={<DollarSign size={20} />} 
                 title="Total PnL" 
-                value={`${totalPnL >= 0 ? '+' : ''}$${Math.abs(totalPnL)}`}
+                value={`${totalPnL >= 0 ? '+' : ''}$${Math.abs(totalPnL).toFixed(2)}`}
                 change={`${totalPnL >= 0 ? '+' : ''}${((totalPnL / parseFloat(userData.wallet?.balance || 1)) * 100).toFixed(2)}%`}
                 changeType={totalPnL >= 0 ? "positive" : "negative"}
               />
             </div>
 
-            <div className="grid grid-cols-1  lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6">
                 <div className="flex items-center justify-between mb-5">
                   <div>
@@ -363,14 +372,14 @@ const UserProfile = () => {
                   <div className="bg-emerald-500/10 p-4 rounded-lg border border-emerald-500/20">
                     <p className="text-sm text-purple-300/70 mb-1">Total PnL</p>
                     <p className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {totalPnL >= 0 ? '+' : ''}${Math.abs(totalPnL)}
+                      {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
                     </p>
                   </div>
                 </div>
               </div>
 
               {calculatePortfolioDistribution().length > 0 && (
-                <div className="rounded-xl  border border-purple-500/20 bg-[#120B20]/60 p-6">
+                <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6">
                   <h2 className="text-xl font-bold text-white mb-5">Portfolio Distribution</h2>
                   <ResponsiveContainer width="100%" height={110}>
                     <PieChart>
@@ -413,21 +422,22 @@ const UserProfile = () => {
       case "closed":
         const closedTrades = getTradesByStatus("CLOSED");
         return (
-          <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
-            <div className="bg-purple-500/10 px-6 py-4 border-b border-purple-500/20">
+          // *** NEW: Refined Table Container ***
+          <div className="rounded-xl border border-purple-500/20 bg-[#160C26] overflow-hidden shadow-lg shadow-purple-900/5">
+            <div className="px-6 py-5 border-b border-purple-500/20">
               <h2 className="text-xl font-bold text-white">Closed Trades</h2>
               <p className="text-purple-300/70 text-sm mt-1">Trading history and performance</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-purple-500/5">
+                <thead className="bg-purple-500/10">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-purple-300">Symbol</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Direction</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Avg Price</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Quantity</th>
-                    <th className="text-right p-4 font-semibold text-purple-300">PnL</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Status</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Symbol</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Direction</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Avg Price</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Quantity</th>
+                    <th className="text-right p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">PnL</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -451,21 +461,22 @@ const UserProfile = () => {
       case "active":
         const activeTrades = getTradesByStatus("OPEN");
         return (
-          <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
-            <div className="bg-purple-500/10 px-6 py-4 border-b border-purple-500/20">
+          // *** NEW: Refined Table Container ***
+          <div className="rounded-xl border border-purple-500/20 bg-[#160C26] overflow-hidden shadow-lg shadow-purple-900/5">
+            <div className="px-6 py-5 border-b border-purple-500/20">
               <h2 className="text-xl font-bold text-white">Active Trades</h2>
               <p className="text-purple-300/70 text-sm mt-1">Currently open positions</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-purple-500/5">
+                <thead className="bg-purple-500/10">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-purple-300">Symbol</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Direction</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Avg Price</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Quantity</th>
-                    <th className="text-right p-4 font-semibold text-purple-300">PnL</th>
-                    <th className="text-left p-4 font-semibold text-purple-300">Status</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Symbol</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Direction</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Avg Price</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Quantity</th>
+                    <th className="text-right p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">PnL</th>
+                    <th className="text-left p-4 font-semibold text-purple-300 uppercase text-xs tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -492,6 +503,7 @@ const UserProfile = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userData.challenge_participations?.length > 0 ? (
                 userData.challenge_participations.map((challenge) => (
+                  // *** NEW: Using the refactored ChallengeCard ***
                   <ChallengeCard key={challenge.id} challenge={challenge} />
                 ))
               ) : (
@@ -630,7 +642,7 @@ const UserProfile = () => {
         />
       )}
       
-      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-6">
+      <div className="relative z-10 max-w-7xl mx-auto  space-y-6">
         {/* Back Button */}
         <button
           onClick={handleBack}
@@ -640,75 +652,68 @@ const UserProfile = () => {
           <span>Back</span>
         </button>
 
-        {/* Profile Header */}
-        <div className="rounded-2xl border border-purple-500/30 bg-[#120B20]/60 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-5">
-                <div className="relative">
-                  <div className="w-20 h-20 bg-white/20 rounded-xl flex items-center justify-center text-white text-2xl font-bold">
+        {/* *** NEW: Refactored Minimal Profile Header *** */}
+        <div className="rounded-2xl border border-purple-500/30 bg-[#160C26] overflow-hidden shadow-xl shadow-purple-900/10">
+          <div className="p-6">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-6">
+              {/* Left Side: Avatar + Info */}
+              <div className="flex items-center gap-4">
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xl font-bold">
                     {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
                   </div>
-                  <div className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 ${userData.is_active ? 'bg-emerald-500' : 'bg-red-500'} rounded-full border-4 border-[#120B20] flex items-center justify-center`}>
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${userData.is_active ? 'bg-emerald-500' : 'bg-red-500'} rounded-full border-4 border-[#160C26]`}>
                   </div>
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-white">
                     {userData.full_name || `${userData.first_name} ${userData.last_name}`}
                   </h1>
-                  <p className="text-white/80 text-base">{userData.role?.replace('_', ' ').toUpperCase()}</p>
-                  <p className="text-white/60 text-sm">User ID: {userData.id?.slice(0, 8)}...</p>
+                  <p className="text-purple-300/80 text-sm">{userData.role?.replace('_', ' ').toUpperCase()}</p>
+                  <p className="text-purple-300/60 text-xs mt-1">User ID: {userData.id?.slice(0, 12)}...</p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <p className="text-white/70 text-sm">Total Balance</p>
+              
+              {/* Right Side: Balance */}
+              <div className="text-right flex-shrink-0 w-full sm:w-auto">
+                <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
+                  <p className="text-purple-300/70 text-xs uppercase tracking-wider">Total Balance</p>
                   <p className="text-2xl font-bold text-white">${userData.wallet?.balance || '0.00'}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#120B20]/80 p-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              <div className="flex items-center gap-3">
-                <Mail className="text-purple-400" size={20} />
+          {/* Bottom bar with contact info */}
+          <div className="bg-purple-500/10 p-4 border-t border-purple-500/20">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex items-center gap-2">
+                <Mail className="text-purple-400 flex-shrink-0" size={16} />
                 <div>
                   <p className="text-xs text-purple-300/70">Email</p>
-                  <p className="font-medium text-white text-sm">{userData.email}</p>
+                  <p className="font-medium text-white text-sm truncate">{userData.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="text-purple-400" size={20} />
+              <div className="flex items-center gap-2">
+                <Calendar className="text-purple-400 flex-shrink-0" size={16} />
                 <div>
                   <p className="text-xs text-purple-300/70">Joined</p>
                   <p className="font-medium text-white text-sm">
-                    {new Date(userData.date_joined).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
+                    {new Date(userData.date_joined).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Activity className="text-emerald-400" size={20} />
+              <div className="flex items-center gap-2">
+                <Activity className="text-purple-400 flex-shrink-0" size={16} />
                 <div>
                   <p className="text-xs text-purple-300/70">Last Login</p>
                   <p className="font-medium text-white text-sm">
-                    {userData.last_login 
-                      ? new Date(userData.last_login).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric' 
-                        })
-                      : 'Never'
-                    }
+                    {userData.last_login ? new Date(userData.last_login).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Never'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="text-purple-400" size={20} />
+              <div className="flex items-center gap-2">
+                <MapPin className="text-purple-400 flex-shrink-0" size={16} />
                 <div>
                   <p className="text-xs text-purple-300/70">Mobile</p>
                   <p className="font-medium text-white text-sm">{userData.mobile || 'N/A'}</p>
@@ -718,9 +723,10 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="rounded-2xl border border-purple-500/20 bg-[#120B20]/40 overflow-hidden">
-          <div className="flex space-x-0">
+
+        {/* *** NEW: Refactored Tabs *** */}
+        <div className="rounded-2xl border border-purple-500/20 bg-[#160C26] overflow-hidden shadow-xl shadow-purple-900/10">
+          <div className="flex space-x-0 border-b border-purple-500/20">
             {[
               { key: "overview", label: "Overview", icon: <Activity size={18} /> },
               { key: "closed", label: "Closed Trades", icon: <TrendingDown size={18} /> },
@@ -729,15 +735,18 @@ const UserProfile = () => {
             ].map((tab) => (
               <button
                 key={tab.key}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 font-semibold transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 font-semibold transition-all duration-300 relative ${
                   activeTab === tab.key
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+                    ? "text-white"
                     : "text-purple-300/70 hover:text-white hover:bg-purple-500/10"
                 }`}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.icon}
                 <span className="hidden sm:inline text-sm">{tab.label}</span>
+                {activeTab === tab.key && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
+                )}
               </button>
             ))}
           </div>

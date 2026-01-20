@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Trash2, Loader, CheckCircle, XCircle } from "lucide-react"; // Added Loader and status icons
 import { useNavigate } from "react-router-dom";
 
+// Fixed the import.meta issue
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const UsersListPage = () => {
@@ -38,9 +39,9 @@ const UsersListPage = () => {
             errorData?.code === "token_not_valid" ||
             errorData?.detail === "Given token not valid for any token type"
           ) {
-            localStorage.removeItem("admin_access_token");
-            localStorage.removeItem("admin_refresh_token");
-            localStorage.removeItem("admin_user");
+            // Assuming authTokens is the correct key
+            localStorage.removeItem("authTokens");
+            localStorage.removeItem("user"); // Clear user info if stored
             window.location.href = "/admin-login";
             return;
           }
@@ -62,7 +63,7 @@ const UsersListPage = () => {
     };
 
     fetchUsers();
-  }, []);
+  }, [navigate, tokens?.access]); // Added tokens.access as dependency
 
   useEffect(() => {
     let filtered = usersList;
@@ -100,16 +101,17 @@ const UsersListPage = () => {
   };
 
   return (
-    <div className="min-h-screen rounded-4xl bg-gradient-to-br from-[#0F0F1E] to-[#4733A6] p-6 md:p-10">
+    // Removed gradient background, inheriting from layout
+    <div className="text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="mb-1">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight">
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-1 tracking-tight">
                 Users Management
               </h1>
-              <p className="text-white/70 text-sm md:text-base">
+              <p className="text-purple-300/70">
                 Manage and monitor B2C user accounts
               </p>
             </div>
@@ -117,141 +119,146 @@ const UsersListPage = () => {
         </div>
 
         {/* Filters Section */}
-        <div className="mb-8 backdrop-blur-md py-6 rounded-2xl shadow-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Status Filter Tabs */}
-            <div className="lg:col-span-2 flex flex-wrap gap-3">
+        <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          {/* Status Filter Tabs - Standard style */}
+          <div className="border-b border-purple-500/30">
+            <div className="flex space-x-6">
               {["all", "active", "inactive"].map((status) => (
                 <button
                   key={status}
-                  className={`px-4 py-1 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                    filterStatus === status
-                      ? "bg-white text-[#4733A6]"
-                      : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
-                  }`}
+                  className={`pb-3 font-semibold transition-all border-b-2
+                    ${
+                      filterStatus === status
+                        ? "text-white border-purple-500"
+                        : "text-purple-300/60 border-transparent hover:text-white"
+                    }`}
                   onClick={() => setFilterStatus(status)}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* Search Input */}
-            <div className="lg:col-span-2">
-              <input
-                type="text"
-                placeholder="Search by name, email, or mobile..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-1 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
-              />
-            </div>
+          {/* Search Input - Themed */}
+          <div className="w-full md:w-1/3">
+            <input
+              type="text"
+              placeholder="Search by name, email, or mobile..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-3 bg-black/20 border border-purple-500/30 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+            />
           </div>
         </div>
 
         {/* Loading & Error States */}
         {loading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white"></div>
-            <p className="text-white mt-4">Loading users...</p>
+            <Loader size={40} className="inline-block animate-spin text-purple-400" />
+            <p className="text-purple-300/70 mt-4">Loading users...</p>
           </div>
         )}
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-200 px-6 py-4 rounded-xl mb-6">
+          <div className="bg-red-500/20 border border-red-500 text-red-200 px-6 py-4 rounded-lg mb-6">
             Error: {error}
           </div>
         )}
 
-        {/* Table Section */}
+        {/* Table Section - Themed */}
         {!loading && !error && (
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+          <div className="bg-[#160C26] rounded-lg shadow-lg border border-purple-500/20 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-white/10">
-                <thead className="bg-[#2b2676]">
+              <table className="min-w-full divide-y divide-purple-500/20">
+                <thead className="bg-purple-500/10">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Mobile
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Wallet Balance
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
-                  {filteredUsers.map((u) => (
-                    <tr
-                      key={u.id}
-                      className="hover:bg-white/5 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-white font-semibold text-sm">
-                          {u.full_name || `${u.first_name} ${u.last_name}`}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-white/80 text-sm">
-                          {u.email}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-white/80 text-sm">
-                          {u.mobile || "-"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {u.is_active ? (
-                          <span className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-semibold border border-green-500/30">
-                            Active
+                <tbody className="divide-y divide-purple-500/10">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((u) => (
+                      <tr
+                        key={u.id}
+                        className="hover:bg-purple-500/5 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-white font-semibold text-sm">
+                            {u.full_name || `${u.first_name} ${u.last_name}`}
                           </span>
-                        ) : (
-                          <span className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/30">
-                            Inactive
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-purple-300/80 text-sm">
+                            {u.email}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-white/80 text-sm font-medium">
-                          ${u.wallet?.balance || "0.00"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleView(u)}
-                            className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                            aria-label={`View ${u.full_name || u.email}`}
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(u)}
-                            className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                            aria-label={`Delete ${u.full_name || u.email}`}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {filteredUsers.length === 0 && (
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-purple-300/80 text-sm">
+                            {u.mobile || "-"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {/* Themed Status Tags */}
+                          {u.is_active ? (
+                            <span className="px-3 py-1.5 rounded-full bg-green-500/20 text-green-300 text-xs font-semibold border border-green-500/30 flex items-center gap-1 w-fit">
+                              <CheckCircle size={14} />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-full bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/30 flex items-center gap-1 w-fit">
+                              <XCircle size={14} />
+                              Inactive
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-purple-300/80 text-sm font-medium">
+                            ${u.wallet?.balance || "0.00"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {/* Themed Action Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleView(u)}
+                              className="p-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 hover:text-blue-200 border border-blue-500/30 transition-all"
+                              aria-label={`View ${u.full_name || u.email}`}
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(u)}
+                              className="p-2 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-300 hover:text-red-200 border border-red-500/30 transition-all"
+                              aria-label={`Delete ${u.full_name || u.email}`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-6 py-16 text-center text-white/70 text-lg"
+                        className="px-6 py-16 text-center text-purple-300/70 text-lg"
                       >
                         No users found.
                       </td>

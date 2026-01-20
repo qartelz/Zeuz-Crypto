@@ -1,6 +1,8 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
+// Fixed the import.meta issue
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const PlanDetails = () => {
@@ -14,9 +16,28 @@ const PlanDetails = () => {
   useEffect(() => {
     const fetchPlanDetails = async () => {
       try {
+        // Retrieve tokens from localStorage
+        const tokens = JSON.parse(localStorage.getItem("authTokens"));
+        if (!tokens?.access) {
+            throw new Error("No authorization token found.");
+        }
+
         const response = await fetch(
-          `${baseURL}admin/subscriptions/plans/${id}/`
+          `${baseURL}admin/subscriptions/plans/${id}/`, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokens.access}`, // Add Authorization header
+            },
+          }
         );
+
+        if (response.status === 401) {
+            // Handle token expiration or invalid token
+            localStorage.removeItem("authTokens");
+            localStorage.removeItem("user");
+            navigate("/admin-login");
+            return;
+        }
 
         if (!response.ok) {
           throw new Error("Failed to fetch plan details");
@@ -32,14 +53,15 @@ const PlanDetails = () => {
     };
 
     fetchPlanDetails();
-  }, [id]);
+  }, [id, navigate]); // Added navigate to dependency array
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#2f287f] flex items-center justify-center p-6">
+      // Themed loading state
+      <div className="flex items-center justify-center p-6" style={{ minHeight: 'calc(100vh - 120px)' }}> {/* Adjust height based on layout */}
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
-          <p className="text-white text-lg font-medium">Loading plan details...</p>
+          <Loader size={40} className="inline-block animate-spin text-purple-400" />
+          <p className="text-purple-300/70 mt-4 text-lg font-medium">Loading plan details...</p>
         </div>
       </div>
     );
@@ -47,16 +69,17 @@ const PlanDetails = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] to-[#2f287f] flex items-center justify-center p-6">
-        <div className="bg-white/5 backdrop-blur-sm border border-red-500/20 rounded-2xl p-8 max-w-md w-full text-center">
+      // Themed error state
+      <div className="flex items-center justify-center p-6" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <div className="bg-[#160C26] border border-red-500/30 rounded-lg p-8 max-w-md w-full text-center shadow-lg">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-red-400 text-3xl">!</span>
+            <span className="text-red-400 text-3xl font-bold">!</span>
           </div>
-          <h3 className="text-red-400 text-xl font-semibold mb-2">Error</h3>
-          <p className="text-gray-300 mb-6">{error}</p>
+          <h3 className="text-red-400 text-xl font-semibold mb-2">Error Loading Plan</h3>
+          <p className="text-purple-300/70 mb-6">{error}</p>
           <button
             onClick={() => navigate(-1)}
-            className="bg-white text-black px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+            className="bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-colors shadow-md"
           >
             Go Back
           </button>
@@ -65,40 +88,45 @@ const PlanDetails = () => {
     );
   }
 
+  if (!plan) {
+    return null; // Should be covered by loading/error states
+  }
+
   return (
-    <div className="min-h-screen rounded-4xl bg-gradient-to-br from-[#0F0F1E] to-[#2f287f] p-6 lg:p-8">
+    // Removed gradient, inheriting from layout
+    <div className="text-white">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
         <button
-  onClick={() => navigate("/admin/plans")}
-  className="text-white/60 hover:text-white transition-colors mb-4 inline-flex items-center gap-2 text-sm font-medium"
->
-  <ArrowLeft className="w-4 h-4" />
-  Back to Plans
-</button>
+          onClick={() => navigate("/admin/plans")}
+          className="text-purple-300/70 hover:text-purple-300 transition-colors mb-4 inline-flex items-center gap-2 text-sm font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Plans
+        </button>
 
           <h1 className="text-3xl lg:text-4xl font-bold text-white">
             Subscription Plan Details
           </h1>
         </div>
 
-        {/* Main Content Card */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        {/* Main Content Card - Themed */}
+        <div className="bg-[#160C26] border border-purple-500/20 rounded-lg shadow-lg overflow-hidden">
           {/* Hero Section */}
-          <div className="bg-gradient-to-r from-white/10 to-white/5 border-b border-white/10 p-6 lg:p-8">
+          <div className="bg-purple-500/10 border-b border-purple-500/20 p-6 lg:p-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2">
                   {plan.name}
                 </h2>
-                <p className="text-gray-300 text-sm lg:text-base">
+                <p className="text-purple-300/70 text-sm lg:text-base">
                   {plan.description || "No description available"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <span
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap ${
                     plan.is_active
                       ? "bg-green-500/20 text-green-400 border border-green-500/30"
                       : "bg-red-500/20 text-red-400 border border-red-500/30"
@@ -114,37 +142,37 @@ const PlanDetails = () => {
           <div className="p-6 lg:p-8">
             {/* Primary Information */}
             <section className="mb-8">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-4">
                 Primary Information
               </h3>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     Plan ID
                   </p>
                   <p className="text-white font-mono text-sm break-all">
                     {plan.id}
                   </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     Duration
                   </p>
                   <p className="text-white text-xl font-bold">
                     {plan.duration_days}
-                    <span className="text-sm font-normal text-gray-400 ml-1">days</span>
+                    <span className="text-sm font-normal text-purple-300/70 ml-1">days</span>
                   </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     Price
                   </p>
                   <p className="text-green-400 text-2xl font-bold">
                     ${plan.price}
                   </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     User Type
                   </p>
                   <p className="text-white text-lg font-semibold capitalize">
@@ -156,12 +184,12 @@ const PlanDetails = () => {
 
             {/* Metadata */}
             <section>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-4">
                 Metadata
               </h3>
               <div className="grid sm:grid-cols-2 gap-6">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     Created At
                   </p>
                   <p className="text-white text-sm">
@@ -171,15 +199,15 @@ const PlanDetails = () => {
                       day: 'numeric'
                     })}
                   </p>
-                  <p className="text-gray-400 text-xs mt-1">
+                  <p className="text-purple-300/70 text-xs mt-1">
                     {new Date(plan.created_at).toLocaleTimeString('en-US', {
                       hour: '2-digit',
                       minute: '2-digit'
                     })}
                   </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-2">
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-xs text-purple-300/70 uppercase font-semibold mb-2">
                     Updated At
                   </p>
                   <p className="text-white text-sm">
@@ -189,7 +217,7 @@ const PlanDetails = () => {
                       day: 'numeric'
                     })}
                   </p>
-                  <p className="text-gray-400 text-xs mt-1">
+                  <p className="text-purple-300/70 text-xs mt-1">
                     {new Date(plan.updated_at).toLocaleTimeString('en-US', {
                       hour: '2-digit',
                       minute: '2-digit'
@@ -199,18 +227,6 @@ const PlanDetails = () => {
               </div>
             </section>
           </div>
-
-          {/* Footer Actions */}
-          {/* <div className="bg-white/5 border-t border-white/10 p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                onClick={() => navigate("/admin/plans")}
-                className="bg-white text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Back to Plans
-              </button>
-            </div>
-          </div> */}
         </div>
       </div>
     </div>

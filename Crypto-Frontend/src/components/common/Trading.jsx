@@ -43,7 +43,7 @@ const Trading = ({
   walletData,
   walletLoading,
   setIsChallengeStarted,
-  refreshChallengeWallet
+  refreshChallengeWallet,
 }) => {
   const [mode, setMode] = useState("spot"); // "spot" | "futures"
   const [spotSide, setSpotSide] = useState("buy"); // "buy" | "sell"
@@ -52,7 +52,7 @@ const Trading = ({
   // console.log(isChallengeStarted, "the challenge started ");
   // console.log(JSON.stringify(selectedChallenge, null, 2), "the selected challenge");
 
-  console.log(selectedChallenge,"the selected challenge")
+  // console.log(selectedChallenge,"the selected challenge")
 
   const { balance, loading, refreshWallet } = useContext(WalletContext);
 
@@ -1218,24 +1218,50 @@ const Trading = ({
           expiryDate.setDate(expiryDate.getDate() + 30);
           const formattedExpiryDate = expiryDate.toISOString().split("T")[0];
 
-          const payload = {
-            asset_symbol: selected.symbol.toUpperCase(),
-            asset_name: futuresTicker?.description || selected.baseAsset,
-            asset_exchange: "DELTA",
-            trade_type: "FUTURES",
-            direction: "SELL", // SHORT position
-            holding_type: holdingType.toUpperCase(),
-            quantity: futuresAmount,
-            price: sellPrice.toFixed(2), // Use bid price for short
-            order_type: "MARKET",
-            leverage: leverage,
-            contract_size: parseFloat(contractValue || "0.001").toFixed(8),
-            expiry_date: formattedExpiryDate,
-          };
+          console.log(expiryDate, "the expiry date");
+
+          let payload;
+          let endpoint;
+
+          if (selectedChallenge) {
+            // 🔹 Challenge Mode
+            endpoint = `${baseURL}challenges/trades/`;
+            payload = {
+              participation_id: selectedChallenge.participationId,
+              asset_symbol: selected.symbol.toUpperCase(),
+              asset_name: futuresTicker?.description || selected.baseAsset,
+              trade_type: "FUTURES",
+              direction: "SELL",
+              total_quantity: parseFloat(futuresAmount),
+              entry_price: parseFloat(sellPrice.toFixed(2)),
+              holding_type: holdingType.toUpperCase(),
+              order_type: "MARKET",
+              leverage: leverage,
+              contract_size: parseFloat(contractValue || "0.001").toFixed(8),
+              expiry_date: formattedExpiryDate,
+            };
+          } else {
+            // 🔹 Normal Mode
+            endpoint = `${baseURL}trading/place-order/`;
+            payload = {
+              asset_symbol: selected.symbol.toUpperCase(),
+              asset_name: futuresTicker?.description || selected.baseAsset,
+              asset_exchange: "DELTA",
+              trade_type: "FUTURES",
+              direction: "SELL",
+              holding_type: holdingType.toUpperCase(),
+              quantity: futuresAmount,
+              price: sellPrice.toFixed(2),
+              order_type: "MARKET",
+              leverage: leverage,
+              contract_size: parseFloat(contractValue || "0.001").toFixed(8),
+              expiry_date: formattedExpiryDate,
+            };
+          }
 
           console.log("Futures Short Payload:", payload);
 
-          const response = await fetch(`${baseURL}trading/place-order/`, {
+          const response = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1271,8 +1297,7 @@ const Trading = ({
             if (selectedChallenge && refreshChallengeWallet) {
               await refreshChallengeWallet(selectedChallenge.participationId);
             }
-  
-            
+
             fetchFuturesPosition();
             setFuturesAmount("");
             setFuturesSliderValue(0);
@@ -1304,24 +1329,48 @@ const Trading = ({
         expiryDate.setDate(expiryDate.getDate() + 30);
         const formattedExpiryDate = expiryDate.toISOString().split("T")[0];
 
-        const payload = {
-          asset_symbol: selected.symbol.toUpperCase(),
-          asset_name: futuresTicker?.description || selected.baseAsset,
-          asset_exchange: "DELTA",
-          trade_type: "FUTURES",
-          direction: "BUY",
-          holding_type: holdingType.toUpperCase(),
-          quantity: futuresAmount,
-          price: buyPrice.toFixed(2), // Use ask price for buying
-          order_type: "MARKET",
-          leverage: leverage,
-          contract_size: parseFloat(contractValue || "0.001").toFixed(8),
-          expiry_date: formattedExpiryDate,
-        };
+        let payload;
+        let endpoint;
+
+        if (selectedChallenge) {
+          // 🔹 Challenge Mode
+          endpoint = `${baseURL}challenges/trades/`;
+          payload = {
+            participation_id: selectedChallenge.participationId,
+            asset_symbol: selected.symbol.toUpperCase(),
+            asset_name: futuresTicker?.description || selected.baseAsset,
+            trade_type: "FUTURES",
+            direction: "BUY",
+            total_quantity: parseFloat(futuresAmount),
+            entry_price: parseFloat(buyPrice.toFixed(2)),
+            holding_type: holdingType.toUpperCase(),
+            order_type: "MARKET",
+            leverage: leverage,
+            contract_size: parseFloat(contractValue || "0.001").toFixed(8),
+            expiry_date: formattedExpiryDate,
+          };
+        } else {
+          // 🔹 Normal Mode
+          endpoint = `${baseURL}trading/place-order/`;
+          payload = {
+            asset_symbol: selected.symbol.toUpperCase(),
+            asset_name: futuresTicker?.description || selected.baseAsset,
+            asset_exchange: "DELTA",
+            trade_type: "FUTURES",
+            direction: "BUY",
+            holding_type: holdingType.toUpperCase(),
+            quantity: futuresAmount,
+            price: buyPrice.toFixed(2),
+            order_type: "MARKET",
+            leverage: leverage,
+            contract_size: parseFloat(contractValue || "0.001").toFixed(8),
+            expiry_date: formattedExpiryDate,
+          };
+        }
 
         console.log("Futures Buy Payload:", payload);
 
-        const response = await fetch(`${baseURL}trading/place-order/`, {
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1579,9 +1628,9 @@ const Trading = ({
           const perpetuals = res.data.result;
 
           const normalizedFutures = perpetuals
-            .filter((s) => s.symbol?.toUpperCase().endsWith("USDT")) // ✅ only USDT pairs
+            .filter((s) => s.symbol?.toUpperCase().endsWith("USDT")) 
             .map((s) => ({
-              symbol: s.symbol?.toLowerCase() || "", // fallback to empty string
+              symbol: s.symbol?.toLowerCase() || "", 
               baseAsset: (s.short_description || "").toUpperCase(),
               quoteAsset:
                 s.quoting_asset?.symbol || s.quoting_asset?.id || "USDT",
@@ -1957,26 +2006,26 @@ const Trading = ({
                 </div>
 
                 {/* Buy/Sell Prices Display */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* <div className="grid grid-cols-2 gap-2">
                   <div className="bg-[#1E1F36] rounded p-2 text-xs">
                     <div className="text-gray-400 mb-1">Buy Price (Ask)</div>
                     <div className="text-red-400 font-mono font-semibold">
-                      {buyPrice.toFixed(2)}
+                      {buyPrice}
                     </div>
                   </div>
                   <div className="bg-[#1E1F36] rounded p-2 text-xs">
                     <div className="text-gray-400 mb-1">Sell Price (Bid)</div>
                     <div className="text-green-400 font-mono font-semibold">
-                      {sellPrice.toFixed(2)}
+                      {sellPrice}
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Mark Price */}
                 <div className="bg-[#1E1F36] rounded p-2 flex justify-between items-center text-xs sm:text-sm">
                   <span className="text-gray-400">Mark Price</span>
                   <span className="text-yellow-400 font-mono font-semibold">
-                    {futuresPriceTicker?.markPrice.toFixed(2)}
+                    {futuresPriceTicker?.markPrice}
                   </span>
                   <span className="text-gray-400">{selected.quoteAsset}</span>
                 </div>
@@ -1991,7 +2040,7 @@ const Trading = ({
                           : "text-xs sm:text-sm top-2.5"
                       }`}
                     >
-                      Quantity
+                      Quantity (Min: {contractValue} {selected.baseAsset})
                     </label>
                     <input
                       type="number"
@@ -2005,6 +2054,11 @@ const Trading = ({
                       placeholder="Quantity"
                     />
                   </div>
+                  {futuresAmount && parseFloat(futuresAmount) < parseFloat(contractValue) && (
+                    <p className="text-red-400 text-[10px] mt-1">
+                      Minimum quantity is {contractValue} 
+                    </p>
+                  )}
                 </div>
 
                 {/* Range Slider */}
@@ -2103,7 +2157,7 @@ const Trading = ({
                 {/* Buy/Long and Sell/Short Buttons in Same Row */}
                 <div className="flex gap-2">
                   {/* Buy/Long Button */}
-                  <button
+                  {/* <button
                     onClick={() => handleFuturesOrder("buy")}
                     disabled={
                       isPlacingBuyOrder ||
@@ -2155,6 +2209,55 @@ const Trading = ({
                             ? "Insufficient Margin"
                             : `Buy/Long`;
                         })()}
+                  </button> */}
+
+<button
+                    onClick={() => handleFuturesOrder("buy")}
+                    disabled={
+                      isPlacingBuyOrder ||
+                      !futuresAmount ||
+                      parseFloat(futuresAmount) <= 0 ||
+                      parseFloat(futuresAmount) < parseFloat(contractValue) ||
+                      (() => {
+                        const marginRequired =
+                          (parseFloat(futuresAmount || 0) *
+                            futuresPrice *
+                            parseFloat(contractValue)) /
+                          leverage;
+                        return marginRequired > balance;
+                      })()
+                    }
+                    className={`flex-1 py-2 rounded-lg font-semibold transition ${
+                      isPlacingBuyOrder ||
+                      !futuresAmount ||
+                      parseFloat(futuresAmount) <= 0 ||
+                      parseFloat(futuresAmount) < parseFloat(contractValue) ||
+                      (() => {
+                        const marginRequired =
+                          (parseFloat(futuresAmount || 0) *
+                            futuresPrice *
+                            parseFloat(contractValue)) /
+                          leverage;
+                        return marginRequired > balance;
+                      })()
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-500 hover:bg-green-600"
+                    }`}
+                  >
+                    {isPlacingBuyOrder
+                      ? "Placing..."
+                      : parseFloat(futuresAmount) < parseFloat(contractValue)
+                      ? `Buy/Long`
+                      : (() => {
+                          const marginRequired =
+                            (parseFloat(futuresAmount || 0) *
+                              futuresPrice *
+                              parseFloat(contractValue)) /
+                            leverage;
+                          return marginRequired > balance
+                            ? "Insufficient Margin"
+                            : `Buy/Long`;
+                        })()}
                   </button>
 
                   {/* Sell/Short Button */}
@@ -2189,14 +2292,12 @@ const Trading = ({
                       isPlacingSellOrder ||
                       !futuresAmount ||
                       parseFloat(futuresAmount) <= 0 ||
+                      parseFloat(futuresAmount) < parseFloat(contractValue) ||
                       (() => {
-                        const contractValue = futuresTicker?.contract_value
-                          ? parseFloat(futuresTicker.contract_value)
-                          : 0.001;
                         const marginRequired =
                           (parseFloat(futuresAmount || 0) *
                             futuresPrice *
-                            contractValue) /
+                            parseFloat(contractValue)) /
                           leverage;
                         return marginRequired > balance;
                       })()
@@ -2205,14 +2306,12 @@ const Trading = ({
                       isPlacingSellOrder ||
                       !futuresAmount ||
                       parseFloat(futuresAmount) <= 0 ||
+                      parseFloat(futuresAmount) < parseFloat(contractValue) ||
                       (() => {
-                        const contractValue = futuresTicker?.contract_value
-                          ? parseFloat(futuresTicker.contract_value)
-                          : 0.001;
                         const marginRequired =
                           (parseFloat(futuresAmount || 0) *
                             futuresPrice *
-                            contractValue) /
+                            parseFloat(contractValue)) /
                           leverage;
                         return marginRequired > balance;
                       })()
@@ -2222,14 +2321,13 @@ const Trading = ({
                   >
                     {isPlacingSellOrder
                       ? "Placing..."
+                      : parseFloat(futuresAmount) < parseFloat(contractValue)
+                      ? `Sell/Short`
                       : (() => {
-                          const contractValue = futuresTicker?.contract_value
-                            ? parseFloat(futuresTicker.contract_value)
-                            : 0.001;
                           const marginRequired =
                             (parseFloat(futuresAmount || 0) *
                               futuresPrice *
-                              contractValue) /
+                              parseFloat(contractValue)) /
                             leverage;
                           return marginRequired > balance
                             ? "Insufficient Margin"
@@ -2525,11 +2623,13 @@ const Trading = ({
   const fetchSpotBalance = async () => {
     try {
       let response;
-      
+
       if (selectedChallenge) {
         // Challenge mode API
         response = await fetch(
-          `${baseURL}challenges/challenge-trades/${selected.baseAsset.toUpperCase()}/?week_id=${selectedChallenge?.weekData.id}&trade_type=${mode.toUpperCase()}`,
+          `${baseURL}challenges/challenge-trades/${selected.baseAsset.toUpperCase()}/?week_id=${
+            selectedChallenge?.weekData.id
+          }&trade_type=${mode.toUpperCase()}`,
           {
             method: "GET",
             headers: {
@@ -2551,13 +2651,16 @@ const Trading = ({
           }
         );
       }
-  
+
       const data = await response.json();
       console.log(data, "the fetchSpotBalance data");
-  
+
       if (selectedChallenge) {
         // Handle challenge response
-        if (data.open_and_partial_trades && data.open_and_partial_trades.length > 0) {
+        if (
+          data.open_and_partial_trades &&
+          data.open_and_partial_trades.length > 0
+        ) {
           const totalQuantity = data.open_and_partial_trades.reduce(
             (sum, trade) => sum + parseFloat(trade.total_quantity),
             0
@@ -2595,17 +2698,18 @@ const Trading = ({
       <div className="flex justify-between">
         <div>
           {isChallengeStarted && (
-            
-
             <button
-            onClick={() => setIsChallengeStarted(false)}
-            className="flex items-center gap-2 font-medium transition-all duration-200 hover:scale-105"
-          >
-            <ArrowLeft size={20} className="text-[#A93EF8] drop-shadow-[0_0_6px_rgba(169,62,248,0.5)]" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A93EF8] to-[#E75469] ">
-              Back to Challenge
-            </span>
-          </button>
+              onClick={() => setIsChallengeStarted(false)}
+              className="flex items-center gap-2 font-medium transition-all duration-200 hover:scale-105"
+            >
+              <ArrowLeft
+                size={20}
+                className="text-[#A93EF8] drop-shadow-[0_0_6px_rgba(169,62,248,0.5)]"
+              />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A93EF8] to-[#E75469] ">
+                Back to Challenge
+              </span>
+            </button>
           )}
 
           <div></div>
@@ -2891,7 +2995,7 @@ const Trading = ({
                         : "text-green-400"
                     }`}
                   >
-                    {fmt(tickerData?.c, 2)} {selected.quoteAsset}
+                    {fmt(tickerData?.c, 8)} {selected.quoteAsset}
                   </div>
                 </div>
 
@@ -3058,7 +3162,10 @@ const Trading = ({
       ) : (
         <div>
           {/* <OptionsChain/> */}
-          <OptionsChainFinal />
+          <OptionsChainFinal
+            selectedChallenge={selectedChallenge}
+            refreshChallengeWallet={refreshChallengeWallet}
+          />
         </div>
       )}
     </div>
