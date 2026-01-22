@@ -30,8 +30,7 @@ router.register(r'participations', challenge_views.UserChallengeParticipationVie
 router.register(r'wallets', wallet_views.ChallengeWalletViewSet, basename='wallet')
 
 # Trade endpoints
-# router.register(r'trades', trade_views.ChallengeTradeViewSet, basename='trade')
-router.register(r'trades', trade_views.CompleteTradingViewSet, basename='trade')
+router.register(r'trades', trade_views.ChallengeTradeViewSet, basename='trade')
 # router.register(r'trade-analytics', trade_views.ChallengeTradeAnalyticsViewSet, basename='trade-analytics')
 
 # Admin endpoints
