@@ -51,7 +51,11 @@ class ChallengeWeek(models.Model):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     target_goal = models.DecimalField(max_digits=10, decimal_places=2)
-    min_trades_required = models.PositiveIntegerField(default=5)
+    min_trades_required = models.PositiveIntegerField(default=5, help_text="Total minimum trades required")
+    
+    min_spot_trades = models.PositiveIntegerField(default=0, help_text="Minimum spot trades required")
+    min_futures_trades = models.PositiveIntegerField(default=0, help_text="Minimum futures trades required")
+    min_options_trades = models.PositiveIntegerField(default=0, help_text="Minimum options trades required")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

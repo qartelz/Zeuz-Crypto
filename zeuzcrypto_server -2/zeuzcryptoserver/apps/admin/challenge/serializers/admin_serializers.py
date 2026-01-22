@@ -46,6 +46,73 @@ class ChallengeWeekAdminSerializer(serializers.ModelSerializer):
         model = ChallengeWeek
         fields = '__all__'
     
+    def validate(self, attrs):
+        trading_type = attrs.get('trading_type')
+        if not trading_type and self.instance:
+            trading_type = self.instance.trading_type
+            
+        min_spot = attrs.get('min_spot_trades', 0)
+        min_futures = attrs.get('min_futures_trades', 0)
+        min_options = attrs.get('min_options_trades', 0)
+        
+        # If updating, use existing values if not provided
+        if self.instance:
+            min_spot = attrs.get('min_spot_trades', self.instance.min_spot_trades)
+            min_futures = attrs.get('min_futures_trades', self.instance.min_futures_trades)
+            min_options = attrs.get('min_options_trades', self.instance.min_options_trades)
+            
+        total_required = attrs.get('min_trades_required')
+        if total_required is None and self.instance:
+            total_required = self.instance.min_trades_required
+
+        # Validate specific requirements based on trading type
+        if trading_type == 'SPOT':
+            if min_spot <= 0:
+                raise serializers.ValidationError({
+                    "min_spot_trades": "For SPOT trading type, minimum spot trades must be greater than 0."
+                })
+            if min_futures > 0 or min_options > 0:
+                raise serializers.ValidationError({
+                    "trading_type": "SPOT trading type cannot have futures or options requirements."
+                })
+                
+        elif trading_type == 'SPOT_FUTURES':
+            if min_spot <= 0:
+                raise serializers.ValidationError({
+                    "min_spot_trades": "For SPOT_FUTURES trading type, minimum spot trades must be greater than 0."
+                })
+            if min_futures <= 0:
+                raise serializers.ValidationError({
+                    "min_futures_trades": "For SPOT_FUTURES trading type, minimum futures trades must be greater than 0."
+                })
+            if min_options > 0:
+                raise serializers.ValidationError({
+                    "trading_type": "SPOT_FUTURES trading type cannot have options requirements."
+                })
+                
+        elif trading_type == 'SPOT_FUTURES_OPTIONS' or trading_type == 'PORTFOLIO':
+            if min_spot <= 0:
+                raise serializers.ValidationError({
+                    "min_spot_trades": f"For {trading_type} trading type, minimum spot trades must be greater than 0."
+                })
+            if min_futures <= 0:
+                raise serializers.ValidationError({
+                    "min_futures_trades": f"For {trading_type} trading type, minimum futures trades must be greater than 0."
+                })
+            if min_options <= 0:
+                raise serializers.ValidationError({
+                    "min_options_trades": f"For {trading_type} trading type, minimum options trades must be greater than 0."
+                })
+
+        # Validate total trades match sum of specific requirements
+        calculated_total = min_spot + min_futures + min_options
+        if total_required < calculated_total:
+             raise serializers.ValidationError({
+                "min_trades_required": f"Total required trades ({total_required}) cannot be less than the sum of specific requirements ({calculated_total})."
+            })
+            
+        return attrs
+
     def get_participants_count(self, obj):
         return obj.participants.count()
     
