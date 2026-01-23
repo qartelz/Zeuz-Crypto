@@ -105,7 +105,13 @@ const Trading = ({
 
   useEffect(() => {
     if (spotSide === "buy" && sliderValue > 0 && price > 0) {
-      const maxBuyableAmount = balance / price;
+
+      const usableBalance = selectedChallenge
+  ? Number(walletData?.available_balance ?? 0)
+  : Number(balance ?? 0);
+
+  const maxBuyableAmount = usableBalance / price;
+
       const calculatedAmount = (maxBuyableAmount * sliderValue) / 100;
       setAmount(calculatedAmount.toFixed(8));
     }
@@ -1473,20 +1479,29 @@ const Trading = ({
       setTotal(0);
     }
   }, [amount, price]);
+ 
 
   const [showTooltip, setShowTooltip] = useState(false);
   const hideTimer = useRef(null);
 
   const handleSliderChange = (value) => {
     const price = parseFloat(ticker?.c || 0);
-    const safeBalance = parseFloat(balance || 0);
+    // const safeBalance = parseFloat(balance || 0);
+    const safeBalance = selectedChallenge
+  ? parseFloat(walletData?.available_balance || 0)
+  : parseFloat(balance || 0);
+
+  // console.log(safeBalance,"the safe balance")
+
     const percent = Number(value);
 
     if (spotSide === "buy") {
       const usableQuote = safeBalance * (percent / 100);
+      console.log(usableQuote,"the usableQuote")
 
       if (price > 0) {
         const baseAmount = usableQuote / price;
+        
         setAmount(baseAmount.toFixed(8));
       } else {
         setAmount("0");
@@ -1923,7 +1938,7 @@ const Trading = ({
               {/* Futures UI */}
               <div className="space-y-3">
                 <div className="text-xs text-gray-400">
-                  Avbl{" "}
+                  Avbl
                   <span className="ml-1">
                     {loading
                       ? "Loading..."
@@ -2366,7 +2381,6 @@ const Trading = ({
               {spotSide === "buy" ? (
                 <div className="space-y-3 mb-6">
                   <div className="text-xs text-gray-400">
-                    Avbl{" "}
                     <span className="ml-1">
                     <div className="text-xs text-gray-400">
   Avbl{" "}
@@ -2423,7 +2437,7 @@ const Trading = ({
 
                   {/* Range Slider */}
                   <div className="relative w-full">
-                    <input
+                    {/* <input
                       type="range"
                       min="0"
                       max="100"
@@ -2444,7 +2458,46 @@ const Trading = ({
                         setTimeout(() => setIsSliderActive(false), 100);
                       }}
                       className="w-full accent-green-500 cursor-pointer"
-                    />
+                    /> */}
+
+<input
+  type="range"
+  min="0"
+  max="100"
+  step="1"
+  value={sliderValue}
+  onMouseDown={handleStart}
+  onMouseUp={handleEnd}
+  onTouchStart={handleStart}
+  onTouchEnd={handleEnd}
+  onChange={(e) => {
+    setIsSliderActive(true);
+
+    const percentage = Number(e.target.value);
+
+    // 👇 decide which balance to use
+    const usableBalance = selectedChallenge
+      ? Number(walletData.available_balance)
+      : balance;
+
+      // console.log(usableBalance,"the usable balanc 3c33")
+
+     
+
+    const maxBuyableAmount = usableBalance / price;
+    const calculatedAmount = (maxBuyableAmount * percentage) / 100;
+
+    setSliderValue(percentage);
+    setAmount(calculatedAmount.toFixed(8));
+
+    setTimeout(() => setIsSliderActive(false), 100);
+  }}
+  className="w-full accent-green-500 cursor-pointer"
+/>
+
+
+
+                    
 
                     {showTooltip && (
                       <div
@@ -2461,13 +2514,25 @@ const Trading = ({
                   {/* Total */}
                   <div className="bg-[#1E1F36] rounded p-2 flex justify-between items-center text-xs sm:text-sm">
                     <span className="text-gray-400">Total</span>
-                    <span className="text-white">
+                    {/* <span className="text-white">
                       {total > 0
                         ? `${Math.min(total, balance).toFixed(2)} ${
                             selected.quoteAsset
                           }`
                         : `Minimum 5 ${selected.quoteAsset}`}
-                    </span>
+                    </span> */}
+
+<span className="text-white">
+  {total > 0
+    ? `${Math.min(
+        total,
+        selectedChallenge
+          ? Number(walletData?.available_balance || 0)
+          : Number(balance || 0)
+      ).toFixed(2)} ${selected.quoteAsset}`
+    : `Minimum 5 ${selected.quoteAsset}`}
+</span>
+
                   </div>
 
                   <div className="text-xs text-gray-400">
