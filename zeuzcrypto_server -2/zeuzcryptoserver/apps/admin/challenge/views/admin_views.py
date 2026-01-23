@@ -88,30 +88,9 @@ class ChallengeAdminViewSet(viewsets.ModelViewSet):
 class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
     """Admin week management (staff only)"""
     queryset = ChallengeWeek.objects.all()
+
     serializer_class = ChallengeWeekAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
-    def create(self, request, *args, **kwargs):
-        """Admin: Create a new challenge task (only one per week allowed)"""
-        
-        serializer = self.get_serializer(data=request.data)
-        print(serializer)
-        serializer.is_valid(raise_exception=True)
-
-        week_id = serializer.validated_data['week_id']
-        
-        # Check if task already exists for this week
-        if ChallengeTask.objects.filter(week_id=week_id).exists():
-            return Response(
-                {"error": "Only one task is allowed per week"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        self.perform_create(serializer)
-        return Response(
-            {"message": "Task created successfully", "data": serializer.data},
-            status=status.HTTP_201_CREATED
-        )
     
     @action(detail=True, methods=['get'])
     def participants(self, request, pk=None):

@@ -197,8 +197,8 @@ class ChallengeProgramViewSet(viewsets.ReadOnlyModelViewSet):
 #             )
 #
 
-class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
-    """Challenge week management"""
+class ChallengeWeekViewSet(viewsets.ModelViewSet):
+    """Challenge week management (Full CRUD)"""
     queryset = ChallengeWeek.objects.all()
     serializer_class = ChallengeWeekSerializer
     permission_classes = [IsAuthenticated]
