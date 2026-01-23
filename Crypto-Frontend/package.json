@@ -12,6 +12,15 @@
   "dependencies": {
     "@headlessui/react": "^2.2.9",
     "@tailwindcss/vite": "^4.1.11",
+    "@tiptap/extension-color": "^3.16.0",
+    "@tiptap/extension-highlight": "^3.16.0",
+    "@tiptap/extension-image": "^3.16.0",
+    "@tiptap/extension-link": "^3.16.0",
+    "@tiptap/extension-text-align": "^3.16.0",
+    "@tiptap/extension-text-style": "^3.16.0",
+    "@tiptap/extension-underline": "^3.16.0",
+    "@tiptap/react": "^3.16.0",
+    "@tiptap/starter-kit": "^3.16.0",
     "axios": "^1.12.1",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
@@ -19,6 +28,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.6.0",
+    "react-quill-new": "^3.7.0",
     "react-router-dom": "^7.7.1",
     "react-toastify": "^11.0.5",
     "recharts": "^3.1.2"

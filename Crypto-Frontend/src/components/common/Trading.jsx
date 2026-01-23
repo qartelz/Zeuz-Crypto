@@ -2368,9 +2368,19 @@ const Trading = ({
                   <div className="text-xs text-gray-400">
                     Avbl{" "}
                     <span className="ml-1">
-                      {loading
-                        ? "Loading..."
-                        : `${balance} ${selected.quoteAsset}`}
+                    <div className="text-xs text-gray-400">
+  Avbl{" "}
+  <span className="ml-1">
+    {selectedChallenge
+      ? parseFloat(walletData?.available_balance).toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+        })
+      : loading
+      ? "Loading..."
+      : `${balance} ${selected.quoteAsset}`}
+  </span>
+</div>
+
                     </span>
                   </div>
 
@@ -2799,7 +2809,7 @@ const Trading = ({
                       Available
                     </p>
                     <p className="text-lg font-bold text-green-400 tabular-nums">
-                      {parseFloat(walletData.available_balance).toLocaleString(
+                      {parseFloat(walletData?.available_balance).toLocaleString(
                         undefined,
                         {
                           maximumFractionDigits: 2,
