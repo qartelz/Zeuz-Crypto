@@ -571,6 +571,7 @@ class ChallengeTaskViewSet(viewsets.ModelViewSet):
     # ✅ CREATE
     def create(self, request, *args, **kwargs):
         """Admin: Create a new challenge task (only one per week allowed)"""
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
