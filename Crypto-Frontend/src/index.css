@@ -1,0 +1,63 @@
+@import "tailwindcss";
+/* ===== React-Quill custom style ===== */
+
+.quill-custom {
+    border-radius: 0.5rem;
+  }
+  
+  /* ===== Toolbar ===== */
+  .quill-custom .ql-toolbar.ql-snow {
+    border: 1px solid rgba(168, 85, 247, 0.3); /* purple-500/30 */
+    border-bottom: 1px solid rgba(168, 85, 247, 0.4); /* separation line */
+    background: rgba(168, 85, 247, 0.05); /* slight bg for separation */
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+  
+  /* Make ALL toolbar icons & text white */
+  .quill-custom .ql-toolbar button,
+  .quill-custom .ql-toolbar .ql-picker,
+  .quill-custom .ql-toolbar .ql-picker-label,
+  .quill-custom .ql-toolbar .ql-picker-item,
+  .quill-custom .ql-toolbar svg {
+    color: #ffffff !important;
+    /* fill: #ffffff !important; */
+   
+  }
+  
+  .quill-custom .ql-picker-options {
+    background: #1f1b2e !important; /* dark, blends with page */
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+  
+  .quill-custom .ql-picker-item,
+  .quill-custom .ql-picker-label {
+    color: white !important;
+  }
+  
+  /* ===== Editor Container ===== */
+  .quill-custom .ql-container.ql-snow {
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-top: none;
+    background: transparent;
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+  
+  /* ===== Editor Area ===== */
+  .quill-custom .ql-editor {
+    min-height: 120px;
+    padding: 0.75rem 1rem; /* px-4 py-3 */
+    color: #ffffff;
+  }
+  
+  /* Placeholder (whitish gray) */
+  .quill-custom .ql-editor.ql-blank::before {
+    color: rgba(255, 255, 255, 0.45);
+    font-style: normal;
+  }
+  
+  /* ===== Focus state (textarea-like) ===== */
+  .quill-custom:focus-within .ql-toolbar.ql-snow,
+  .quill-custom:focus-within .ql-container.ql-snow {
+    border-color: rgb(168, 85, 247); /* purple-500 */
+  }
+  
