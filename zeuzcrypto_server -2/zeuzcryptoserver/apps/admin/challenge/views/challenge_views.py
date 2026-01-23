@@ -222,6 +222,44 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        """Create a new challenge week with debug logging"""
+        print("=" * 80)
+        print("📥 INCOMING DATA FROM REACT (ChallengeWeekViewSet):")
+        print("=" * 80)
+        print(f"Request Data: {request.data}")
+        print(f"Content Type: {request.content_type}")
+        print(f"User: {request.user}")
+        print("=" * 80)
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        print("✅ VALIDATED DATA:")
+        print(f"{serializer.validated_data}")
+        print("=" * 80)
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        
+        print("✅ CREATED SUCCESSFULLY:")
+        print(f"{serializer.data}")
+        print("=" * 80)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """Update a challenge week with debug logging"""
+        print("=" * 80)
+        print("📝 UPDATE DATA FROM REACT (ChallengeWeekViewSet):")
+        print("=" * 80)
+        print(f"Request Data: {request.data}")
+        print(f"Partial: {kwargs.get('partial', False)}")
+        print("=" * 80)
+        
+        return super().update(request, *args, **kwargs)
+
 
     # ✅ Updated join method with sequential completion rule
     @action(detail=True, methods=['post'])
