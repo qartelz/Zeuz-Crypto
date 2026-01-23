@@ -121,6 +121,15 @@ class ChallengeWeekSerializer(serializers.ModelSerializer):
         
         return data
     
+    def create(self, validated_data):
+        """Override create to ensure trade count fields are set"""
+        # Ensure these fields are never None
+        validated_data.setdefault('min_spot_trades', 0)
+        validated_data.setdefault('min_futures_trades', 0)
+        validated_data.setdefault('min_options_trades', 0)
+        
+        return super().create(validated_data)
+    
     def get_is_ongoing(self, obj):
         return obj.is_ongoing()
     

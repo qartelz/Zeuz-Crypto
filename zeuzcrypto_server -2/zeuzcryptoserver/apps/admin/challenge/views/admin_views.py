@@ -100,23 +100,35 @@ class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
         print(f"Request Data: {request.data}")
         print(f"Content Type: {request.content_type}")
         print(f"User: {request.user}")
+        print(f"User is authenticated: {request.user.is_authenticated}")
+        print(f"User is admin: {request.user.is_staff if request.user.is_authenticated else False}")
         print("=" * 80)
         
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            print("✅ VALIDATED DATA:")
+            print(f"{serializer.validated_data}")
+            print("=" * 80)
+            
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            
+            print("✅ CREATED SUCCESSFULLY:")
+            print(f"{serializer.data}")
+            print("=" * 80)
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         
-        print("✅ VALIDATED DATA:")
-        print(f"{serializer.validated_data}")
-        print("=" * 80)
-        
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        
-        print("✅ CREATED SUCCESSFULLY:")
-        print(f"{serializer.data}")
-        print("=" * 80)
-        
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            print("❌ ERROR OCCURRED:")
+            print(f"Error Type: {type(e).__name__}")
+            print(f"Error Message: {str(e)}")
+            if hasattr(e, 'detail'):
+                print(f"Error Detail: {e.detail}")
+            print("=" * 80)
+            raise
     
     def update(self, request, *args, **kwargs):
         """Update a challenge week with debug logging"""
