@@ -47,6 +47,14 @@ class ChallengeWeekAdminSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def validate(self, attrs):
+        # Set default values for trade count fields if not provided
+        if 'min_spot_trades' not in attrs or attrs['min_spot_trades'] is None:
+            attrs['min_spot_trades'] = 0
+        if 'min_futures_trades' not in attrs or attrs['min_futures_trades'] is None:
+            attrs['min_futures_trades'] = 0
+        if 'min_options_trades' not in attrs or attrs['min_options_trades'] is None:
+            attrs['min_options_trades'] = 0
+        
         trading_type = attrs.get('trading_type')
         if not trading_type and self.instance:
             trading_type = self.instance.trading_type

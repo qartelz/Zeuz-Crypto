@@ -101,17 +101,32 @@ class ChallengeWeekSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'program', 'program_name', 'title', 'week_number',
             'trading_type', 'description', 'learning_outcome',
-            'target_goal', 'min_trades_required', 'start_date', 'end_date',
+            'target_goal', 'min_trades_required', 
+            'min_spot_trades', 'min_futures_trades', 'min_options_trades',
+            'start_date', 'end_date',
             'is_active', 'tasks', 'reward', 'is_ongoing', 'is_completed',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Set default values for trade count fields if not provided"""
+        # Set defaults for trade count fields
+        if 'min_spot_trades' not in data or data['min_spot_trades'] is None:
+            data['min_spot_trades'] = 0
+        if 'min_futures_trades' not in data or data['min_futures_trades'] is None:
+            data['min_futures_trades'] = 0
+        if 'min_options_trades' not in data or data['min_options_trades'] is None:
+            data['min_options_trades'] = 0
+        
+        return data
     
     def get_is_ongoing(self, obj):
         return obj.is_ongoing()
     
     def get_is_completed(self, obj):
         return obj.is_completed()
+
 
 
 class ChallengeScoreSerializer(serializers.ModelSerializer):
