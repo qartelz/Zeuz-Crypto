@@ -2906,18 +2906,254 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
         return;
       }
 
+      // if (spotSide === "sell") {
+      //   const sellAmount = parseFloat(amount);
+      //   const isFull = sellAmount >= selectedOrder.remaining_quantity;
+
+      //   let response;
+
+      //   if (isFull) {
+      //     const payload = {
+      //       quantity: sellAmount.toFixed(8),
+      //       price: Number(lastTradePrice).toFixed(2),
+      //     };
+
+      //     response = await fetch(
+      //       `${baseURL}trading/close-trade/${selectedOrder.id}/`,
+      //       {
+      //         method: "POST",
+      //         headers: {
+      //           "Content-Type": "application/json",
+      //           Authorization: `Bearer ${tokens.access}`,
+      //         },
+      //         body: JSON.stringify(payload),
+      //       }
+      //     );
+      //   } else {
+      //     const payload = {
+      //       quantity: sellAmount.toFixed(8),
+      //       price: Number(lastTradePrice).toFixed(2),
+      //     };
+
+      //     response = await fetch(
+      //       `${baseURL}trading/partial-close/${selectedOrder.id}/`,
+      //       {
+      //         method: "POST",
+      //         headers: {
+      //           "Content-Type": "application/json",
+      //           Authorization: `Bearer ${tokens.access}`,
+      //         },
+      //         body: JSON.stringify(payload),
+      //       }
+      //     );
+      //   }
+
+      //   const data = await response.json();
+      //   console.log(data, "the order place status data");
+
+      //   if (response.ok) {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               {isFull
+      //                 ? "Trade closed successfully!"
+      //                 : `Sold ${sellAmount} ${
+      //                     selectedOrder.asset_symbol
+      //                   } @ ${Number(selectedOrder.average_price).toFixed(2)}`}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+      //     await refreshWallet();
+      //     setSelectedOrder(null);
+      //     setAmount(0);
+      //     await fetchData();
+      //   } else {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <XCircle className="h-6 w-6 text-red-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               Error:{" "}
+      //               {data.detail || data.message || "Something went wrong"}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+      //   }
+      // } else {
+      //   // BUY logic
+      //   const payload = {
+      //     asset_symbol: selectedOrder.asset_symbol,
+      //     asset_name: selectedOrder.asset_name || "Btc",
+      //     asset_exchange: selectedOrder.asset_exchange || "BINANCE",
+      //     trade_type: "SPOT",
+      //     direction: "BUY",
+      //     holding_type: "LONGTERM",
+      //     quantity: amount.toString(),
+      //     price: Number(lastTradePrice).toFixed(2),
+      //     order_type: "MARKET",
+      //   };
+
+      //   const response = await fetch(`${baseURL}trading/place-order/`, {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       Authorization: `Bearer ${tokens.access}`,
+      //     },
+      //     body: JSON.stringify(payload),
+      //   });
+
+      //   const data = await response.json();
+
+      //   if (response.ok) {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               Order placed: {data.action} {data.quantity} @ {data.price}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+      //     await refreshWallet();
+      //     setSelectedOrder(null);
+      //     setAmount(0);
+      //     await fetchData();
+      //   } else {
+      //     toast.custom(
+      //       (t) => (
+      //         <div
+      //           className={`${
+      //             t.visible ? "animate-enter" : "animate-leave"
+      //           } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+      //         >
+      //           <div className="flex-1 w-0 p-4 flex items-center">
+      //             <XCircle className="h-6 w-6 text-red-500 mr-2" />
+      //             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      //               Error: {data.detail || "Something went wrong"}
+      //             </p>
+      //           </div>
+      //         </div>
+      //       ),
+      //       { position: "top-right", duration: 2500 }
+      //     );
+      //   }
+      // }
+
+
       if (spotSide === "sell") {
+
+        // 🔹 CHALLENGE MODE SELL
+        if (selectedChallenge) {
+          const payload = {
+            participation_id: selectedChallenge.participationId,
+            asset_symbol: selectedOrder.asset_symbol,
+            asset_name: selectedOrder.asset_name || "Btc",
+            trade_type: "SPOT",
+            direction: "SELL",
+            total_quantity: parseFloat(amount),
+            entry_price: Number(lastTradePrice).toFixed(2),
+            holding_type: "LONGTERM",
+            order_type: "MARKET",
+          };
+      
+          const response = await fetch(`${baseURL}challenges/trades/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokens.access}`,
+            },
+            body: JSON.stringify(payload),
+          });
+      
+          const data = await response.json();
+      
+          if (response.ok) {
+            toast.custom(
+              (t) => (
+                <div
+                  className={`${
+                    t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                >
+                  <div className="flex-1 w-0 p-4 flex items-center">
+                    <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      SELL order placed successfully
+                    </p>
+                  </div>
+                </div>
+              ),
+              { position: "top-right", duration: 2500 }
+            );
+      
+            // await refreshWallet();
+            // if (refreshChallengeWallet) {
+            //   await refreshChallengeWallet(selectedChallenge.participationId);
+            // }
+            setSelectedOrder(null);
+            setAmount(0);
+            await fetchData();
+          } else {
+            toast.custom(
+              (t) => (
+                <div
+                  className={`${
+                    t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                >
+                  <div className="flex-1 w-0 p-4 flex items-center">
+                    <XCircle className="h-6 w-6 text-red-500 mr-2" />
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Error: {data.detail || data.message || "Something went wrong"}
+                    </p>
+                  </div>
+                </div>
+              ),
+              { position: "top-right", duration: 2500 }
+            );
+          }
+      
+          return; // ⛔ stop normal SELL flow
+        }
+      
+        // 🔹 NORMAL SELL (UNCHANGED)
         const sellAmount = parseFloat(amount);
         const isFull = sellAmount >= selectedOrder.remaining_quantity;
-
+      
         let response;
-
+      
+        const payload = {
+          quantity: sellAmount.toFixed(8),
+          price: Number(lastTradePrice).toFixed(2),
+        };
+      
         if (isFull) {
-          const payload = {
-            quantity: sellAmount.toFixed(8),
-            price: Number(lastTradePrice).toFixed(2),
-          };
-
           response = await fetch(
             `${baseURL}trading/close-trade/${selectedOrder.id}/`,
             {
@@ -2930,11 +3166,6 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
             }
           );
         } else {
-          const payload = {
-            quantity: sellAmount.toFixed(8),
-            price: Number(lastTradePrice).toFixed(2),
-          };
-
           response = await fetch(
             `${baseURL}trading/partial-close/${selectedOrder.id}/`,
             {
@@ -2947,10 +3178,9 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
             }
           );
         }
-
+      
         const data = await response.json();
-        console.log(data, "the order place status data");
-
+      
         if (response.ok) {
           toast.custom(
             (t) => (
@@ -2964,15 +3194,16 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {isFull
                       ? "Trade closed successfully!"
-                      : `Sold ${sellAmount} ${
-                          selectedOrder.asset_symbol
-                        } @ ${Number(selectedOrder.average_price).toFixed(2)}`}
+                      : `Sold ${sellAmount} ${selectedOrder.asset_symbol} @ ${Number(
+                          selectedOrder.average_price
+                        ).toFixed(2)}`}
                   </p>
                 </div>
               </div>
             ),
             { position: "top-right", duration: 2500 }
           );
+      
           await refreshWallet();
           setSelectedOrder(null);
           setAmount(0);
@@ -2988,8 +3219,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Error:{" "}
-                    {data.detail || data.message || "Something went wrong"}
+                    Error: {data.detail || data.message || "Something went wrong"}
                   </p>
                 </div>
               </div>
@@ -2997,8 +3227,9 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
             { position: "top-right", duration: 2500 }
           );
         }
-      } else {
-        // BUY logic
+      } 
+      else {
+        // 🔹 BUY LOGIC (UNCHANGED)
         const payload = {
           asset_symbol: selectedOrder.asset_symbol,
           asset_name: selectedOrder.asset_name || "Btc",
@@ -3010,7 +3241,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
           price: Number(lastTradePrice).toFixed(2),
           order_type: "MARKET",
         };
-
+      
         const response = await fetch(`${baseURL}trading/place-order/`, {
           method: "POST",
           headers: {
@@ -3019,9 +3250,9 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
           },
           body: JSON.stringify(payload),
         });
-
+      
         const data = await response.json();
-
+      
         if (response.ok) {
           toast.custom(
             (t) => (
@@ -3040,6 +3271,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
             ),
             { position: "top-right", duration: 2500 }
           );
+      
           await refreshWallet();
           setSelectedOrder(null);
           setAmount(0);
@@ -3064,6 +3296,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
           );
         }
       }
+      
     } catch (error) {
       console.error(error);
       toast.custom(
@@ -5068,8 +5301,11 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Available Balance</span>
                     <span className="text-white font-semibold">
-                      {balance}{" "}
-                    </span>
+  {selectedChallenge
+    ? walletData?.available_balance || 0
+    : balance}
+</span>
+
                   </div>
                 </div>
 

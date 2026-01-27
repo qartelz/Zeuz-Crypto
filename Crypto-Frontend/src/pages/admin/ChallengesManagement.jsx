@@ -3154,19 +3154,25 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
   }}
 />
 
-                        <div className="mt-2 flex gap-2 text-xs">
-                          <span className="px-2 py-1 bg-purple-600/30 rounded">
-                            {tasks[currentWeek][0].task_type}
-                          </span>
-                          <span className="px-2 py-1 bg-blue-600/30 rounded">
-                            Target: {tasks[currentWeek][0].target_value}
-                          </span>
-                          {tasks[currentWeek][0].is_mandatory && (
-                            <span className="px-2 py-1 bg-red-600/30 rounded">
-                              Mandatory
-                            </span>
-                          )}
-                        </div>
+<div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+  {/* Task Type */}
+  <span className="inline-flex items-center rounded-full bg-purple-500/15 px-3 py-1 font-medium text-purple-300 border border-purple-500/30">
+    {tasks[currentWeek][0].task_type}
+  </span>
+
+  {/* Target */}
+  <span className="inline-flex items-center rounded-full bg-blue-500/15 px-3 py-1 font-medium text-blue-300 border border-blue-500/30">
+    🎯 Target: {tasks[currentWeek][0].target_value} %
+  </span>
+
+  {/* Mandatory */}
+  {tasks[currentWeek][0].is_mandatory && (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-3 py-1 font-medium text-red-300 border border-red-500/30">
+      ⚠ Mandatory
+    </span>
+  )}
+</div>
+
                       </div>
                       {/* <button
               onClick={() => handleRemoveTask(currentWeek)}
