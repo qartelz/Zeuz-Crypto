@@ -369,11 +369,17 @@ class TradeService:
                  # Closing Short
                  trade_pnl = (position.average_entry_price - price) * closing_qty * contract_size
             
-            # Options specific: For Long Option, Price = Premium. PnL = (Exit Premium - Entry Premium) * Qty
+            # Options specific: PnL Calculation
             if asset_type == 'OPTIONS':
-                 # Option PnL works same as above IF price represents premium
-                 pass
-            
+                # Long Option Close (Sell): PnL = (Exit Premium - Entry Premium) * Qty
+                # Short Option Close (Buy): PnL = (Entry Premium - Exit Premium) * Qty
+                if position.direction == 'BUY':
+                    # Closing Long (Selling owned option)
+                    trade_pnl = (price - position.average_entry_price) * closing_qty
+                else:
+                    # Closing Short (Buying back written option)
+                    trade_pnl = (position.average_entry_price - price) * closing_qty
+
             position.remaining_quantity -= closing_qty
             position.realized_pnl += trade_pnl
             
@@ -392,23 +398,11 @@ class TradeService:
                       # Proportional margin unlock
                       total_marg = position.total_invested
                       funds_to_unlock = (total_marg / position.total_quantity) * closing_qty
-                      # Note: We pay premium to buy back
-                      cost_to_close = closing_qty * price
-                      # We previously received premium. Now we pay. 
-                      # PnL handles the net difference. 
-                      # But wallet must account for cash outflow of `cost_to_close`?
-                      # Standard Logic: The PnL already accounts for Entry vs Exit. 
-                      # We just add PnL to wallet and unlock margin.
                  else:
-                      # Closing Long (Selling owned option)
-                      # We unlock original cost? No, in options buying, cost is GONE (premium paid). 
-                      # We just receive the sell value.
-                      # Standard PnL logic: (Exit - Entry). If positive, profit.
-                      # We add PnL + Original Cost?
-                      # Easier: Wallet Balance = Balance + (Exit Value) 
-                      # But our wallet abstractions uses `add_profit` / `deduct_loss`.
-                      # Let's stick to PnL adjustment.
-                      pass
+                      # Closing Long (Selling owned option) - No margin to unlock, just PnL realization
+                      # However, original investment (premium paid) is effectively returned plus PnL
+                      # We used lock_coins for premium paid. So we unlock that amount.
+                      funds_to_unlock = (position.total_invested / position.total_quantity) * closing_qty
 
             # Update Status
             if position.remaining_quantity == 0:
