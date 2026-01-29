@@ -25,6 +25,7 @@ router.register(r'programs', challenge_views.ChallengeProgramViewSet, basename='
 router.register(r'weeks', challenge_views.ChallengeWeekViewSet, basename='week')
 router.register(r'tasks', challenge_views.ChallengeTaskViewSet, basename='task')
 router.register(r'participations', challenge_views.UserChallengeParticipationViewSet, basename='participation')
+router.register(r'rewards', challenge_views.ChallengeRewardViewSet, basename='reward')
 
 # Wallet endpoints
 router.register(r'wallets', wallet_views.ChallengeWalletViewSet, basename='wallet')

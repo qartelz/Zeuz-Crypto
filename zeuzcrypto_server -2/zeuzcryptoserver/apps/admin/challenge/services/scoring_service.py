@@ -134,7 +134,7 @@ class ScoringService:
              base_score -= Decimal('20.00')
              
         # 2. Daily Activity (Consistency)
-        dates = trades.datetimes('created_at', 'day')
+        dates = trades.datetimes('opened_at', 'day')
         unique_days = len(set(dates))
         if unique_days < 4:
              # Major penalty if less than 4 days (unless completed early? 

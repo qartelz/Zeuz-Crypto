@@ -177,27 +177,72 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
         try:
             wallet = obj.wallet
             return {
+                'id': str(wallet.id),
                 'initial': str(wallet.initial_balance),
                 'available': str(wallet.available_balance),
                 'locked': str(wallet.locked_balance),
                 'earned': str(wallet.earned_balance),
-                'total': str(wallet.total_balance)
+                'total': str(wallet.total_balance),
+                'current': str(wallet.current_balance)
             }
         except:
             return None
 
+
+from apps.admin.challenge.models.evaluation_models import ChallengeEvaluationReport
+from apps.admin.challenge.models.reward_models import UserChallengeReward
+
+class ChallengeEvaluationReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChallengeEvaluationReport
+        fields = [
+            'task_discipline_score', 'trading_discipline_score', 
+            'profit_outcome_score', 'consistency_bonus_score',
+            'final_score', 'tier_name', 'behavioral_tag', 
+            'key_issue', 'next_challenge_focus'
+        ]
+
+class UserChallengeRewardDetailSerializer(serializers.ModelSerializer):
+    """Detailed user reward with full evaluation report"""
+    week_title = serializers.CharField(source='reward_template.week.title', read_only=True)
+    week_id = serializers.UUIDField(source='reward_template.week.id', read_only=True)
+    badge_name = serializers.CharField(source='reward_template.badge_name', read_only=True)
+    badge_icon = serializers.URLField(source='reward_template.badge_icon', read_only=True)
+    evaluation = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserChallengeReward
+        fields = [
+            'id', 'week_title', 'week_id', 'badge_name', 'badge_icon',
+            'coins_earned', 'badge_earned', 'reward_type',
+            'total_score', 'behavioral_tag', 'earned_at',
+            'evaluation'
+        ]
+        
+    def get_evaluation(self, obj):
+        try:
+            # Join via Participation -> Evaluation
+            report = obj.participation.evaluation_report
+            return ChallengeEvaluationReportSerializer(report).data
+        except:
+            return None
 
 class UserChallengeParticipationListSerializer(serializers.ModelSerializer):
     """Lighter serializer for list views"""
     week_title = serializers.CharField(source='week.title', read_only=True)
     week_number = serializers.IntegerField(source='week.week_number', read_only=True)
     program_name = serializers.CharField(source='week.program.name', read_only=True)
+    week_id = serializers.UUIDField(source='week.id', read_only=True)
+    program_id = serializers.UUIDField(source='week.program.id', read_only=True)
     
     class Meta:
         model = UserChallengeParticipation
         fields = [
-            'id', 'program_name', 'week_title', 'week_number', 'status',
-            'portfolio_return_pct', 'total_trades', 'joined_at', 'completed_at'
+            'id', 'program_name', 'program_id', 
+            'week_title', 'week_number', 'week_id',
+            'status', 'portfolio_return_pct', 'total_trades', 
+            'joined_at', 'completed_at'
         ]
-        read_only_fields = '__all__'
+        # read_only_fields must be a list or tuple
+        read_only_fields = fields
 

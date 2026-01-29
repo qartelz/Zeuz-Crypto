@@ -9,13 +9,29 @@ from apps.accounts.models import User
 
 
 class UserChallengeReward(models.Model):
-    """Track rewards earned by users"""
+    """Track rewards earned by users with detailed context"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_rewards_earned')
     participation = models.ForeignKey('UserChallengeParticipation', on_delete=models.CASCADE, related_name='earned_rewards')
     reward_template = models.ForeignKey('ChallengeReward', on_delete=models.CASCADE)
+    
+    # Reward Details
     badge_earned = models.BooleanField(default=False)
     coins_earned = models.PositiveIntegerField(default=0)
+    
+    # Context Snapshot (Why did they get this?)
+    total_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    behavioral_tag = models.CharField(max_length=50, null=True, blank=True)
+    reward_type = models.CharField(
+        max_length=20, 
+        choices=[
+            ('PROFIT_BONUS', 'Profit Bonus'),
+            ('LOSS_RECOVERY', 'Loss Recovery'), 
+            ('EXCELLENCE_BONUS', 'Excellence Bonus')
+        ],
+        default='PROFIT_BONUS'
+    )
+    
     earned_at = models.DateTimeField(auto_now_add=True)
     claimed_at = models.DateTimeField(null=True, blank=True)
     

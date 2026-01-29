@@ -800,6 +800,22 @@ class ChallengeRewardViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(rewards, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='my-rewards')
+    def my_rewards(self, request):
+        """Get all rewards earned by the current user with full evaluation details"""
+        from apps.admin.challenge.models.reward_models import UserChallengeReward
+        from apps.admin.challenge.serializers.challenge_serializers import UserChallengeRewardDetailSerializer
+        
+        queryset = UserChallengeReward.objects.filter(user=request.user).order_by('-earned_at')
+        
+        # Optional filter by week
+        week_id = request.query_params.get('week_id')
+        if week_id:
+            queryset = queryset.filter(participation__week_id=week_id)
+            
+        serializer = UserChallengeRewardDetailSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class UserChallengeParticipationViewSet(viewsets.ReadOnlyModelViewSet):
     """User participation management"""
@@ -807,31 +823,55 @@ class UserChallengeParticipationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return UserChallengeParticipation.objects.filter(user=self.request.user)
+        return UserChallengeParticipation.objects.filter(user=self.request.user).order_by('-joined_at')
     
     def list(self, request, *args, **kwargs):
-        """List user participations with lighter serializer"""
+        """List user participations with filtering"""
         queryset = self.get_queryset()
+        
+        # Support filtering in standard list endpoint too
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+            
+        week_id = request.query_params.get('week_id')
+        if week_id:
+            queryset = queryset.filter(week_id=week_id)
+            
+        program_id = request.query_params.get('program_id')
+        if program_id:
+            queryset = queryset.filter(week__program_id=program_id)
+            
+        if not queryset.exists():
+             msg = "No participations found."
+             if status_filter:
+                  msg = f"No participations found with status '{status_filter}'."
+             return Response({'message': msg, 'data': []})
+
+        # Revert to lighter serializer as requested
         serializer = UserChallengeParticipationListSerializer(queryset, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def my_participations(self, request):
-        """Get current user's participations with filtering"""
-        queryset = self.get_queryset()
+        """Get current user's participations with filtering (redundant but kept for backward compat)"""
+        return self.list(request)
         
-        status_filter = request.query_params.get('status')
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
+    @action(detail=True, methods=['post'], url_path='complete-challenge')
+    def complete_challenge(self, request, pk=None):
+        """Complete challenge and claim rewards"""
+        participation = self.get_object()
+
+        if participation.status == 'COMPLETED':
+            return Response(
+                {'error': 'Challenge already completed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        result = RewardService.complete_and_reward(participation)
         
-        week_id = request.query_params.get('week_id')
-        if week_id:
-            queryset = queryset.filter(week_id=week_id)
-        
-        program_id = request.query_params.get('program_id')
-        if program_id:
-            queryset = queryset.filter(week__program_id=program_id)
-        
-        serializer = UserChallengeParticipationListSerializer(queryset, many=True)
-        return Response(serializer.data)
+        if 'error' in result:
+             return Response(result, status=status.HTTP_400_BAD_REQUEST)
+             
+        return Response(result)
 

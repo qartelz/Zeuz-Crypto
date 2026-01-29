@@ -25,7 +25,7 @@ class RewardService:
 
         # 2. Activity Check (4-Day Rule)
         # Count unique days where trades were opened
-        activity_days = trades.datetimes('created_at', 'day').count()
+        activity_days = trades.datetimes('opened_at', 'day').count()
         # if activity_days < 4:
         #      # Allow bypass if it's been active for 4+ days even if trades didn't happen every day?
         #      # "Trading for at least 4 days" usually means duration.
@@ -53,7 +53,37 @@ class RewardService:
         if participation.options_trades < week.min_options_trades:
              return False, f"Minimum {week.min_options_trades} Options trades required. Current: {participation.options_trades}"
 
+        # 4. Strict Trading Type Enforcement
+        # Ensure user didn't trade disallowed assets for this week type
+        if week.trading_type == 'SPOT':
+            if participation.futures_trades > 0 or participation.options_trades > 0:
+                return False, f"Violation: This is a SPOT-only week. You traded Futures/Options."
+        
+        elif week.trading_type == 'SPOT_FUTURES':
+            if participation.options_trades > 0:
+                 return False, f"Violation: Options trading is not allowed in this week."
+                 
+        elif week.trading_type in ['SPOT_FUTURES_OPTIONS', 'PORTFOLIO']:
+             # These types allow all asset classes.
+             # Validation relies on min_trades_required and specific min_X_trades set on the week model.
+             pass
+        
         return True, "Eligible"
+
+from apps.admin.challenge.services.prop_firm_evaluation_service import PropFirmEvaluationService
+
+class RewardService:
+    """Service for reward distribution and completion validation"""
+    
+    # ... validate_completion_eligibility remains the same ...
+    @staticmethod
+    def validate_completion_eligibility(participation):
+        # (This method remains unchanged, referencing previous implementation if needed, 
+        # but for this specific REPLACEMENT, I will just reference it or re-state the necessary parts if I was rewriting whole file.
+        # Since I'm using replace_file_content targeted, I assume validate_completion_eligibility is above and untouched.)
+        # Wait, I need to be careful not to delete validate_completion_eligibility.
+        # I will target lines 60+ (start of complete_and_reward).
+        pass
 
     @staticmethod
     @transaction.atomic
@@ -67,8 +97,9 @@ class RewardService:
         
         week = participation.week
         
-        # 2. Score Calculation
-        score_data = ScoringService.calculate_scores(participation)
+        # 2. Score Calculation (NEW SYSTEM)
+        evaluation_result = PropFirmEvaluationService.evaluate(participation)
+        final_score = Decimal(str(evaluation_result['final_score']))
         
         # 3. Determine Reward
         try:
@@ -76,22 +107,18 @@ class RewardService:
         except:
             return {'error': 'No reward template configured for this week'}
             
-        # PnL Check
+        # PnL Check (Still used for Base Coin determination)
         is_profitable = participation.portfolio_return_pct > 0
-        
-        # Logic: 
-        # Base coins = Profit Bonus or Loss Recovery
-        # Multiplier = If Total Score > 80 => 1.2x Coins
         
         base_coins = reward_template.profit_bonus_coins if is_profitable else reward_template.loss_recovery_coins
         
-        total_score = score_data['total_score']
         final_coins = base_coins
         
-        if total_score >= 90:
-             final_coins = int(base_coins * 1.5) # 1.5x for Excellence
-        elif total_score >= 80:
-             final_coins = int(base_coins * 1.2) # 1.2x for Great performance
+        # Multiplier based on NEW Prop Firm Score
+        if final_score >= 85:
+             final_coins = int(base_coins * Decimal('1.5')) 
+        elif final_score >= 70:
+             final_coins = int(base_coins * Decimal('1.2'))
         
         # 4. Create Reward Record
         reward, created = UserChallengeReward.objects.get_or_create(
@@ -99,8 +126,11 @@ class RewardService:
             participation=participation,
             reward_template=reward_template,
             defaults={
-                'badge_earned': is_profitable and total_score > 70, # Badge condition
-                'coins_earned': final_coins
+                'badge_earned': is_profitable and final_score >= 70, 
+                'coins_earned': final_coins,
+                'total_score': final_score,
+                'behavioral_tag': evaluation_result['tag'],
+                'reward_type': 'PROFIT_BONUS' if is_profitable else 'LOSS_RECOVERY'
             }
         )
         
@@ -115,7 +145,7 @@ class RewardService:
                 'coins': final_coins,
                 'type': 'PROFIT_BONUS' if is_profitable else 'LOSS_RECOVERY'
             },
-            'score': score_data
+            'evaluation': evaluation_result # Return the detailed report
         }
 
     @staticmethod
