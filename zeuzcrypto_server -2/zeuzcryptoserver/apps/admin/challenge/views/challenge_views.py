@@ -366,25 +366,24 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def complete_challenge(self, request, pk=None):
         """Complete challenge and claim rewards"""
-        week = self.get_object()
-        user = request.user
+        # Note: The viewset uses self.get_object() which retrieves by PK (participation_id)
+        # But this method creates duplicate logic if `complete_challenge` is also on WeekViewSet (lines 157-178).
+        # Best practice: Keep it on the Participation ViewSet as it's an action ON a participation.
+        
+        participation = self.get_object()
 
-        try:
-            participation = UserChallengeParticipation.objects.get(user=user, week=week)
-
-            if participation.status == 'COMPLETED':
-                return Response(
-                    {'error': 'Challenge already completed'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            result = RewardService.complete_and_reward(participation)
-            return Response(result)
-        except UserChallengeParticipation.DoesNotExist:
+        if participation.status == 'COMPLETED':
             return Response(
-                {'error': 'Not participating in this challenge'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': 'Challenge already completed'},
+                status=status.HTTP_400_BAD_REQUEST
             )
+
+        result = RewardService.complete_and_reward(participation)
+        
+        if 'error' in result:
+             return Response(result, status=status.HTTP_400_BAD_REQUEST)
+             
+        return Response(result)
 
     @action(detail=True, methods=['post'])
     def verify_tasks(self, request, pk=None):

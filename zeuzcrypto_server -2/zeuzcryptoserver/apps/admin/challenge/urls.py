@@ -51,3 +51,10 @@ urlpatterns = [
     # this is the above scenorio 
     # http://127.0.0.1:8000/api/v1/challenges/challenge-trades/ALGO/?week_id=b5282ddb-f3ff-4a55-b398-f820697b3c2e&trade_type=SPOT
 ]
+
+
+"""complete challange
+
+http://127.0.0.1:8000/api/v1/challenges/participations/10/complete-challenge/
+POST /api/v1/challenges/participations/{PARTICIPATION_ID}/complete_challenge/
+"""
