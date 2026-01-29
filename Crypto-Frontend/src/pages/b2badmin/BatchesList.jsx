@@ -354,16 +354,26 @@ const BatchesList = () => {
 
       {/* Create Modal - Dark Themed */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#131129] border border-white/10 rounded-2xl shadow-2xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0a0a0a] border border-zinc-800 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-white/20" />
             
-            <h3 className="text-xl font-bold text-white mb-1">Create New Batch</h3>
-            <p className="text-gray-400 text-sm mb-6">Set up a new group for your users.</p>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Create New Batch</h3>
+                    <p className="text-zinc-500 text-sm">Set up a new focus group for trading batches.</p>
+                </div>
+                <button 
+                    onClick={() => setShowCreateModal(false)}
+                    className="text-zinc-500 hover:text-white p-1 transition-colors"
+                >
+                    <X size={20} />
+                </button>
+            </div>
 
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Batch Name</label>
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Batch Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Q1 Trading Group"
@@ -371,12 +381,12 @@ const BatchesList = () => {
                   onChange={(e) =>
                     setNewBatch((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full h-11 px-4 bg-[#0B0B15] border border-white/10 rounded-lg text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
+                  className="w-full h-12 px-4 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-700 focus:border-white focus:ring-1 focus:ring-white transition-all outline-none"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Description</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Description</label>
                 <textarea
                   placeholder="Add a brief description..."
                   rows={3}
@@ -384,12 +394,12 @@ const BatchesList = () => {
                   onChange={(e) =>
                     setNewBatch((prev) => ({ ...prev, description: e.target.value }))
                   }
-                  className="w-full p-4 bg-[#0B0B15] border border-white/10 rounded-lg text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none resize-none"
+                  className="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-700 focus:border-white focus:ring-1 focus:ring-white transition-all outline-none resize-none"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Max Users</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Max Users</label>
                 <input
                   type="number"
                   placeholder="0"
@@ -397,7 +407,7 @@ const BatchesList = () => {
                   onChange={(e) =>
                     setNewBatch((prev) => ({ ...prev, max_users: e.target.value }))
                   }
-                  className="w-full h-11 px-4 bg-[#0B0B15] border border-white/10 rounded-lg text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
+                  className="w-full h-12 px-4 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-700 focus:border-white focus:ring-1 focus:ring-white transition-all outline-none"
                 />
               </div>
 
@@ -408,22 +418,22 @@ const BatchesList = () => {
               )}
               {createResponse?.id && (
                 <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2">
-                   <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+                   <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                    Batch <strong>{createResponse.name}</strong> created successfully!
                 </div>
               )}
 
-              <div className="flex gap-3 mt-8 pt-4 border-t border-white/5">
+              <div className="flex gap-4 mt-8 pt-4 border-t border-zinc-800/50">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 transition-colors font-medium text-sm"
+                  className="flex-1 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white transition-all font-medium text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateBatch}
                   disabled={creating}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white hover:bg-zinc-200 text-black shadow-lg shadow-white/5 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? "Creating..." : "Create Batch"}
                 </button>
@@ -435,120 +445,120 @@ const BatchesList = () => {
 
       {/* View Modal - Dark Themed */}
       {viewingBatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
            {/* Modal Container */}
-          <div className="w-full max-w-4xl bg-[#131129] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-4xl bg-[#0a0a0a] border border-zinc-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-start">
+            <div className="p-8 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/30">
                <div>
-                   <div className="flex items-center gap-3 mb-1">
-                       <h3 className="text-2xl font-bold text-white">{viewingBatch.name}</h3>
-                       <span className={`px-2 py-0.5 rounded text-xs border ${viewingBatch.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-700/30 text-gray-400 border-gray-600/30'}`}>
+                   <div className="flex items-center gap-3 mb-2">
+                       <h3 className="text-3xl font-bold text-white tracking-tight">{viewingBatch.name}</h3>
+                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${viewingBatch.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
                            {viewingBatch.is_active ? 'Active' : 'Inactive'}
                        </span>
                    </div>
-                   <p className="text-gray-400 text-sm">{viewingBatch.description || "No description available."}</p>
+                   <p className="text-zinc-500 text-sm max-w-2xl">{viewingBatch.description || "No description available for this batch."}</p>
                </div>
                <button
                   onClick={() => setViewingBatch(null)}
-                  className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all"
                 >
-                  <X size={20} />
+                  <X size={24} />
                 </button>
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-8 bg-[#0a0a0a]">
                 
                 {/* Stats Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-[#0B0B15] p-4 rounded-xl border border-white/5">
-                        <p className="text-gray-500 text-xs uppercase font-medium">Total Users</p>
-                        <p className="text-2xl font-bold text-white mt-1">{viewingBatch.user_count}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div className="bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800/50">
+                        <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-1">Total Users</p>
+                        <p className="text-3xl font-bold text-white">{viewingBatch.user_count}</p>
                     </div>
-                    <div className="bg-[#0B0B15] p-4 rounded-xl border border-white/5">
-                        <p className="text-gray-500 text-xs uppercase font-medium">Batch ID</p>
-                        <p className="text-2xl font-bold text-white mt-1">#{viewingBatch.id}</p>
+                    <div className="bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800/50">
+                        <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-1">Batch ID</p>
+                        <p className="text-xl font-mono font-medium text-zinc-400 mt-1 truncate">#{viewingBatch.id.slice(0, 8)}...</p>
                     </div>
-                    <div className="bg-[#0B0B15] p-4 rounded-xl border border-white/5">
-                        <p className="text-gray-500 text-xs uppercase font-medium">Capacity</p>
-                        <p className="text-2xl font-bold text-white mt-1">{viewingBatch.max_users}</p>
+                    <div className="bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800/50">
+                        <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-1">Capacity</p>
+                        <p className="text-3xl font-bold text-white">{viewingBatch.max_users}</p>
                     </div>
                 </div>
 
                 {/* Users Section */}
-                <div className="flex justify-between items-center mb-4">
-                     <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Users size={18} className="text-indigo-400"/>
-                        User List
+                <div className="flex justify-between items-center mb-6">
+                     <h4 className="text-xl font-bold text-white flex items-center gap-3">
+                        <Users size={20} className="text-zinc-400"/>
+                        Course Participants
                      </h4>
                      <button
                         onClick={() => setShowAddUserForm((prev) => !prev)}
-                        className={`text-sm px-4 py-2 rounded-lg transition-colors border ${
+                        className={`text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-xl transition-all border ${
                             showAddUserForm 
-                            ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' 
-                            : 'bg-indigo-600/10 text-indigo-400 border-indigo-600/20 hover:bg-indigo-600/20'
+                            ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' 
+                            : 'bg-white text-black border-white hover:bg-zinc-200'
                         }`}
                      >
-                       {showAddUserForm ? "Cancel Adding" : "Add New User"}
+                       {showAddUserForm ? "Cancel" : "Add User"}
                      </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {/* Add User Form - Collapsible */}
-                    {showAddUserForm ? (
-                         <div className="bg-[#0B0B15] border border-indigo-500/20 rounded-xl p-6 animate-in slide-in-from-top-4 duration-300">
-                             <h4 className="font-medium text-white mb-4">Register New User</h4>
-                             <form onSubmit={handleAddUserToBatch} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-gray-500">First Name</label>
+                    {showAddUserForm && (
+                         <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-8 animate-in slide-in-from-top-4 duration-500">
+                             <h4 className="text-lg font-bold text-white mb-6">Manual Registration</h4>
+                             <form onSubmit={handleAddUserToBatch} className="space-y-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">First Name</label>
                                         <input
                                             type="text"
                                             required
                                             value={userForm.first_name}
                                             onChange={(e) => setUserForm({ ...userForm, first_name: e.target.value })}
-                                            className="w-full h-10 px-3 bg-[#131129] border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 outline-none"
+                                            className="w-full h-11 px-4 bg-[#050505] border border-zinc-800 rounded-xl text-white text-sm focus:border-white outline-none transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-gray-500">Last Name</label>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Last Name</label>
                                         <input
                                             type="text"
                                             required
                                             value={userForm.last_name}
                                             onChange={(e) => setUserForm({ ...userForm, last_name: e.target.value })}
-                                            className="w-full h-10 px-3 bg-[#131129] border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 outline-none"
+                                            className="w-full h-11 px-4 bg-[#050505] border border-zinc-800 rounded-xl text-white text-sm focus:border-white outline-none transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-gray-500">Email Address</label>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Email Address</label>
                                         <input
                                             type="email"
                                             required
                                             value={userForm.email}
                                             onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                                            className="w-full h-10 px-3 bg-[#131129] border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 outline-none"
+                                            className="w-full h-11 px-4 bg-[#050505] border border-zinc-800 rounded-xl text-white text-sm focus:border-white outline-none transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-gray-500">Mobile Number</label>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mobile Number</label>
                                         <input
                                             type="text"
                                             value={userForm.mobile}
                                             onChange={(e) => setUserForm({ ...userForm, mobile: e.target.value })}
-                                            className="w-full h-10 px-3 bg-[#131129] border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 outline-none"
+                                            className="w-full h-11 px-4 bg-[#050505] border border-zinc-800 rounded-xl text-white text-sm focus:border-white outline-none transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-1 md:col-span-2">
-                                        <label className="text-xs text-gray-500">Password</label>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Access Password</label>
                                         <input
                                             type="password"
                                             required
                                             value={userForm.password}
                                             onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                                            className="w-full h-10 px-3 bg-[#131129] border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 outline-none"
+                                            className="w-full h-11 px-4 bg-[#050505] border border-zinc-800 rounded-xl text-white text-sm focus:border-white outline-none transition-all"
                                         />
                                     </div>
                                 </div>
@@ -556,35 +566,42 @@ const BatchesList = () => {
                                 {userFormResponse?.error && <p className="text-red-400 text-sm mt-2">{userFormResponse.error}</p>}
                                 {userFormResponse?.success && <p className="text-emerald-400 text-sm mt-2">{userFormResponse.success}</p>}
 
-                                <div className="flex justify-end pt-2">
+                                <div className="flex justify-end pt-4">
                                     <button
                                         type="submit"
                                         disabled={addingUser}
-                                        className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors"
+                                        className="px-8 py-3 rounded-xl bg-white hover:bg-zinc-200 text-black font-bold text-sm shadow-xl transition-all disabled:opacity-50"
                                     >
-                                        {addingUser ? "Registering..." : "Register User"}
+                                        {addingUser ? "Processing..." : "Register User"}
                                     </button>
                                 </div>
                              </form>
                          </div>
-                    ) : (
-                        <div className="bg-[#0B0B15] border border-white/5 rounded-xl overflow-hidden">
+                    )}
+                    
+                    {!showAddUserForm && (
+                        <div className="bg-zinc-900/20 border border-zinc-800 rounded-2xl overflow-hidden">
                              {batchUsers.length > 0 ? (
                                 <table className="w-full text-left">
-                                    <thead className="bg-white/[0.02]">
+                                    <thead className="bg-zinc-900/50">
                                         <tr>
-                                            <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Email</th>
-                                            <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Role</th>
-                                            <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase text-right">Status</th>
+                                            <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800">Student Email</th>
+                                            <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800">Permissions</th>
+                                            <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 text-right">Account Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-white/5">
+                                    <tbody className="divide-y divide-zinc-800/30">
                                         {batchUsers.map((u) => (
-                                            <tr key={u.id} className="hover:bg-white/[0.02]">
-                                                <td className="py-3 px-4 text-sm text-gray-300">{u.email}</td>
-                                                <td className="py-3 px-4 text-sm text-gray-400 capitalize">{u.role}</td>
-                                                <td className="py-3 px-4 text-right">
-                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                            <tr key={u.id} className="hover:bg-white/[0.01] transition-colors">
+                                                <td className="py-4 px-6 text-sm text-zinc-300 font-medium">{u.email}</td>
+                                                <td className="py-4 px-6">
+                                                   <span className="text-[10px] font-bold uppercase bg-zinc-800 text-zinc-400 px-2 py-1 rounded">
+                                                      {u.role}
+                                                   </span>
+                                                </td>
+                                                <td className="py-4 px-6 text-right">
+                                                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter text-emerald-400 bg-emerald-500/5 border border-emerald-500/10">
+                                                        <span className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse" />
                                                         Active
                                                     </span>
                                                 </td>
@@ -593,8 +610,9 @@ const BatchesList = () => {
                                     </tbody>
                                 </table>
                              ) : (
-                                <div className="p-8 text-center">
-                                    <p className="text-gray-500 text-sm">No users found in this batch yet.</p>
+                                <div className="p-12 text-center">
+                                    <Users size={40} className="text-zinc-800 mx-auto mb-4" />
+                                    <p className="text-zinc-500 text-sm">No students registered in this batch yet.</p>
                                 </div>
                              )}
                         </div>
