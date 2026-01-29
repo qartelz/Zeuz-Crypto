@@ -11,8 +11,8 @@ function B2bAdminLayout() {
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-[#0F0F1E] to-[#1A1446]">
-        <div className="bg-white/5 backdrop-blur-lg rounded-xl shadow-lg p-6 min-h-screen text-gray-100">
+      <main className="flex-1 overflow-y-auto bg-black">
+        <div className="p-6 min-h-screen">
           <Outlet />
         </div>
       </main>

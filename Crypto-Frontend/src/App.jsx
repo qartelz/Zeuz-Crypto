@@ -31,6 +31,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SubscriptionPage from "./pages/admin/SubscriptionPage";
 import ChallengesManagement from "./pages/admin/ChallengesManagement";
 import B2bAdminDetailsPage from "./pages/admin/B2bAdminDetailsPage";
+import B2bDashboard from "./pages/b2badmin/B2bDashboard";
 
 function App() {
   return (
@@ -93,6 +94,7 @@ function App() {
 
               <Route element={<PrivateRoute allowedRoles={["b2b_admin"]} />}>
                 <Route path="/b2b" element={<B2bAdminLayout />}>
+                  <Route path="dashboard" element={<B2bDashboard />} />
                   <Route path="batches" element={<BatchesList />} />
                 </Route>
               </Route>

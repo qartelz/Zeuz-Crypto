@@ -96,6 +96,8 @@ class RewardService:
         
         # NOTE: User asked for "after 4 days of starting... check". 
         days_since_start = (timezone.now() - participation.joined_at).days
+
+        """should change condition after testinf"""
         # if days_since_start < 4:
         # if days_since_start < 1:
         #     return False, f"Early exit not allowed. You must trade for at least 4 days. ({4 - days_since_start} days left)"

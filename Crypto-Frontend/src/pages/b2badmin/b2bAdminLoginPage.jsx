@@ -32,7 +32,7 @@ const B2bAdminLoginPage = () => {
       if (loggedInUser.role === 'b2b_admin') {
         setMessage('B2B Admin login successful!');
         setMessageType('success');
-        navigate('/b2b/batches');
+        navigate('/b2b/dashboard');
       } else {
         setMessage('Only B2B Admins can login here.');
         setMessageType('error');
