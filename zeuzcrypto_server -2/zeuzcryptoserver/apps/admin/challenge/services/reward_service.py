@@ -78,12 +78,55 @@ class RewardService:
     # ... validate_completion_eligibility remains the same ...
     @staticmethod
     def validate_completion_eligibility(participation):
-        # (This method remains unchanged, referencing previous implementation if needed, 
-        # but for this specific REPLACEMENT, I will just reference it or re-state the necessary parts if I was rewriting whole file.
-        # Since I'm using replace_file_content targeted, I assume validate_completion_eligibility is above and untouched.)
-        # Wait, I need to be careful not to delete validate_completion_eligibility.
-        # I will target lines 60+ (start of complete_and_reward).
-        pass
+        """
+        Check if user meets all criteria to complete the week.
+        Returns (bool, str) -> (IsValid, Reason)
+        """
+        week = participation.week
+        trades = participation.trades.all()
+        
+        # 1. Open Positions Check
+        open_positions = trades.filter(status__in=['OPEN', 'PARTIALLY_CLOSED']).count()
+        if open_positions > 0:
+            return False, f"You have {open_positions} open positions. Close them to complete the week."
+
+        # 2. Activity Check (4-Day Rule)
+        # Count unique days where trades were opened
+        activity_days = trades.datetimes('opened_at', 'day').count()
+        
+        # NOTE: User asked for "after 4 days of starting... check". 
+        days_since_start = (timezone.now() - participation.joined_at).days
+        # if days_since_start < 4:
+        # if days_since_start < 1:
+        #     return False, f"Early exit not allowed. You must trade for at least 4 days. ({4 - days_since_start} days left)"
+
+        # 3. Min Trade Requirements
+        if trades.count() < week.min_trades_required:
+            return False, f"Minimum {week.min_trades_required} trades required. Current: {trades.count()}"
+            
+        if participation.spot_trades < week.min_spot_trades:
+            return False, f"Minimum {week.min_spot_trades} Spot trades required. Current: {participation.spot_trades}"
+
+        if participation.futures_trades < week.min_futures_trades:
+            return False, f"Minimum {week.min_futures_trades} Futures trades required. Current: {participation.futures_trades}"
+
+        if participation.options_trades < week.min_options_trades:
+             return False, f"Minimum {week.min_options_trades} Options trades required. Current: {participation.options_trades}"
+
+        # 4. Strict Trading Type Enforcement
+        # Ensure user didn't trade disallowed assets for this week type
+        if week.trading_type == 'SPOT':
+            if participation.futures_trades > 0 or participation.options_trades > 0:
+                return False, f"Violation: This is a SPOT-only week. You traded Futures/Options."
+        
+        elif week.trading_type == 'SPOT_FUTURES':
+            if participation.options_trades > 0:
+                 return False, f"Violation: Options trading is not allowed in this week."
+                 
+        elif week.trading_type in ['SPOT_FUTURES_OPTIONS', 'PORTFOLIO']:
+             pass
+        
+        return True, "Eligible"
 
     @staticmethod
     @transaction.atomic
