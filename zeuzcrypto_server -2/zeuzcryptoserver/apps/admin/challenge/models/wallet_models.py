@@ -42,12 +42,13 @@ class ChallengeWallet(models.Model):
         return self.available_balance + self.earned_balance
     
     def check_sufficient_balance(self, amount):
-        return self.available_balance >= amount
+        # Use current_balance (Equity) to allow trading with profits or restricting by losses
+        return self.current_balance >= amount
     
     @transaction.atomic
     def lock_coins(self, amount):
         if not self.check_sufficient_balance(amount):
-            raise ValueError(f"Insufficient balance. Available: {self.available_balance}, Required: {amount}")
+            raise ValueError(f"Insufficient balance. Current Balance: {self.current_balance}, Required: {amount}")
         
         balance_before = self.available_balance
         self.available_balance -= amount

@@ -153,6 +153,8 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
     week_details = ChallengeWeekSerializer(source='week', read_only=True)
     score_details = serializers.SerializerMethodField()
     wallet_balance = serializers.SerializerMethodField()
+    tier_info = serializers.SerializerMethodField()
+    current_level_info = serializers.SerializerMethodField()
     user_email = serializers.CharField(source='user.email', read_only=True)
     
     class Meta:
@@ -162,7 +164,7 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
             'starting_balance', 'current_balance', 'total_trades',
             'spot_trades', 'futures_trades', 'options_trades',
             'portfolio_return_pct', 'joined_at', 'completed_at',
-            'score_details', 'wallet_balance'
+            'score_details', 'wallet_balance', 'tier_info', 'current_level_info'
         ]
         read_only_fields = ['id', 'user', 'joined_at', 'completed_at']
     
@@ -187,6 +189,35 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
             }
         except:
             return None
+
+    def get_tier_info(self, obj):
+        try:
+            score = float(obj.score.total_score)
+            if score >= 76:
+                return {'name': 'Firecracker', 'color': 'text-orange-400', 'range': '76 - 100%'}
+            elif score >= 51:
+                return {'name': 'Wave Hopper', 'color': 'text-yellow-400', 'range': '51 - 75%'}
+            elif score >= 26:
+                return {'name': 'Coin Scout', 'color': 'text-blue-400', 'range': '26 - 50%'}
+            else:
+                return {'name': 'Byte Bouncer', 'color': 'text-purple-400', 'range': '0 - 25%'}
+        except:
+             return {'name': 'Byte Bouncer', 'color': 'text-purple-400', 'range': '0 - 25%'}
+
+    def get_current_level_info(self, obj):
+        try:
+            week_num = obj.week.week_number
+            # Simple mapping based on week number
+            tiers = [
+                {'week': 1, 'name': 'Bronze', 'level': 'Beginner - Level 1'},
+                {'week': 2, 'name': 'Silver', 'level': 'Intermediate - Level 2'},
+                {'week': 3, 'name': 'Gold', 'level': 'Advanced - Level 3'},
+                {'week': 4, 'name': 'Platinum', 'level': 'Master - Level 4'},
+            ]
+            current = next((t for t in tiers if t['week'] == week_num), tiers[0])
+            return current
+        except:
+            return {'name': 'Bronze', 'level': 'Beginner - Level 1'}
 
 
 from apps.admin.challenge.models.evaluation_models import ChallengeEvaluationReport

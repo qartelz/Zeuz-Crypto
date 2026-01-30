@@ -332,6 +332,10 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
         try:
             participation = UserChallengeParticipation.objects.get(user=user, week=week)
             TradeService.update_participation_metrics(participation)
+            try:
+                ScoringService.calculate_scores(participation)
+            except Exception as e:
+                print(f"Error calculating score: {e}")
             serializer = UserChallengeParticipationSerializer(participation)
             return Response(serializer.data)
         except UserChallengeParticipation.DoesNotExist:

@@ -18,7 +18,7 @@ class TradeService:
         
         # Check sufficient balance
         if not wallet.check_sufficient_balance(investment_amount):
-            raise ValueError(f"Insufficient balance. Available: {wallet.available_balance}")
+            raise ValueError(f"Insufficient balance. Current Balance: {wallet.current_balance}")
         
         # Max 30% per trade (Risk Management Rule)
         if wallet.initial_balance > 0:
