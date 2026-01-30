@@ -218,7 +218,7 @@ export default function Achievements() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">
+      <div className="min-h-screen  flex items-center justify-center text-white">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="animate-spin text-purple-500" size={48} />
           <p className="text-purple-300">Loading your achievements...</p>
@@ -229,7 +229,7 @@ export default function Achievements() {
 
   if (error || !achievementsData) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white p-6">
+      <div className="min-h-screen  flex items-center justify-center text-white p-6">
         <div className="max-w-md text-center bg-[#10081C] border border-red-500/30 p-8 rounded-2xl">
           <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
           <h2 className="text-2xl font-bold mb-2">Unable to Load Achievements</h2>
@@ -278,10 +278,10 @@ export default function Achievements() {
                           <metric.icon className="text-purple-400" size={24} />
                           <span
                             className={`text-sm font-semibold ${metric.change.startsWith("+")
-                                ? "text-green-400"
-                                : metric.change.startsWith("-")
-                                  ? "text-red-400"
-                                  : "text-purple-300"
+                              ? "text-green-400"
+                              : metric.change.startsWith("-")
+                                ? "text-red-400"
+                                : "text-purple-300"
                               }`}
                           >
                             {metric.change}
@@ -360,8 +360,8 @@ export default function Achievements() {
                       <div
                         key={idx}
                         className={`flex items-center justify-between p-4 rounded-lg border ${week.active
-                            ? "bg-purple-900/30 border-purple-500/50"
-                            : "bg-black/20 border-purple-500/20"
+                          ? "bg-purple-900/30 border-purple-500/50"
+                          : "bg-black/20 border-purple-500/20"
                           }`}
                       >
                         <div className="flex items-center gap-4">
@@ -499,7 +499,7 @@ export default function Achievements() {
                     backgroundImage: 'linear-gradient(to top, rgba(255, 59, 212, 0.2), rgba(113, 48, 195, 0.2))'
                   }}
                 >
-                  View Full Behavioral Insights
+                  View Full Behavioral Insight
                   <ChevronRight size={20} />
                 </button>
 
@@ -612,16 +612,16 @@ export default function Achievements() {
                 <div key={week} className="flex flex-col items-center">
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center font-bold mb-2 ${week <= achievementsData.journey.currentWeek
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                        : "bg-gray-700 text-gray-400"
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                      : "bg-gray-700 text-gray-400"
                       }`}
                   >
                     {week}
                   </div>
                   <div
                     className={`text-sm ${week <= achievementsData.journey.currentWeek
-                        ? "text-white"
-                        : "text-gray-500"
+                      ? "text-white"
+                      : "text-gray-500"
                       }`}
                   >
                     W{week}
@@ -648,16 +648,16 @@ export default function Achievements() {
               <div
                 key={idx}
                 className={`bg-gradient-to-br backdrop-blur-sm border rounded-2xl p-6 transition-all hover:scale-105 ${badge.unlocked
-                    ? "from-purple-900/60 to-indigo-900/60 border-purple-500/50 shadow-lg shadow-purple-500/20"
-                    : "from-gray-900/40 to-gray-800/40 border-gray-600/30 opacity-60"
+                  ? "from-purple-900/60 to-indigo-900/60 border-purple-500/50 shadow-lg shadow-purple-500/20"
+                  : "from-gray-900/40 to-gray-800/40 border-gray-600/30 opacity-60"
                   }`}
               >
                 {/* Badge Icon */}
                 <div className="relative mb-4">
                   <div
                     className={`w-32 h-32 mx-auto rounded-2xl flex items-center justify-center ${badge.unlocked
-                        ? "bg-gradient-to-br from-purple-600 to-pink-600"
-                        : "bg-gray-700"
+                      ? "bg-gradient-to-br from-purple-600 to-pink-600"
+                      : "bg-gray-700"
                       }`}
                   >
                     <span className="text-6xl">{badge.icon}</span>

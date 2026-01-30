@@ -2,12 +2,14 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import { Outlet } from "react-router-dom";
+import SubscriptionIdleAlert from "../components/common/SubscriptionIdleAlert";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="relative h-screen w-full bg-[#070710]">
+      <SubscriptionIdleAlert />
       {/* Background layers */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(40,40,100,0.7),transparent_70%)]"></div>

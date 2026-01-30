@@ -79,6 +79,10 @@ urlpatterns = [
     path('subscriptions/expiring_soon/', views.SubscriptionViewSet.as_view({
         'get': 'expiring_soon'
     }), name='subscription-expiring-soon'),
+
+    path('subscriptions/idle_status/', views.SubscriptionViewSet.as_view({
+        'get': 'idle_status'
+    }), name='subscription-idle-status'),
 ]
 
 """

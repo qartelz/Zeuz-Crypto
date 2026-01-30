@@ -453,7 +453,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         )
         return Response(self.get_serializer(subs, many=True).data)
 
-    @action(detail=True, methods=["get"])
+    @action(detail=False, methods=["get"])
     def history(self, request, pk=None):
         sub = self.get_object()
         history_entries = SubscriptionHistory.objects.filter(
@@ -461,6 +461,35 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         ).order_by("-timestamp")
         serializer = SubscriptionHistorySerializer(history_entries, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def idle_status(self, request):
+        """Check if user has active sub but no active challenge"""
+        user = request.user
+        now = timezone.now()
+        
+        # Check Active Subscription
+        active_sub = Subscription.objects.filter(
+            user=user,
+            status="ACTIVE",
+            start_date__lte=now,
+            end_date__gte=now
+        ).first()
+
+        # Check Active Challenge
+        from apps.admin.challenge.models.challenge_models import UserChallengeParticipation
+        active_challenge = UserChallengeParticipation.objects.filter(
+            user=user,
+            status="IN_PROGRESS"
+        ).exists()
+
+        return Response({
+            "has_active_subscription": bool(active_sub),
+            "has_active_challenge": active_challenge,
+            "idle_alert_needed": bool(active_sub) and not active_challenge,
+            "subscription_id": active_sub.id if active_sub else None,
+            "days_remaining": (active_sub.end_date - now).days if active_sub else 0
+        })
 
 
 class SubscriptionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
