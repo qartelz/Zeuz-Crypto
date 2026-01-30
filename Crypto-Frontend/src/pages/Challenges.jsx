@@ -144,7 +144,7 @@
 //       const beginnerProgram = data?.results?.find(
 //         (program) => program.difficulty === "BEGINNER"
 
-        
+
 //       );
 
 //       console.log("Selected BEGINNER program:", beginnerProgram);
@@ -217,7 +217,7 @@
 //       if (data.error) {
 //         console.log("User not participating in challenge");
 //         setUserProgress(null);
-      
+
 
 //       } else {
 //         setUserProgress(data);
@@ -273,7 +273,7 @@
 //             participationId: data.id
 //           }));
 //         }
-        
+
 //         // Refetch wallet data with the new participation ID
 //         if (data.id) {
 //           fetchWalletData(data.id);
@@ -293,7 +293,7 @@
 //           },
 //         });
 //       }
-      
+
 //       setJoiningChallenge(false);
 
 //     } catch (err) {
@@ -1179,6 +1179,7 @@
 
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Trophy,
   Star,
@@ -1201,24 +1202,101 @@ import toast from "react-hot-toast";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
-
 export default function Challenges() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedWeek, setSelectedWeek] = useState(undefined);
   console.log(selectedWeek, "the selected week");
-  const [selectedChallenge, setSelectedChallenge] = useState(null);
-  console.log(selectedChallenge,"the selected challenge")
+  // Initialize from localStorage if available
+  const [selectedChallenge, setSelectedChallenge] = useState(() => {
+    try {
+      const saved = localStorage.getItem("selectedChallenge");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to parse selectedChallenge from localStorage", e);
+      return null;
+    }
+  });
+
+  // Persist selectedChallenge to localStorage
+  useEffect(() => {
+    if (selectedChallenge) {
+      localStorage.setItem("selectedChallenge", JSON.stringify(selectedChallenge));
+    } else {
+      localStorage.removeItem("selectedChallenge");
+    }
+  }, [selectedChallenge]);
+
+  console.log(selectedChallenge, "the selected challenge");;
   const [isChallengeStarted, setIsChallengeStarted] = useState(false);
   const [showHoldings, setShowHoldings] = useState(false);
   const [walletData, setWalletData] = useState(null);
-  console.log(walletData,"the wallet data")
+  console.log(walletData, "the wallet data");
   const [walletLoading, setWalletLoading] = useState(false);
-  // Update the fetchWalletData function to accept a weekId parameter
+
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [programData, setProgramData] = useState(null);
+  const [weeksData, setWeeksData] = useState([]);
+  const [userProgress, setUserProgress] = useState(null);
+  const [joiningChallenge, setJoiningChallenge] = useState(false);
+
+  console.log(weeksData, "weeks data")
+  console.log(userProgress, "the user progress")
+
+  // Sync state from URL on initial load and when URL changes
+  useEffect(() => {
+    const weekParam = searchParams.get("week");
+    const viewParam = searchParams.get("view");
+
+    if (weekParam) {
+      setSelectedWeek(weekParam);
+    }
+
+    if (viewParam === "holdings") {
+      setShowHoldings(true);
+    } else {
+      setShowHoldings(false);
+    }
+  }, [searchParams]);
+
+  // Update URL helpers
+  const updateURL = (params) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, value);
+        }
+      });
+      return newParams;
+    });
+  };
+
+  const handleSetSelectedWeek = (id) => {
+    setSelectedWeek(id);
+    updateURL({ week: id });
+  };
+
+  const handleShowHoldings = (show) => {
+    setShowHoldings(show);
+    updateURL({ view: show ? "holdings" : null });
+  };
+
+  const handleSetSelectedChallenge = (challenge) => {
+    setSelectedChallenge(challenge);
+    if (challenge) {
+      updateURL({ task: challenge.id });
+    } else {
+      updateURL({ task: null });
+    }
+  };
+
   const fetchWalletData = async (participationId) => {
     if (!participationId) return;
-
     setWalletLoading(true);
-
-    console.log(participationId,"participation Idddddddddddd")
     try {
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const response = await fetch(`${baseURL}challenges/wallets/`, {
@@ -1227,61 +1305,43 @@ export default function Challenges() {
           Authorization: `Bearer ${tokens?.access}`,
         },
       });
-
       if (response.ok) {
         const data = await response.json();
-        console.log("All wallets:", data);
-
-        // Find the wallet matching the provided participation ID
         const currentWallet = data.results.find(
           (wallet) => wallet.participation_id === participationId
         );
-
-        console.log("Matched wallet:", currentWallet);
-        setWalletData(currentWallet || null); // Set to null if not found
+        setWalletData(currentWallet || null);
       }
     } catch (error) {
       console.error("Error fetching wallet:", error);
-      setWalletData(null); // Set to null on error
+      setWalletData(null);
     } finally {
       setWalletLoading(false);
     }
   };
 
-  // Update the useEffect for selectedChallenge
   useEffect(() => {
     if (selectedChallenge?.participationId) {
       fetchWalletData(selectedChallenge.participationId);
     } else {
-      setWalletData(null); // Clear wallet data if no participation ID
+      setWalletData(null);
     }
   }, [selectedChallenge]);
 
-  // Update the useEffect for the main page when selectedWeek changes
-  // useEffect(() => {
-  //   if (selectedWeek && !selectedChallenge) {
-  //     // First fetch user progress to get the participation ID
-  //     fetchUserProgress(selectedWeek).then((progressData) => {
-
-  //       if (progressData && !progressData.error && progressData.id) {
-  //         fetchWalletData(progressData.id);
-  //       } else {
-  //         setWalletData(null); // No participation, clear wallet
-  //       }
-  //     });
-  //   }
-  // }, [selectedWeek, selectedChallenge]);
-
-  // API state
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [programData, setProgramData] = useState(null);
-  const [weeksData, setWeeksData] = useState([]);
-
-  console.log(weeksData,"weeks data")
-  const [userProgress, setUserProgress] = useState(null);
-  console.log(userProgress,"the user progress")
-  const [joiningChallenge, setJoiningChallenge] = useState(false);
+  // Effect to handle deep linking for task details once weeksData is loaded
+  useEffect(() => {
+    const taskParam = searchParams.get("task");
+    if (taskParam && weeksData.length > 0 && !selectedChallenge) {
+      // Find the task in the loaded weeksData
+      for (const week of weeksData) {
+        const task = week.tasks.find((t) => t.id.toString() === taskParam);
+        if (task) {
+          viewChallengeDetails(task, week);
+          break;
+        }
+      }
+    }
+  }, [weeksData, searchParams]);
 
   // Fetch programs on mount
   useEffect(() => {
@@ -1295,7 +1355,7 @@ export default function Challenges() {
     }
   }, [programData?.id]); // Only depend on the ID, not the entire object
 
-  console.log(programData?.id,"the program data id")
+  console.log(programData?.id, "the program data id")
 
   const fetchPrograms = async () => {
     try {
@@ -1325,7 +1385,7 @@ export default function Challenges() {
       const beginnerProgram = data?.results?.find(
         (program) => program.difficulty === "BEGINNER"
 
-        
+
       );
 
       console.log("Selected BEGINNER program:", beginnerProgram);
@@ -1345,7 +1405,7 @@ export default function Challenges() {
     try {
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const url = `${baseURL}challenges/weeks/?program_id=${programId}`;
-      console.log(programId,"the program id")
+      console.log(programId, "the program id")
       console.log("Fetching weeks from:", url);
       console.log("Auth tokens:", tokens);
 
@@ -1367,7 +1427,12 @@ export default function Challenges() {
 
       // Set first week as selected by default
       if (sortedWeeks.length > 0 && selectedWeek === undefined) {
-        setSelectedWeek(sortedWeeks[0].id);
+        const weekParam = searchParams.get("week");
+        if (weekParam) {
+          setSelectedWeek(weekParam);
+        } else {
+          handleSetSelectedWeek(sortedWeeks[0].id);
+        }
       }
       setLoading(false);
     } catch (err) {
@@ -1380,7 +1445,7 @@ export default function Challenges() {
 
   const fetchUserProgress = async (weekId) => {
     try {
-       const tokens = JSON.parse(localStorage.getItem("authTokens")); 
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const url = `${baseURL}challenges/weeks/${weekId}/user_progress/`;
 
       console.log("Fetching user progress from:", url);
@@ -1399,7 +1464,7 @@ export default function Challenges() {
       if (data.error) {
         console.log("User not participating in challenge");
         setUserProgress(null);
-      
+
 
       } else {
         setUserProgress(data);
@@ -1450,21 +1515,21 @@ export default function Challenges() {
         setUserProgress(data);
 
         if (selectedChallenge && data.id) {
-          setSelectedChallenge(prev => ({
-            ...prev,
+          handleSetSelectedChallenge({
+            ...selectedChallenge,
             participationId: data.id
-          }));
+          });
         }
-        
+
         // Refetch wallet data with the new participation ID
         if (data.id) {
           fetchWalletData(data.id);
         }
 
-         // Refetch wallet data with the new participation ID
-  if (data.id) {
-    fetchWalletData(data.id);
-  }
+        // Refetch wallet data with the new participation ID
+        if (data.id) {
+          fetchWalletData(data.id);
+        }
         toast.success("Successfully joined the challenge!", {
           duration: 4000,
           position: "top-center",
@@ -1475,22 +1540,22 @@ export default function Challenges() {
           },
         });
       }
-      
+
       setJoiningChallenge(false);
 
     } catch (err) {
-  console.error("Error joining challenge:", err);
-  toast.error("Failed to join challenge: " + err.message, {
-    duration: 4000,
-    position: "top-center",
-    style: {
-      background: "#1f1730",
-      color: "#fff",
-      border: "1px solid #ef4444",
-    },
-  });
-  setJoiningChallenge(false);
-}
+      console.error("Error joining challenge:", err);
+      toast.error("Failed to join challenge: " + err.message, {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#1f1730",
+          color: "#fff",
+          border: "1px solid #ef4444",
+        },
+      });
+      setJoiningChallenge(false);
+    }
   };
 
   const getWeekTradingRules = (weekNumber) => {
@@ -1642,9 +1707,8 @@ export default function Challenges() {
 
     if (diffDays === 1) return "24 Hours";
     if (diffDays < 7) return `${diffDays} Days`;
-    return `${Math.floor(diffDays / 7)} Week${
-      Math.floor(diffDays / 7) > 1 ? "s" : ""
-    }`;
+    return `${Math.floor(diffDays / 7)} Week${Math.floor(diffDays / 7) > 1 ? "s" : ""
+      }`;
   };
 
   const getCurrentWeekData = () => {
@@ -1727,15 +1791,15 @@ export default function Challenges() {
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
           {/* Back Button */}
           <button
-            onClick={() => setShowHoldings(false)}
+            onClick={() => handleShowHoldings(false)}
             className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all self-start"
           >
             ← Back to Challenges
           </button>
 
           {/* Wallet Info */}
-          {walletData && userProgress && !userProgress.error && (
-            <div className="w-full sm:min-w-[420px] rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all">
+          {walletData && (
+            <div className="sm:min-w-[420px] rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all">
               {walletLoading ? (
                 <div className="flex flex-col items-center justify-center h-[120px]">
                   <Loader2
@@ -1824,25 +1888,25 @@ export default function Challenges() {
     return (
       <div className="min-h-screen text-white px-2 sm:px-4">
         <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-2 mb-4">
-  {/* Back Button */}
-  <button
-    onClick={() => setSelectedChallenge(null)}
-    className="flex items-center justify-center gap-1 sm:gap-2 text-purple-400 hover:text-white hover:bg-purple-700/20 sm:border sm:border-purple-700/30 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
-  >
-    <ArrowLeft className="w-4 h-4" />
-    <span className="text-xs sm:text-base">Back</span>
-  </button>
+          <div className="flex items-center gap-2 mb-4">
+            {/* Back Button */}
+            <button
+              onClick={() => handleSetSelectedChallenge(null)}
+              className="flex items-center justify-center gap-1 sm:gap-2 text-purple-400 hover:text-white hover:bg-purple-700/20 sm:border sm:border-purple-700/30 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-xs sm:text-base">Back</span>
+            </button>
 
-  {/* Holdings Button */}
-  <button
-    onClick={() => setShowHoldings(true)}
-    className="flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-1.5 sm:py-2 px-2 sm:px-4 rounded-full sm:rounded-lg transition-all shadow-md hover:shadow-lg"
-  >
-    <LineChart className="w-4 h-4 sm:w-5 sm:h-5" />
-    <span className="text-xs sm:text-base">Weekly Trades</span>
-  </button>
-</div>
+            {/* Holdings Button */}
+            <button
+              onClick={() => handleShowHoldings(true)}
+              className="flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-1.5 sm:py-2 px-2 sm:px-4 rounded-full sm:rounded-lg transition-all shadow-md hover:shadow-lg"
+            >
+              <LineChart className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-base">Trades History</span>
+            </button>
+          </div>
 
           {/* First Row: Header + Action Button - Mobile Stacked, Desktop Grid */}
           <div className="flex flex-col lg:grid lg:grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 items-start">
@@ -2011,11 +2075,11 @@ export default function Challenges() {
                           Task Description
                         </h3>
                         <p
-  className="text-xs sm:text-sm text-purple-200"
-  dangerouslySetInnerHTML={{
-    __html: selectedChallenge.timerBehavior,
-  }}
-/>
+                          className="text-xs sm:text-sm text-purple-200"
+                          dangerouslySetInnerHTML={{
+                            __html: selectedChallenge.timerBehavior,
+                          }}
+                        />
 
                       </div>
                     </div>
@@ -2084,16 +2148,14 @@ export default function Challenges() {
                           className="flex items-center gap-3 rounded-lg p-2 sm:p-3"
                         >
                           <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              prereq.completed ? "bg-green-500" : "bg-gray-600"
-                            }`}
+                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${prereq.completed ? "bg-green-500" : "bg-gray-600"
+                              }`}
                           >
                             {prereq.completed && <Check size={16} />}
                           </div>
                           <span
-                            className={`text-xs sm:text-sm ${
-                              prereq.completed ? "text-white" : "text-gray-400"
-                            }`}
+                            className={`text-xs sm:text-sm ${prereq.completed ? "text-white" : "text-gray-400"
+                              }`}
                           >
                             {prereq.text}
                           </span>
@@ -2166,26 +2228,24 @@ export default function Challenges() {
                     {selectedChallenge.challengeTiers.map((tier, idx) => (
                       <div
                         key={idx}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          tier.unlocked
-                            ? "bg-orange-900/20 border-orange-500/30"
-                            : "bg-gray-900/20 border-gray-500/30"
-                        }`}
+                        className={`flex items-center gap-3 p-3 rounded-lg border ${tier.unlocked
+                          ? "bg-orange-900/20 border-orange-500/30"
+                          : "bg-gray-900/20 border-gray-500/30"
+                          }`}
                       >
                         <span className="text-xl sm:text-2xl">
                           {tier.name === "Bronze"
                             ? "🥉"
                             : tier.name === "Silver"
-                            ? "🥈"
-                            : "🥇"}
+                              ? "🥈"
+                              : "🥇"}
                         </span>
                         <div className="flex-1">
                           <div
-                            className={`text-sm sm:text-base font-semibold ${
-                              tier.unlocked
-                                ? "text-orange-400"
-                                : "text-gray-400"
-                            }`}
+                            className={`text-sm sm:text-base font-semibold ${tier.unlocked
+                              ? "text-orange-400"
+                              : "text-gray-400"
+                              }`}
                           >
                             {tier.name}
                           </div>
@@ -2232,12 +2292,11 @@ export default function Challenges() {
             {weeksData.slice(0, 4).map((week) => (
               <button
                 key={week.id}
-                onClick={() => setSelectedWeek(week.id)}
-                className={`p-3 sm:p-2 rounded-xl border transition-all ${
-                  selectedWeek === week.id
-                    ? "bg-purple-900/30 border-purple-500 shadow-md shadow-purple-800/30"
-                    : "border-purple-500/30 hover:border-purple-400/50"
-                }`}
+                onClick={() => handleSetSelectedWeek(week.id)}
+                className={`p-3 sm:p-2 rounded-xl border transition-all ${selectedWeek === week.id
+                  ? "bg-purple-900/30 border-purple-500 shadow-md shadow-purple-800/30"
+                  : "border-purple-500/30 hover:border-purple-400/50"
+                  }`}
               >
                 <div className="text-lg sm:text-xl font-bold mb-1">
                   Week {week.week_number}
@@ -2257,130 +2316,126 @@ export default function Challenges() {
           </h2>
 
           {currentWeekData?.description && (
-          <p
-          className="text-purple-300 mb-4 sm:mb-6 text-sm sm:text-base quill-content"
-          dangerouslySetInnerHTML={{
-            __html: currentWeekData.description,
-          }}
-        />
-        
+            <p
+              className="text-purple-300 mb-4 sm:mb-6 text-sm sm:text-base quill-content"
+              dangerouslySetInnerHTML={{
+                __html: currentWeekData.description,
+              }}
+            />
+
           )}
 
-<div className="w-full">
-  {currentWeekData?.tasks?.map((task) => (
-    <div
-      key={task.id}
-      className={`bg-gradient-to-br from-purple-900/20 to-indigo-900/20 backdrop-blur-sm border-2 rounded-3xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 ${
-        currentWeekData.is_completed 
-          ? 'border-green-500/50 hover:border-green-400/70' 
-          : 'border-purple-500/50 hover:border-purple-400/70'
-      }`}
-    >
-      {/* Status Indicator */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${
-            currentWeekData.is_completed 
-              ? 'bg-green-400 animate-pulse' 
-              : task.is_mandatory 
-                ? 'bg-yellow-400 animate-pulse' 
-                : 'bg-purple-400'
-          }`}></div>
-          <span className={`text-sm font-semibold ${
-            currentWeekData.is_completed 
-              ? 'text-green-400' 
-              : task.is_mandatory 
-                ? 'text-yellow-400' 
-                : 'text-purple-400'
-          }`}>
-            {currentWeekData.is_completed 
-              ? '✓ challenge completed' 
-              : task.is_mandatory 
-                ? '⚡ mandatory challenge' 
-                : 'optional challenge'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-purple-500/10 text-purple-200 rounded-full text-xs font-medium">
-            {programData?.difficulty?.toLowerCase() || "beginner"}
-          </span>
-          <span className="text-xs text-purple-200/60">
-            week {currentWeekData.week_number || '1'}
-          </span>
-        </div>
-      </div>
+          <div className="w-full">
+            {currentWeekData?.tasks?.map((task) => (
+              <div
+                key={task.id}
+                className={`bg-gradient-to-br from-purple-900/20 to-indigo-900/20 backdrop-blur-sm border-2 rounded-3xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 ${currentWeekData.is_completed
+                  ? 'border-green-500/50 hover:border-green-400/70'
+                  : 'border-purple-500/50 hover:border-purple-400/70'
+                  }`}
+              >
+                {/* Status Indicator */}
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${currentWeekData.is_completed
+                      ? 'bg-green-400 animate-pulse'
+                      : task.is_mandatory
+                        ? 'bg-yellow-400 animate-pulse'
+                        : 'bg-purple-400'
+                      }`}></div>
+                    <span className={`text-sm font-semibold ${currentWeekData.is_completed
+                      ? 'text-green-400'
+                      : task.is_mandatory
+                        ? 'text-yellow-400'
+                        : 'text-purple-400'
+                      }`}>
+                      {currentWeekData.is_completed
+                        ? '✓ challenge completed'
+                        : task.is_mandatory
+                          ? '⚡ mandatory challenge'
+                          : 'optional challenge'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-purple-500/10 text-purple-200 rounded-full text-xs font-medium">
+                      {programData?.difficulty?.toLowerCase() || "beginner"}
+                    </span>
+                    <span className="text-xs text-purple-200/60">
+                      week {currentWeekData.week_number || '1'}
+                    </span>
+                  </div>
+                </div>
 
-      {/* Task Info */}
-      <h3 className="text-2xl sm:text-3xl font-bold mb-3 text-white leading-tight tracking-tight">{task.title}</h3>
-      <p
-  className="text-sm sm:text-base text-purple-100/70 mb-6 leading-relaxed quill-content"
-  dangerouslySetInnerHTML={{
-    __html: task.description,
-  }}
-/>
+                {/* Task Info */}
+                <h3 className="text-2xl sm:text-3xl font-bold mb-3 text-white leading-tight tracking-tight">{task.title}</h3>
+                <p
+                  className="text-sm sm:text-base text-purple-100/70 mb-6 leading-relaxed quill-content"
+                  dangerouslySetInnerHTML={{
+                    __html: task.description,
+                  }}
+                />
 
 
-      {/* Dates */}
-      <div className="flex items-center gap-4 mb-8 text-xs text-purple-200/50 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span>📅</span>
-          <span>created {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span>🔄</span>
-          <span>updated {new Date(task.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-        </div>
-      </div>
+                {/* Dates */}
+                <div className="flex items-center gap-4 mb-8 text-xs text-purple-200/50 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>created {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span>🔄</span>
+                    <span>updated {new Date(task.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                </div>
 
-      {/* Challenge Details */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-pink-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-pink-500/20">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-pink-400 text-base">🎯</span>
-            <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">target</div>
-          </div>
-          <div className="font-bold text-pink-300 text-xl">
-            ${parseFloat(task.target_value).toFixed(2)}
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-green-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-green-500/20">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-green-400 text-base">📊</span>
-            <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">min trades</div>
-          </div>
-          <div className="font-bold text-green-300 text-xl">
-            {currentWeekData.min_trades_required} trades
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-indigo-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-indigo-500/20">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-indigo-400 text-base">⚡</span>
-            <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">type</div>
-          </div>
-          <div className="font-bold text-white text-xl capitalize">
-            {currentWeekData.trading_type?.toLowerCase()}
-          </div>
-        </div>
-      </div>
+                {/* Challenge Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-gradient-to-br from-pink-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-pink-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-pink-400 text-base">🎯</span>
+                      <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">target</div>
+                    </div>
+                    <div className="font-bold text-pink-300 text-xl">
+                      ${parseFloat(task.target_value).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-green-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-green-400 text-base">📊</span>
+                      <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">min trades</div>
+                    </div>
+                    <div className="font-bold text-green-300 text-xl">
+                      {currentWeekData.min_trades_required} trades
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-indigo-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-indigo-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-indigo-400 text-base">⚡</span>
+                      <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">type</div>
+                    </div>
+                    <div className="font-bold text-white text-xl capitalize">
+                      {currentWeekData.trading_type?.toLowerCase()}
+                    </div>
+                  </div>
+                </div>
 
-      {/* Action Button */}
-      <button
-  onClick={() => viewChallengeDetails(task, currentWeekData)}
-  disabled={loadingChallengeId === task.id}
-  className={`w-full sm:w-auto sm:min-w-[240px] font-semibold py-3.5 px-8 rounded-xl transition-all duration-300 text-sm
-              ${
-                loadingChallengeId === task.id
-                  ? "bg-gradient-to-r from-purple-600/50 to-indigo-600/50 cursor-not-allowed text-white/70"
-                  : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/50 hover:scale-[1.02]"
-              }`}
->
-  {loadingChallengeId === task.id
-    ? "Loading..."
-    : "View challenge details →"}
-</button>
-    </div>
-  ))}
-</div>
+                {/* Action Button */}
+                <button
+                  onClick={() => viewChallengeDetails(task, currentWeekData)}
+                  disabled={loadingChallengeId === task.id}
+                  className={`w-full sm:w-auto sm:min-w-[240px] font-semibold py-3.5 px-8 rounded-xl transition-all duration-300 text-sm
+              ${loadingChallengeId === task.id
+                      ? "bg-gradient-to-r from-purple-600/50 to-indigo-600/50 cursor-not-allowed text-white/70"
+                      : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/50 hover:scale-[1.02]"
+                    }`}
+                >
+                  {loadingChallengeId === task.id
+                    ? "Loading..."
+                    : "View challenge details →"}
+                </button>
+              </div>
+            ))}
+          </div>
 
           {currentWeekData?.tasks?.length === 0 && (
             <div className="text-center py-12 text-purple-300">

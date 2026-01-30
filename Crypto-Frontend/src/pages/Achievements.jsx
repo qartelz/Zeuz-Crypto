@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Trophy,
   Star,
@@ -11,210 +11,244 @@ import {
   ChevronRight,
   ArrowLeft,
   BarChart3,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
-
-// Mock data for achievements
-const achievementsData = {
-  portfolioChallenge: {
-    title: "Week 4 - Portfolio Performance Challenge",
-    subtitle: "Track your progress toward a 20% total return across 4 weeks",
-    metrics: [
-      {
-        label: "Week 4 Return",
-        value: "+2.17%",
-        change: "+2.17%",
-        icon: TrendingUp,
-      },
-      {
-        label: "Total P&L",
-        value: "$1,750",
-        change: "+17.5%",
-        icon: Target,
-      },
-      {
-        label: "Avg Daily Return",
-        value: "+0.31%",
-        change: "+0.31%",
-        icon: BarChart3,
-      },
-      {
-        label: "Days to Goal",
-        value: "2 days",
-        change: "--40%",
-        icon: Target,
-      },
-    ],
-    portfolioValue: {
-      total: "$11,750",
-      profit: "$1,750 (17.5%)",
-      starting: "$10,000",
-    },
-    progressToGoal: {
-      current: 17.5,
-      target: 20,
-      percentage: 87.5,
-    },
-    weeklyProgress: [
-      {
-        week: 1,
-        return: 5.2,
-        target: 5,
-        status: "Goal Met ✓",
-        completed: true,
-      },
-      {
-        week: 2,
-        return: 5.2,
-        target: 5,
-        status: "Below Target",
-        completed: true,
-      },
-      {
-        week: 3,
-        return: 5.2,
-        target: 5,
-        status: "Goal Met ✓",
-        completed: true,
-      },
-      { week: 4, return: 5.2, target: 5, status: "Below Target", active: true },
-    ],
-    analysis: [
-      {
-        icon: "✓",
-        text: "On track for good Currently at 17.5% total return, need 2.5% more to reach 20% target",
-      },
-      {
-        icon: "📋",
-        text: "Strategy recommendation: With only 2 days left, consider maintaining balanced approach to secure remaining 2.5% safely",
-      },
-      {
-        icon: "⚠",
-        text: "Risk assessment: Week 4 performance is slightly behind target (2% vs 5%). Adjust position sizes if needed",
-      },
-      {
-        icon: "✓",
-        text: "Consistency check: Positive daily returns showing good discipline and execution",
-      },
-    ],
-  },
-  behavioralInsights: {
-    level: 3,
-    title: "ZeuZ Wave Hopper",
-    score: 3110,
-    capitalUsage: 68,
-    totalTrades: 42,
-    xpPoints: 2250,
-    progressToNext: {
-      current: 2250,
-      required: 3000,
-      percentage: 75,
-    },
-    keyInsights: [
-      {
-        type: "positive",
-        icon: "✓",
-        text: "Wait for full candle closes meet key levels",
-      },
-      {
-        type: "warning",
-        icon: "⚠",
-        text: "Overtrading detected: 42 trades in 2 days exceeds optimal range",
-      },
-      {
-        type: "positive",
-        icon: "✓",
-        text: "Good risk management: Average loss kept below 2%",
-      },
-      {
-        type: "negative",
-        icon: "✗",
-        text: "Inconsistent position sizing across trades",
-      },
-    ],
-    tradingStyle: [
-      { label: "Aggressive", value: 72, color: "from-red-500 to-orange-500" },
-      {
-        label: "Risk Management",
-        value: 85,
-        color: "from-green-500 to-emerald-500",
-      },
-      { label: "Patience", value: 45, color: "from-yellow-500 to-orange-500" },
-    ],
-    recommendations: [
-      {
-        icon: "💡",
-        text: "Focus on fewer, high-quality trades",
-        color: "blue",
-      },
-      {
-        icon: "📈",
-        text: "Maintain consistent position sizing",
-        color: "green",
-      },
-      {
-        icon: "⏰",
-        text: "Wait for complete candle confirmations",
-        color: "purple",
-      },
-    ],
-  },
-  stats: {
-    badgesEarned: 4,
-    xpPoints: 750,
-    currentStreak: 3,
-    completionRate: 28,
-  },
-  journey: {
-    currentWeek: 2,
-    totalWeeks: 4,
-    progress: 50,
-  },
-  weeklyBadges: [
-    {
-      week: 1,
-      title: "Crypto Explorer",
-      description:
-        "Master the basics of cryptocurrency and spot trading fundamentals",
-      icon: "🛡️",
-      unlocked: true,
-      unlockDate: "2025-10-15",
-    },
-    {
-      week: 2,
-      title: "Wave Hopper",
-      description:
-        "Successfully navigate market volatility and complete multiple challenges",
-      icon: "🌊",
-      unlocked: false,
-      unlockDate: null,
-    },
-    {
-      week: 3,
-      title: "Risk Tamer",
-      description: "Demonstrate advanced risk management in futures trading",
-      icon: "⚡",
-      unlocked: false,
-      unlockDate: null,
-    },
-    {
-      week: 4,
-      title: "Portfolio Master",
-      description:
-        "Achieve consistent returns through balanced portfolio management",
-      icon: "👑",
-      unlocked: false,
-      unlockDate: null,
-    },
-  ],
-};
 
 export default function Achievements() {
   const [currentView, setCurrentView] = useState("portfolio"); // 'portfolio' or 'badges'
+  const [achievementsData, setAchievementsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const baseURL = import.meta.env.VITE_API_BASE_URL;
+
+  // Icon mapping for weeks since backend returns null for icons sometimes
+  const WEEK_ICONS = {
+    1: "🛡️",
+    2: "🌊",
+    3: "⚡",
+    4: "👑"
+  };
+
+  const BADGE_DESCRIPTIONS = {
+    1: "Master the basics of cryptocurrency and spot trading fundamentals",
+    2: "Successfully navigate market volatility and complete multiple challenges",
+    3: "Demonstrate advanced risk management in futures trading",
+    4: "Achieve consistent returns through balanced portfolio management"
+  };
+
+  useEffect(() => {
+    const fetchRewards = async () => {
+      try {
+        const authTokens = localStorage.getItem("authTokens");
+        if (!authTokens) {
+          throw new Error("User not authenticated");
+        }
+        const tokens = JSON.parse(authTokens);
+
+        const response = await fetch(`${baseURL}challenges/rewards/my-rewards/`, {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${tokens.access}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch achievements data");
+        }
+
+        const data = await response.json();
+        const processedData = processAchievementsData(data);
+        setAchievementsData(processedData);
+      } catch (err) {
+        console.error("Error fetching achievements:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRewards();
+  }, []);
+
+  const processAchievementsData = (apiData) => {
+    // If no data, return a basic empty structure or handle appropriately
+    if (!apiData || apiData.length === 0) {
+      // Fallback or empty state could be handled here
+      // For now, let's assume we might have at least one week joined if they are here
+      // But if truly empty, we'll return a safe default
+      return null;
+    }
+
+    // Sort by week number to ensure order
+    const sortedData = [...apiData].sort((a, b) => a.week_number - b.week_number);
+
+    // Get the latest active or completed week (current context)
+    const currentWeekData = sortedData[sortedData.length - 1];
+
+    // Calculate total portfolio stats
+    // Note: If the backend logic changes to aggregation, update here. 
+    // Currently taking the latest week's balance as "current portfolio value" proxy
+    const currentBalance = parseFloat(currentWeekData.current_balance || 0);
+    const startingBalance = parseFloat(currentWeekData.starting_balance || 0);
+    const totalProfit = currentBalance - startingBalance;
+    const profitPct = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
+
+    // Weekly Progress Mapping
+    const weeklyProgress = sortedData.map(item => ({
+      week: item.week_number,
+      return: parseFloat(item.portfolio_return_pct || 0).toFixed(1),
+      target: parseFloat(item.week_target_goal || 5), // Default to 5% if missing
+      status: item.badge_earned ? "Goal Met ✓" : (item.portfolio_return_pct >= item.week_target_goal ? "Goal Met ✓" : "Below Target"),
+      completed: !!item.badge_earned,
+      active: !item.badge_earned // simplified logic
+    }));
+
+    // Weekly Badges Mapping
+    const weeklyBadges = [1, 2, 3, 4].map(weekNum => {
+      const weekData = sortedData.find(d => d.week_number === weekNum);
+      return {
+        week: weekNum,
+        title: weekData?.badge_name || `Week ${weekNum} Badge`,
+        description: BADGE_DESCRIPTIONS[weekNum] || "Complete the weekly challenge to unlock.",
+        icon: WEEK_ICONS[weekNum] || "🏆",
+        unlocked: !!weekData?.badge_earned,
+        unlockDate: weekData?.earned_at ? new Date(weekData.earned_at).toISOString().split('T')[0] : null
+      };
+    });
+
+    // Behavioral Insights (Taking from latest week w/ evaluation)
+    const latestEval = currentWeekData.evaluation || {};
+
+    return {
+      portfolioChallenge: {
+        title: `${currentWeekData.week_title} - Portfolio Challenge`,
+        subtitle: `Track your progress toward a ${parseFloat(currentWeekData.week_target_goal || 20)}% return target`,
+        metrics: [
+          {
+            label: `Week ${currentWeekData.week_number} Return`,
+            value: `${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(2)}%`,
+            change: `${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(2)}%`,
+            icon: TrendingUp,
+          },
+          {
+            label: "Total P&L",
+            value: `$${totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            change: `${profitPct > 0 ? '+' : ''}${profitPct.toFixed(1)}%`,
+            icon: Target,
+          },
+          {
+            label: "Avg Daily Return",
+            value: "+0.31%", // Placeholder / Mock for now as daily data isn't in summary
+            change: "+0.31%",
+            icon: BarChart3,
+          },
+          {
+            label: "Days to Goal",
+            value: "2 days", // Mock for now
+            change: "--40%",
+            icon: Target,
+          },
+        ],
+        portfolioValue: {
+          total: `$${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          profit: `$${Math.abs(totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${Math.abs(profitPct).toFixed(1)}%)`,
+          starting: `$${startingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        },
+        progressToGoal: {
+          current: parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(1),
+          target: parseFloat(currentWeekData.week_target_goal || 20),
+          percentage: Math.min(100, (parseFloat(currentWeekData.portfolio_return_pct || 0) / parseFloat(currentWeekData.week_target_goal || 20)) * 100),
+        },
+        weeklyProgress: weeklyProgress,
+        analysis: [
+          // Dynamic analysis based on evaluation if available, else placeholders
+          {
+            icon: "✓",
+            text: latestEval.key_issue
+              ? `Focus: ${latestEval.key_issue}`
+              : `Currently at ${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(1)}% return. Keep pushing!`,
+          },
+          ...(latestEval.next_challenge_focus || []).map(focus => ({
+            icon: "📋",
+            text: `Rec: ${focus}`
+          }))
+        ],
+      },
+      behavioralInsights: {
+        level: latestEval.tier_name || "Initiate", // or map level number
+        title: currentWeekData.behavioral_tag || "Trader",
+        score: parseFloat(currentWeekData.total_score || 0).toFixed(0),
+        capitalUsage: parseFloat(currentWeekData.capital_usage_pct || 0).toFixed(1),
+        totalTrades: currentWeekData.total_trades || 0,
+        xpPoints: currentWeekData.coins_earned || 0, // Using coins as XP proxy
+        progressToNext: {
+          current: currentWeekData.coins_earned || 0,
+          required: 50000, // Mock target
+          percentage: Math.min(100, ((currentWeekData.coins_earned || 0) / 50000) * 100),
+        },
+        keyInsights: [
+          { type: "info", icon: "ℹ️", text: latestEval.key_issue || "Keep trading to generate insights." }
+        ],
+        tradingStyle: [
+          // Mock breakdown until exposed
+          { label: "Aggressive", value: 72, color: "from-red-500 to-orange-500" },
+          { label: "Risk Management", value: 85, color: "from-green-500 to-emerald-500" },
+          { label: "Patience", value: 45, color: "from-yellow-500 to-orange-500" },
+        ],
+        recommendations: (latestEval.next_challenge_focus || ["Focus on risk management"]).map((rec, i) => ({
+          icon: "💡", text: rec, color: ["blue", "green", "purple"][i % 3]
+        })),
+      },
+      stats: {
+        badgesEarned: sortedData.filter(d => d.badge_earned).length,
+        xpPoints: sortedData.reduce((acc, curr) => acc + (curr.coins_earned || 0), 0),
+        currentStreak: 3, // Mock
+        completionRate: Math.round((sortedData.filter(d => d.badge_earned).length / 4) * 100),
+      },
+      journey: {
+        currentWeek: currentWeekData.week_number,
+        totalWeeks: 4,
+        progress: (currentWeekData.week_number / 4) * 100,
+      },
+      weeklyBadges: weeklyBadges,
+    };
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-purple-500" size={48} />
+          <p className="text-purple-300">Loading your achievements...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !achievementsData) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white p-6">
+        <div className="max-w-md text-center bg-[#10081C] border border-red-500/30 p-8 rounded-2xl">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-2xl font-bold mb-2">Unable to Load Achievements</h2>
+          <p className="text-gray-400 mb-6">{error || "No participation data found."}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Portfolio Performance Challenge View (First Page)
   if (currentView === "portfolio") {
     return (
-      <div className="min-h-screen  text-white p-6">
+      <div className="min-h-screen text-white p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -243,13 +277,12 @@ export default function Achievements() {
                         <div className="flex items-center justify-between mb-3">
                           <metric.icon className="text-purple-400" size={24} />
                           <span
-                            className={`text-sm font-semibold ${
-                              metric.change.startsWith("+")
+                            className={`text-sm font-semibold ${metric.change.startsWith("+")
                                 ? "text-green-400"
                                 : metric.change.startsWith("-")
-                                ? "text-red-400"
-                                : "text-purple-300"
-                            }`}
+                                  ? "text-red-400"
+                                  : "text-purple-300"
+                              }`}
                           >
                             {metric.change}
                           </span>
@@ -291,26 +324,18 @@ export default function Achievements() {
                   </div>
                 </div>
 
-                {/* Progress to 20% Goal */}
+                {/* Progress to Goal */}
                 <div className="bg-black/30 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Target className="text-purple-400" size={20} />
                       <span className="font-semibold">
-                        Progress to 20% Goal
+                        Progress to Goal
                       </span>
                     </div>
                     <span className="text-lg font-bold text-purple-400">
-                      {
-                        achievementsData.portfolioChallenge.progressToGoal
-                          .current
-                      }
-                      % /{" "}
-                      {
-                        achievementsData.portfolioChallenge.progressToGoal
-                          .target
-                      }
-                      %
+                      {achievementsData.portfolioChallenge.progressToGoal.current}% /{" "}
+                      {achievementsData.portfolioChallenge.progressToGoal.target}%
                     </span>
                   </div>
                   <div className="w-full bg-purple-900/50 rounded-full h-3">
@@ -334,11 +359,10 @@ export default function Achievements() {
                     (week, idx) => (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between p-4 rounded-lg border ${
-                          week.active
+                        className={`flex items-center justify-between p-4 rounded-lg border ${week.active
                             ? "bg-purple-900/30 border-purple-500/50"
                             : "bg-black/20 border-purple-500/20"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-4">
                           {week.active ? (
@@ -352,7 +376,7 @@ export default function Achievements() {
                             <div className="font-bold">Week {week.week}</div>
                             {week.active && (
                               <div className="text-sm text-purple-300">
-                                Active
+                                Active {week.status === "Goal Met ✓" && "- Goal Met"}
                               </div>
                             )}
                           </div>
@@ -362,8 +386,8 @@ export default function Achievements() {
                           <div className="text-sm text-purple-300">
                             Target: +{week.target}%
                           </div>
-                          <div className="font-bold text-lg text-green-400">
-                            Actual Return: +{week.return}%
+                          <div className={`font-bold text-lg ${parseFloat(week.return) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            Actual Return: {parseFloat(week.return) > 0 ? "+" : ""}{week.return}%
                           </div>
                         </div>
 
@@ -384,10 +408,10 @@ export default function Achievements() {
                 </div>
               </div>
 
-              {/* Week 4 Analysis & Insights */}
+              {/* Analysis & Insights */}
               <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
                 <h3 className="text-2xl font-bold mb-4">
-                  Week 4 Analysis & Insights
+                  Analysis & Insights
                 </h3>
                 <div className="space-y-3">
                   {achievementsData.portfolioChallenge.analysis.map(
@@ -401,6 +425,9 @@ export default function Achievements() {
                       </div>
                     )
                   )}
+                  {achievementsData.portfolioChallenge.analysis.length === 0 && (
+                    <p className="text-gray-400 italic">No analysis available yet. Complete more trades to generate insights.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -410,37 +437,37 @@ export default function Achievements() {
               <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
 
                 <div className="mb-4">
-                 <h3 className="font-bold text-xl ">Behavioral Insights</h3>
+                  <h3 className="font-bold text-xl ">Behavioral Insights</h3>
                 </div>
                 <div className="text-center mb-4">
 
                   <div className="flex">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                    <span className="text-5xl">🛡️</span>
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                      <span className="text-5xl">🛡️</span>
+                    </div>
+
+                    <div>
+
+                      <div className="text-sm text-purple-300 mb-1">
+                        Level {achievementsData.behavioralInsights.level}
+                      </div>
+                      <h3 className="text-2xl font-bold mb-2">
+                        {achievementsData.behavioralInsights.title}
+                      </h3>
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                        <span className="text-purple-300">Score:</span>
+                        <span className="text-3xl font-bold text-yellow-400">
+                          {achievementsData.behavioralInsights.score}
+                        </span>
+
+
+                      </div>
+                    </div>
+
+
+
                   </div>
 
-                  <div>
-
-                  <div className="text-sm text-purple-300 mb-1">
-                    Level {achievementsData.behavioralInsights.level}
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2">
-                    {achievementsData.behavioralInsights.title}
-                  </h3>
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <span className="text-purple-300">Score:</span>
-                    <span className="text-3xl font-bold text-yellow-400">
-                      {achievementsData.behavioralInsights.score}
-                    </span>
-                 
-
-                  </div>
-                  </div>
-
-                  
-
-                  </div>
-                  
                 </div>
 
                 {/* Quick Stats */}
@@ -466,15 +493,15 @@ export default function Achievements() {
                 </div>
 
                 <button
-  onClick={() => setCurrentView("badges")}
-  className="w-full border border-[#FF3BD4] text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
-  style={{
-    backgroundImage: 'linear-gradient(to top, rgba(255, 59, 212, 0.2), rgba(113, 48, 195, 0.2))'
-  }}
->
-  View Full Behavioral Insights
-  <ChevronRight size={20} />
-</button>
+                  onClick={() => setCurrentView("badges")}
+                  className="w-full border border-[#FF3BD4] text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                  style={{
+                    backgroundImage: 'linear-gradient(to top, rgba(255, 59, 212, 0.2), rgba(113, 48, 195, 0.2))'
+                  }}
+                >
+                  View Full Behavioral Insights
+                  <ChevronRight size={20} />
+                </button>
 
               </div>
             </div>
@@ -486,7 +513,7 @@ export default function Achievements() {
 
   // Badges & Achievements View (Second Page)
   return (
-    <div className="min-h-screen  text-white p-6">
+    <div className="min-h-screen text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Button */}
         <button
@@ -584,20 +611,18 @@ export default function Achievements() {
               {[1, 2, 3, 4].map((week) => (
                 <div key={week} className="flex flex-col items-center">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold mb-2 ${
-                      week <= achievementsData.journey.currentWeek
+                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold mb-2 ${week <= achievementsData.journey.currentWeek
                         ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                         : "bg-gray-700 text-gray-400"
-                    }`}
+                      }`}
                   >
                     {week}
                   </div>
                   <div
-                    className={`text-sm ${
-                      week <= achievementsData.journey.currentWeek
+                    className={`text-sm ${week <= achievementsData.journey.currentWeek
                         ? "text-white"
                         : "text-gray-500"
-                    }`}
+                      }`}
                   >
                     W{week}
                   </div>
@@ -622,20 +647,18 @@ export default function Achievements() {
             {achievementsData.weeklyBadges.map((badge, idx) => (
               <div
                 key={idx}
-                className={`bg-gradient-to-br backdrop-blur-sm border rounded-2xl p-6 transition-all hover:scale-105 ${
-                  badge.unlocked
+                className={`bg-gradient-to-br backdrop-blur-sm border rounded-2xl p-6 transition-all hover:scale-105 ${badge.unlocked
                     ? "from-purple-900/60 to-indigo-900/60 border-purple-500/50 shadow-lg shadow-purple-500/20"
                     : "from-gray-900/40 to-gray-800/40 border-gray-600/30 opacity-60"
-                }`}
+                  }`}
               >
                 {/* Badge Icon */}
                 <div className="relative mb-4">
                   <div
-                    className={`w-32 h-32 mx-auto rounded-2xl flex items-center justify-center ${
-                      badge.unlocked
+                    className={`w-32 h-32 mx-auto rounded-2xl flex items-center justify-center ${badge.unlocked
                         ? "bg-gradient-to-br from-purple-600 to-pink-600"
                         : "bg-gray-700"
-                    }`}
+                      }`}
                   >
                     <span className="text-6xl">{badge.icon}</span>
                   </div>
@@ -685,8 +708,6 @@ export default function Achievements() {
           </div>
         </div>
 
-        {/* Detailed Behavioral Insights Section */}
-        
       </div>
     </div>
   );

@@ -203,22 +203,84 @@ class ChallengeEvaluationReportSerializer(serializers.ModelSerializer):
         ]
 
 class UserChallengeRewardDetailSerializer(serializers.ModelSerializer):
-    """Detailed user reward with full evaluation report"""
+    """Detailed user reward with full evaluation report and portfolio context"""
+    # Week Info
     week_title = serializers.CharField(source='reward_template.week.title', read_only=True)
     week_id = serializers.UUIDField(source='reward_template.week.id', read_only=True)
+    week_number = serializers.IntegerField(source='reward_template.week.week_number', read_only=True)
+    week_target_goal = serializers.DecimalField(source='reward_template.week.target_goal', max_digits=10, decimal_places=2, read_only=True)
+    
+    # Badge Info
     badge_name = serializers.CharField(source='reward_template.badge_name', read_only=True)
+    badge_description = serializers.CharField(source='reward_template.badge_description', read_only=True)
     badge_icon = serializers.URLField(source='reward_template.badge_icon', read_only=True)
+    
+    # Portfolio Metrics (from Participation)
+    starting_balance = serializers.DecimalField(source='participation.starting_balance', max_digits=20, decimal_places=8, read_only=True)
+    current_balance = serializers.DecimalField(source='participation.current_balance', max_digits=20, decimal_places=8, read_only=True)
+    portfolio_return_pct = serializers.DecimalField(source='participation.portfolio_return_pct', max_digits=10, decimal_places=2, read_only=True)
+    
+    # Trade Counts
+    total_trades = serializers.IntegerField(source='participation.total_trades', read_only=True)
+    spot_trades = serializers.IntegerField(source='participation.spot_trades', read_only=True)
+    futures_trades = serializers.IntegerField(source='participation.futures_trades', read_only=True)
+    options_trades = serializers.IntegerField(source='participation.options_trades', read_only=True)
+    
+    # Wallet Info
+    wallet_data = serializers.SerializerMethodField()
+    
+    # Evaluation
     evaluation = serializers.SerializerMethodField()
+    
+    # Calculated Fields
+    total_pnl = serializers.SerializerMethodField()
+    capital_usage_pct = serializers.SerializerMethodField()
     
     class Meta:
         model = UserChallengeReward
         fields = [
-            'id', 'week_title', 'week_id', 'badge_name', 'badge_icon',
+            'id', 'week_title', 'week_id', 'week_number', 'week_target_goal',
+            'badge_name', 'badge_description', 'badge_icon',
             'coins_earned', 'badge_earned', 'reward_type',
             'total_score', 'behavioral_tag', 'earned_at',
+            'starting_balance', 'current_balance', 'portfolio_return_pct',
+            'total_pnl', 'total_trades', 'spot_trades', 'futures_trades', 'options_trades',
+            'wallet_data', 'capital_usage_pct',
             'evaluation'
         ]
         
+    def get_total_pnl(self, obj):
+        try:
+            return obj.participation.current_balance - obj.participation.starting_balance
+        except:
+            return 0
+            
+    def get_capital_usage_pct(self, obj):
+        try:
+            # Calculate capital usage based on locked vs initial balance if available, 
+            # or some other metric. For now, let's use (initial - available) / initial
+            wallet = obj.participation.wallet
+            if wallet.initial_balance > 0:
+                used = wallet.initial_balance - wallet.available_balance
+                # Ensure we don't return negative usage if something is weird
+                return max(0, (used / wallet.initial_balance) * 100)
+            return 0
+        except:
+            return 0
+            
+    def get_wallet_data(self, obj):
+        try:
+            wallet = obj.participation.wallet
+            return {
+                'initial': str(wallet.initial_balance),
+                'available': str(wallet.available_balance),
+                'locked': str(wallet.locked_balance),
+                'earned': str(wallet.earned_balance),
+                'total': str(wallet.total_balance)
+            }
+        except:
+            return None
+            
     def get_evaluation(self, obj):
         try:
             # Join via Participation -> Evaluation
