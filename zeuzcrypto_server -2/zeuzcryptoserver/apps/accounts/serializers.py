@@ -343,13 +343,14 @@ class UserDetailWithAllDataSerializer(serializers.ModelSerializer):
     trades = serializers.SerializerMethodField()
     challenge_participations = serializers.SerializerMethodField()
     wallet = serializers.SerializerMethodField()
+    
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'mobile',
-            'is_active', 'is_approved', 'date_joined', 'created_by',
-            'wallet', 'trades', 'challenge_participations',
+            'is_active', 'is_approved', 'date_joined', 'last_login', 'created_by',
+            'wallet', 'trades', 'challenge_participations'
         ]
 
     def get_trades(self, obj):

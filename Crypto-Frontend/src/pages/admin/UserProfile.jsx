@@ -55,7 +55,7 @@ const Toast = ({ message, type, onClose }) => {
 
 const UserProfile = () => {
   const { userId } = useParams();
-  
+
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -72,10 +72,10 @@ const UserProfile = () => {
   const handleBack = () => {
     if (location.pathname.startsWith("/admin/users/")) {
       navigate("/admin/userspage");
-    // } else if (location.pathname.startsWith("/admin/reports/")) {
-    //   navigate("/admin/reports");
-    // } else if (location.pathname.startsWith("/admin/settings/")) {
-    //   navigate("/admin/settings");
+      // } else if (location.pathname.startsWith("/admin/reports/")) {
+      //   navigate("/admin/reports");
+      // } else if (location.pathname.startsWith("/admin/settings/")) {
+      //   navigate("/admin/settings");
     } else if (location.pathname.startsWith("/admin/adminspage/")) {
       navigate("/admin/adminspage");
     } else {
@@ -106,7 +106,7 @@ const UserProfile = () => {
         }
 
         const data = await response.json();
-        
+
         // Check if user is rejected
         if (data.admin_users && data.admin_users.length > 0) {
           const rejectedUser = data.admin_users.find(admin => admin.status === "rejected");
@@ -121,7 +121,7 @@ const UserProfile = () => {
             return;
           }
         }
-        
+
         setUserData(data);
       } catch (err) {
         setError(err.message || "Failed to fetch user details");
@@ -138,7 +138,7 @@ const UserProfile = () => {
   // Calculate portfolio distribution
   const calculatePortfolioDistribution = () => {
     if (!userData?.trades) return [];
-    
+
     const typeCount = { SPOT: 0, FUTURES: 0, OPTIONS: 0 };
     userData.trades.forEach(trade => {
       if (trade.status === "OPEN") {
@@ -186,11 +186,10 @@ const UserProfile = () => {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center mb-3">
-            <div className={`p-2.5 rounded-lg mr-3 transition-all duration-300 ${
-              changeType === 'positive' ? 'bg-emerald-500/20 text-emerald-400' :
-              changeType === 'negative' ? 'bg-red-500/20 text-red-400' :
-              'bg-purple-500/20 text-purple-400'
-            }`}>
+            <div className={`p-2.5 rounded-lg mr-3 transition-all duration-300 ${changeType === 'positive' ? 'bg-emerald-500/20 text-emerald-400' :
+                changeType === 'negative' ? 'bg-red-500/20 text-red-400' :
+                  'bg-purple-500/20 text-purple-400'
+              }`}>
               {icon}
             </div>
             <div>
@@ -200,9 +199,8 @@ const UserProfile = () => {
             </div>
           </div>
           {change && (
-            <div className={`flex items-center text-sm font-medium ${
-              changeType === 'positive' ? 'text-emerald-400' : 'text-red-400'
-            }`}>
+            <div className={`flex items-center text-sm font-medium ${changeType === 'positive' ? 'text-emerald-400' : 'text-red-400'
+              }`}>
               {changeType === 'positive' ? <ArrowUpRight size={14} className="mr-1" /> : <ArrowDownRight size={14} className="mr-1" />}
               {change}
             </div>
@@ -216,7 +214,7 @@ const UserProfile = () => {
   const TradeRow = ({ trade, isActive = false }) => {
     const pnl = isActive ? parseFloat(trade.unrealized_pnl) : parseFloat(trade.realized_pnl);
     const pnlPercent = trade.pnl_percentage ? `${trade.pnl_percentage.toFixed(2)}%` : '0.00%';
-    
+
     return (
       <tr className="border-b border-purple-500/10 hover:bg-purple-500/5 transition-all duration-200">
         <td className="p-4">
@@ -228,9 +226,8 @@ const UserProfile = () => {
           </div>
         </td>
         <td className="p-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+            }`}>
             {trade.direction}
           </span>
         </td>
@@ -247,11 +244,10 @@ const UserProfile = () => {
           </div>
         </td>
         <td className="p-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            trade.status === 'CLOSED' ? 'bg-gray-500/20 text-gray-400' :
-            trade.status === 'OPEN' ? 'bg-blue-500/20 text-blue-400' :
-            'bg-yellow-500/20 text-yellow-400'
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${trade.status === 'CLOSED' ? 'bg-gray-500/20 text-gray-400' :
+              trade.status === 'OPEN' ? 'bg-blue-500/20 text-blue-400' :
+                'bg-yellow-500/20 text-yellow-400'
+            }`}>
             {trade.status}
           </span>
         </td>
@@ -262,26 +258,26 @@ const UserProfile = () => {
   // *** NEW: Refactored ChallengeCard to match Frame 19.png ***
   const ChallengeCard = ({ challenge }) => {
     const status = challenge.status === 'COMPLETED' ? 'Completed' :
-                   challenge.status === 'IN_PROGRESS' ? 'In Progress' :
-                   'Pending';
-    
+      challenge.status === 'IN_PROGRESS' ? 'In Progress' :
+        'Pending';
+
     // We don't have date/time from the API data, so we'll use other relevant data
     // in the spots where date/time would go, matching the layout style.
-    
+
     return (
       <div
         className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-5 flex flex-col justify-between transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)]"
       >
         <div>
           <h3 className="text-lg font-bold text-white mb-3 truncate">{challenge.week_details?.title || 'Challenge Title'}</h3>
-          
+
           {/* Batch Name */}
           <div className="mb-4">
             <span className="inline-block bg-purple-500/20 text-purple-300 text-xs font-medium px-2.5 py-1 rounded">
               {challenge.week_details?.program_name || 'Program Name'}
             </span>
           </div>
-          
+
           {/* Substitute for Time/Date from Frame 19, using available data */}
           <div className="flex items-center text-sm text-purple-300/70 mb-2 space-x-4">
             <span className="flex items-center">
@@ -297,16 +293,15 @@ const UserProfile = () => {
           {/* Status */}
           <div className="mt-4 pt-4 border-t border-purple-500/10">
             <span className="text-sm font-medium text-purple-300/70 mr-2">Status:</span>
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-              status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' :
-              status === 'IN_PROGRESS' ? 'bg-yellow-500/20 text-yellow-400' :
-              'bg-gray-500/20 text-gray-400'
-            }`}>
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                status === 'IN_PROGRESS' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-gray-500/20 text-gray-400'
+              }`}>
               {status}
             </span>
           </div>
         </div>
-        
+
         <button
           onClick={() => setSelectedChallenge(challenge)}
           className="mt-5 w-full bg-purple-600/50 hover:bg-purple-600 text-white py-2.5 rounded-lg font-semibold transition-all duration-200"
@@ -327,29 +322,35 @@ const UserProfile = () => {
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard 
-                icon={<TrendingUp size={20} />} 
-                title="Win Rate" 
-                value={`${calculateWinRate()}%`} 
+              <StatCard
+                icon={<TrendingUp size={20} />}
+                title="Win Rate"
+                value={`${calculateWinRate()}%`}
                 changeType="neutral"
               />
-              <StatCard 
-                icon={<Activity size={20} />} 
-                title="Total Trades" 
-                value={userData.trades?.length || 0} 
+              <StatCard
+                icon={<Activity size={20} />}
+                title="Total Trades"
+                value={userData.trades?.length || 0}
                 subtitle={`${getTradesByStatus("OPEN").length} active`}
                 changeType="neutral"
               />
-              <StatCard 
-                icon={<Award size={20} />} 
-                title="Challenges" 
-                value={userData.challenge_participations?.length || 0} 
+              <StatCard
+                icon={<Award size={20} />}
+                title="Challenges"
+                value={userData.challenge_participations?.length || 0}
                 subtitle={`${userData.challenge_participations?.filter(c => c.status === "IN_PROGRESS").length || 0} ongoing`}
                 changeType="neutral"
               />
-              <StatCard 
-                icon={<DollarSign size={20} />} 
-                title="Total PnL" 
+              <StatCard
+                icon={<Award size={20} />}
+                title="Achievements"
+                value={userData.challenge_participations?.filter(c => c.reward_earned).length || 0}
+                changeType="neutral"
+              />
+              <StatCard
+                icon={<DollarSign size={20} />}
+                title="Total PnL"
                 value={`${totalPnL >= 0 ? '+' : ''}$${Math.abs(totalPnL).toFixed(2)}`}
                 change={`${totalPnL >= 0 ? '+' : ''}${((totalPnL / parseFloat(userData.wallet?.balance || 1)) * 100).toFixed(2)}%`}
                 changeType={totalPnL >= 0 ? "positive" : "negative"}
@@ -403,8 +404,8 @@ const UserProfile = () => {
                     {calculatePortfolioDistribution().map((item, index) => (
                       <div key={index} className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <div 
-                            className="w-3 h-3 rounded-full mr-2" 
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
                             style={{ backgroundColor: item.color }}
                           ></div>
                           <span className="text-sm text-purple-300/70">{item.name}</span>
@@ -532,7 +533,7 @@ const UserProfile = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="p-6 space-y-6">
                     <div>
                       <h3 className="font-semibold text-white mb-2">Description</h3>
@@ -542,10 +543,9 @@ const UserProfile = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
                         <h4 className="font-medium text-purple-300/70 mb-1 text-sm">Status</h4>
-                        <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${
-                          selectedChallenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-                          'bg-yellow-500/20 text-yellow-400'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${selectedChallenge.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
                           {selectedChallenge.status.replace('_', ' ')}
                         </span>
                       </div>
@@ -595,6 +595,54 @@ const UserProfile = () => {
           </div>
         );
 
+      case "achievements":
+        const earnedBadges = userData.challenge_participations?.filter(c => c.reward_earned) || [];
+        return (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {earnedBadges.length > 0 ? (
+                earnedBadges.map((c, idx) => (
+                  <div key={idx} className="group rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-6 flex items-center gap-5 transition-all duration-300 hover:border-purple-400/40 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] relative overflow-hidden">
+                    {/* Background Glow */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-purple-500/20"></div>
+
+                    {/* Badge Icon */}
+                    <div className="relative w-16 h-16 flex-shrink-0 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-full flex items-center justify-center border border-purple-500/30 group-hover:scale-105 transition-transform">
+                      {c.reward_earned.badge_icon ? (
+                        <img src={c.reward_earned.badge_icon} alt="Badge" className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
+                      ) : (
+                        <Award size={32} className="text-purple-300" />
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 z-10">
+                      <h3 className="text-lg font-bold text-white group-hover:text-purple-200 transition-colors">{c.reward_earned.badge_name}</h3>
+                      <p className="text-xs text-purple-300/70 mb-2">{c.week_details?.title}</p>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center text-xs font-semibold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20">
+                          <DollarSign size={10} className="mr-1" />
+                          {c.reward_earned.coins_earned} Coins
+                        </div>
+                        <div className="text-[10px] text-purple-300/50">
+                          {new Date(c.reward_earned.earned_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-16 text-purple-300/70">
+                  <Award size={64} className="mx-auto mb-4 opacity-40" />
+                  <h3 className="text-xl font-medium mb-2">No Achievements Yet</h3>
+                  <p className="text-sm opacity-70">User has not earned any badges yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -641,7 +689,7 @@ const UserProfile = () => {
           onClose={() => setToast(null)}
         />
       )}
-      
+
       <div className="relative z-10 max-w-7xl mx-auto  space-y-6">
         {/* Back Button */}
         <button
@@ -673,7 +721,7 @@ const UserProfile = () => {
                   <p className="text-purple-300/60 text-xs mt-1">User ID: {userData.id?.slice(0, 12)}...</p>
                 </div>
               </div>
-              
+
               {/* Right Side: Balance */}
               <div className="text-right flex-shrink-0 w-full sm:w-auto">
                 <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
@@ -731,15 +779,15 @@ const UserProfile = () => {
               { key: "overview", label: "Overview", icon: <Activity size={18} /> },
               { key: "closed", label: "Closed Trades", icon: <TrendingDown size={18} /> },
               { key: "active", label: "Active Trades", icon: <TrendingUpIcon size={18} /> },
-              { key: "challenges", label: "Challenges", icon: <Trophy size={18} /> }
+              { key: "challenges", label: "Challenges", icon: <Trophy size={18} /> },
+              { key: "achievements", label: "Achievements", icon: <Award size={18} /> }
             ].map((tab) => (
               <button
                 key={tab.key}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 font-semibold transition-all duration-300 relative ${
-                  activeTab === tab.key
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 font-semibold transition-all duration-300 relative ${activeTab === tab.key
                     ? "text-white"
                     : "text-purple-300/70 hover:text-white hover:bg-purple-500/10"
-                }`}
+                  }`}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.icon}

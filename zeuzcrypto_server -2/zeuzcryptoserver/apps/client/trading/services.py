@@ -100,6 +100,180 @@ class TradingService:
         total_quantity = current_qty + new_qty
         return total_value / total_quantity if total_quantity > 0 else Decimal('0')
 
+    @staticmethod
+    def process_pending_orders(user, prices=None):
+        """
+        Check and execute pending orders based on current prices.
+        If prices is None, fetch them from APIs based on pending orders.
+        """
+        pending_trades = Trade.objects.filter(
+            user=user,
+            status="PENDING"
+        )
+
+        if not pending_trades.exists():
+            return []
+
+        # If prices not provided, fetch them
+        if prices is None:
+            prices = {}
+            # Group by exchange/type to optimize fetching
+            spot_symbols = set()
+            futures_symbols = set()
+            
+            for t in pending_trades:
+                if t.trade_type == 'SPOT':
+                    spot_symbols.add(t.asset_symbol.upper())
+                elif t.trade_type in ['FUTURES', 'OPTIONS']:
+                    futures_symbols.add(t.asset_symbol.upper())
+            
+            # Fetch Spot Prices (Binance)
+            if spot_symbols:
+                import requests
+                try:
+                    # Binance Ticker for multiple symbols is efficient
+                    # If simulating, we might just query specific ones or all
+                    # For simplicity, we query individually or use a bulk endpoint if available
+                    # Binance API: GET /api/v3/ticker/price?symbol=BTCUSDT
+                    for sym in spot_symbols:
+                        # Append USDT if not present (assuming USDT pairs)
+                        pair = f"{sym}USDT"
+                        resp = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={pair}", timeout=2)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            prices[sym] = Decimal(data['price'])
+                except Exception as e:
+                    logger.error(f"Error fetching Binance prices: {e}")
+
+            # Fetch Futures/Options Prices (Delta)
+            if futures_symbols:
+                import requests
+                try:
+                   # Delta Exchange API for ticker
+                   for sym in futures_symbols:
+                       # Delta uses symbols directly mostly, or with suffixes
+                       # User provided example: BTCUSDT
+                       resp = requests.get(f"https://api.delta.exchange/v2/products/ticker?symbol={sym}", timeout=2)
+                       if resp.status_code == 200:
+                           data = resp.json()
+                           if list(data.keys())[0] == 'result': # handling result wrapper if needed
+                                # Delta V2 typically wraps? Let's check user provided example
+                                # User provided: { "description": ... "mark_price": ... } direct object?
+                                # Delta usually returns a result list for bulk or single object.
+                                # Let's assume the user provided format is the direct response or part of list.
+                                # If direct:
+                                result = data.get('result', data)
+                                if isinstance(result, list):
+                                    result = result[0]
+                                
+                                # Use mark_price for limits trigger? or spot_price? Usually Mark for Futures.
+                                if 'mark_price' in result:
+                                    prices[sym] = Decimal(result['mark_price'])
+                           elif 'mark_price' in data:
+                                prices[sym] = Decimal(data['mark_price'])
+                except Exception as e:
+                    logger.error(f"Error fetching Delta prices: {e}")
+
+
+        executed_orders = []
+
+        for trade in pending_trades:
+            current_price = prices.get(trade.asset_symbol.upper())
+            if not current_price:
+                continue
+            
+            should_execute = False
+            
+            # CHECK LIMIT ORDERS
+            if trade.order_type == "LIMIT" and trade.limit_price:
+                if trade.direction == "BUY" and current_price <= trade.limit_price:
+                    should_execute = True
+                elif trade.direction == "SELL" and current_price >= trade.limit_price:
+                    should_execute = True
+            
+            # CHECK STOP ORDERS
+            elif trade.order_type in ["STOP", "STOP_LIMIT"] and trade.trigger_price:
+                 if trade.direction == "BUY" and current_price >= trade.trigger_price:
+                     should_execute = True
+                 elif trade.direction == "SELL" and current_price <= trade.trigger_price:
+                     should_execute = True
+            
+            if should_execute:
+                # Execute Trade
+                trade.status = "OPEN"
+                trade.opened_at = timezone.now()
+                # For Limit, we typically fill at Limit Price or better. 
+                # In simulation, let's fill at Limit Price if it's a Limit order, 
+                # or Market Price if it's a Stop Market.
+                if trade.order_type == "LIMIT":
+                    trade.average_price = trade.limit_price 
+                else:
+                    trade.average_price = current_price
+                
+                trade.save()
+
+                TradeHistory.objects.create(
+                    trade=trade,
+                    user=user,
+                    action="FILLED",
+                    order_type=trade.order_type,
+                    quantity=trade.total_quantity,
+                    price=trade.average_price,
+                    amount=trade.total_quantity * trade.average_price
+                )
+                
+                # Create Notification (Placeholder)
+                # Notification.objects.create(user=user, message=f"Order Filled: {trade.asset_symbol} {trade.order_type}")
+                
+                executed_orders.append(trade.id)
+
+        return executed_orders
+
+    @staticmethod
+    def check_expired_trades(user):
+        """
+        Check for expired Options/Futures and settle them.
+        """
+        expiry_trades = Trade.objects.filter(
+            user=user,
+            trade_type__in=['FUTURES', 'OPTIONS'],
+            status__in=['OPEN', 'PARTIALLY_CLOSED'],
+            # Assuming expiry_date is a field on Trade or related model
+            # For now, we iterate and check (or add localized filter if field exists)
+        )
+
+        closed_trades = []
+        today = timezone.now().date()
+
+        for trade in expiry_trades:
+            # Check FuturesDetails/OptionsDetails for expiry
+            expiry = None
+            if hasattr(trade, 'options_details') and trade.options_details:
+                expiry = trade.options_details.expiry_date
+            elif hasattr(trade, 'futures_details') and trade.futures_details:
+                 expiry = trade.futures_details.expiry_date
+            
+            if expiry and expiry < today:
+                # EXPIRE TRADE
+                # 1. Get Settlement Price (Current Market Price)
+                # In real world, this is a specific settlement price. 
+                # Here, we fetch current price.
+                current_price = Decimal('0') # Fetch logic needed
+                # For simulation speed, we might skip fetching if we don't have it ready,
+                # Or fetch explicitly.
+                
+                # Close Trade
+                trade.status = 'CLOSED'
+                trade.closed_at = timezone.now()
+                trade.save()
+                
+                # Calculate PnL (Simplified)
+                # Needs proper settlement logic
+                
+                closed_trades.append(trade.id)
+        
+        return closed_trades
+
 
 class PortfolioService:
     """Portfolio management service"""

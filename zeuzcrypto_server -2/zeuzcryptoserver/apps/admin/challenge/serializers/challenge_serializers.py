@@ -155,7 +155,10 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
     wallet_balance = serializers.SerializerMethodField()
     tier_info = serializers.SerializerMethodField()
     current_level_info = serializers.SerializerMethodField()
+    tier_info = serializers.SerializerMethodField()
+    current_level_info = serializers.SerializerMethodField()
     user_email = serializers.CharField(source='user.email', read_only=True)
+    reward_earned = serializers.SerializerMethodField()
     
     class Meta:
         model = UserChallengeParticipation
@@ -164,7 +167,7 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
             'starting_balance', 'current_balance', 'total_trades',
             'spot_trades', 'futures_trades', 'options_trades',
             'portfolio_return_pct', 'joined_at', 'completed_at',
-            'score_details', 'wallet_balance', 'tier_info', 'current_level_info'
+            'score_details', 'wallet_balance', 'tier_info', 'current_level_info', 'reward_earned'
         ]
         read_only_fields = ['id', 'user', 'joined_at', 'completed_at']
     
@@ -218,6 +221,21 @@ class UserChallengeParticipationSerializer(serializers.ModelSerializer):
             return current
         except:
             return {'name': 'Bronze', 'level': 'Beginner - Level 1'}
+
+    def get_reward_earned(self, obj):
+        try:
+            # Check related UserChallengeReward via related_name='earned_rewards'
+            reward = obj.earned_rewards.first()
+            if reward:
+                return {
+                    'badge_name': reward.reward_template.badge_name,
+                    'badge_icon': reward.reward_template.badge_icon,
+                    'coins_earned': reward.coins_earned,
+                    'earned_at': reward.earned_at
+                }
+            return None
+        except Exception:
+            return None
 
 
 from apps.admin.challenge.models.evaluation_models import ChallengeEvaluationReport

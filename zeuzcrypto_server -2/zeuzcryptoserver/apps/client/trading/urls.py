@@ -66,6 +66,9 @@ urlpatterns = [
     path('trade/open/', GetOpenTradeBySymbol.as_view(), name='get-open-trade'),
     # Risk management
     path("risk-check/", views.RiskCheckView.as_view(), name="risk-check"),
+    
+    # Matching Engine Check
+    path("check-orders/", views.CheckOrdersView.as_view(), name="check-orders"),
     # URL patterns (add to your urls.py)
     # ... other urls
     # path('trades/<uuid:trade_id>/close/', CloseTradeView.as_view(), name='close-trade'),

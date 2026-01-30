@@ -57,6 +57,7 @@ const Trading = ({
   const { balance, loading, refreshWallet } = useContext(WalletContext);
 
   const [price, setPrice] = useState(0);
+  const [limitPrice, setLimitPrice] = useState(""); // Limit Price State
   const [total, setTotal] = useState(0);
 
   const [value, setValue] = useState(50);
@@ -107,10 +108,10 @@ const Trading = ({
     if (spotSide === "buy" && sliderValue > 0 && price > 0) {
 
       const usableBalance = selectedChallenge
-  ? Number(walletData?.available_balance ?? 0)
-  : Number(balance ?? 0);
+        ? Number(walletData?.available_balance ?? 0)
+        : Number(balance ?? 0);
 
-  const maxBuyableAmount = usableBalance / price;
+      const maxBuyableAmount = usableBalance / price;
 
       const calculatedAmount = (maxBuyableAmount * sliderValue) / 100;
       setAmount(calculatedAmount.toFixed(8));
@@ -369,9 +370,8 @@ const Trading = ({
         toast.custom(
           (t) => (
             <div
-              className={`${
-                t.visible ? "animate-enter" : "animate-leave"
-              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              className={`${t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
             >
               <div className="flex-1 w-0 p-4 flex items-center">
                 <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -392,7 +392,7 @@ const Trading = ({
 
         if (selectedChallenge) {
           const endpoint = `${baseURL}challenges/trades/`;
-      
+
           const payload = {
             participation_id: selectedChallenge.participationId,
             asset_symbol: selected.baseAsset,
@@ -403,9 +403,10 @@ const Trading = ({
             entry_price: parseFloat(price.toFixed(2)),
             holding_type:
               mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
-            order_type: "MARKET",
+            order_type: selectedOrderType.toUpperCase(),
+            limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
           };
-      
+
           const response = await fetch(endpoint, {
             method: "POST",
             headers: {
@@ -414,16 +415,15 @@ const Trading = ({
             },
             body: JSON.stringify(payload),
           });
-      
+
           const data = await response.json();
-      
+
           if (response.ok) {
             toast.custom(
               (t) => (
                 <div
-                  className={`${
-                    t.visible ? "animate-enter" : "animate-leave"
-                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                  className={`${t.visible ? "animate-enter" : "animate-leave"
+                    } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
                 >
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
@@ -435,7 +435,7 @@ const Trading = ({
               ),
               { position: "top-right", duration: 2500 }
             );
-      
+
             await refreshWallet();
             if (refreshChallengeWallet) {
               await refreshChallengeWallet(selectedChallenge.participationId);
@@ -447,9 +447,8 @@ const Trading = ({
             toast.custom(
               (t) => (
                 <div
-                  className={`${
-                    t.visible ? "animate-enter" : "animate-leave"
-                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                  className={`${t.visible ? "animate-enter" : "animate-leave"
+                    } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
                 >
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -462,16 +461,15 @@ const Trading = ({
               { position: "top-right", duration: 2500 }
             );
           }
-      
+
           return; // ⛔ stop normal SELL flow
         }
         if (!tradeId) {
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -526,18 +524,16 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {isFull
                       ? "Trade closed successfully!"
-                      : `Sold ${sellAmount} ${
-                          selected.baseAsset
-                        } @ ${price.toFixed(2)}`}
+                      : `Sold ${sellAmount} ${selected.baseAsset
+                      } @ ${price.toFixed(2)}`}
                   </p>
                 </div>
               </div>
@@ -556,9 +552,8 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -573,7 +568,7 @@ const Trading = ({
           );
         }
       }
-     
+
       else {
         // Handle BUY logic
         let payload;
@@ -592,7 +587,8 @@ const Trading = ({
             entry_price: parseFloat(price.toFixed(2)),
             holding_type:
               mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
-            order_type: "MARKET",
+            order_type: selectedOrderType.toUpperCase(),
+            limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
           };
         } else {
           // 🔹 Normal Mode
@@ -607,7 +603,8 @@ const Trading = ({
               mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
             quantity: amount,
             price: price.toFixed(2),
-            order_type: "MARKET",
+            order_type: selectedOrderType.toUpperCase(),
+            limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
           };
         }
 
@@ -629,9 +626,8 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
@@ -656,9 +652,8 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -677,9 +672,8 @@ const Trading = ({
       toast.custom(
         (t) => (
           <div
-            className={`${
-              t.visible ? "animate-enter" : "animate-leave"
-            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+            className={`${t.visible ? "animate-enter" : "animate-leave"
+              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
           >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -1205,9 +1199,8 @@ const Trading = ({
         toast.custom(
           (t) => (
             <div
-              className={`${
-                t.visible ? "animate-enter" : "animate-leave"
-              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+              className={`${t.visible ? "animate-enter" : "animate-leave"
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
             >
               <div className="flex-1 w-0 p-4 flex items-center">
                 <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -1246,10 +1239,13 @@ const Trading = ({
               total_quantity: parseFloat(futuresAmount),
               entry_price: parseFloat(sellPrice.toFixed(2)),
               holding_type: holdingType.toUpperCase(),
-              order_type: "MARKET",
+              order_type: selectedOrderType.toUpperCase(),
+              limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
+              margin_mode: marginType,
               leverage: leverage,
               contract_size: parseFloat(contractValue || "0.001").toFixed(8),
               expiry_date: formattedExpiryDate,
+              is_hedged: isHedged,
             };
           } else {
             // 🔹 Normal Mode
@@ -1263,10 +1259,13 @@ const Trading = ({
               holding_type: holdingType.toUpperCase(),
               quantity: futuresAmount,
               price: sellPrice.toFixed(2),
-              order_type: "MARKET",
+              order_type: selectedOrderType.toUpperCase(),
+              limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
+              margin_mode: marginType,
               leverage: leverage,
               contract_size: parseFloat(contractValue || "0.001").toFixed(8),
               expiry_date: formattedExpiryDate,
+              is_hedged: isHedged,
             };
           }
 
@@ -1288,9 +1287,8 @@ const Trading = ({
             toast.custom(
               (t) => (
                 <div
-                  className={`${
-                    t.visible ? "animate-enter" : "animate-leave"
-                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                  className={`${t.visible ? "animate-enter" : "animate-leave"
+                    } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
                 >
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
@@ -1316,9 +1314,8 @@ const Trading = ({
             toast.custom(
               (t) => (
                 <div
-                  className={`${
-                    t.visible ? "animate-enter" : "animate-leave"
-                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                  className={`${t.visible ? "animate-enter" : "animate-leave"
+                    } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
                 >
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -1354,11 +1351,15 @@ const Trading = ({
             direction: "BUY",
             total_quantity: parseFloat(futuresAmount),
             entry_price: parseFloat(buyPrice.toFixed(2)),
+            entry_price: parseFloat(buyPrice.toFixed(2)),
             holding_type: holdingType.toUpperCase(),
-            order_type: "MARKET",
+            order_type: selectedOrderType.toUpperCase(),
+            limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
+            margin_mode: marginType,
             leverage: leverage,
             contract_size: parseFloat(contractValue || "0.001").toFixed(8),
             expiry_date: formattedExpiryDate,
+            is_hedged: isHedged,
           };
         } else {
           // 🔹 Normal Mode
@@ -1372,10 +1373,13 @@ const Trading = ({
             holding_type: holdingType.toUpperCase(),
             quantity: futuresAmount,
             price: buyPrice.toFixed(2),
-            order_type: "MARKET",
+            order_type: selectedOrderType.toUpperCase(),
+            limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
+            margin_mode: marginType,
             leverage: leverage,
             contract_size: parseFloat(contractValue || "0.001").toFixed(8),
             expiry_date: formattedExpiryDate,
+            is_hedged: isHedged,
           };
         }
 
@@ -1397,9 +1401,8 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
@@ -1424,9 +1427,8 @@ const Trading = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? "animate-enter" : "animate-leave"
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? "animate-enter" : "animate-leave"
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -1445,9 +1447,8 @@ const Trading = ({
       toast.custom(
         (t) => (
           <div
-            className={`${
-              t.visible ? "animate-enter" : "animate-leave"
-            } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
+            className={`${t.visible ? "animate-enter" : "animate-leave"
+              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg flex ring-1 ring-black ring-opacity-5`}
           >
             <div className="flex-1 w-0 p-4 flex items-center">
               <XCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -1484,7 +1485,7 @@ const Trading = ({
       setTotal(0);
     }
   }, [amount, price]);
- 
+
 
   const [showTooltip, setShowTooltip] = useState(false);
   const hideTimer = useRef(null);
@@ -1493,20 +1494,20 @@ const Trading = ({
     const price = parseFloat(ticker?.c || 0);
     // const safeBalance = parseFloat(balance || 0);
     const safeBalance = selectedChallenge
-  ? parseFloat(walletData?.available_balance || 0)
-  : parseFloat(balance || 0);
+      ? parseFloat(walletData?.available_balance || 0)
+      : parseFloat(balance || 0);
 
-  // console.log(safeBalance,"the safe balance")
+    // console.log(safeBalance,"the safe balance")
 
     const percent = Number(value);
 
     if (spotSide === "buy") {
       const usableQuote = safeBalance * (percent / 100);
-      console.log(usableQuote,"the usableQuote")
+      console.log(usableQuote, "the usableQuote")
 
       if (price > 0) {
         const baseAmount = usableQuote / price;
-        
+
         setAmount(baseAmount.toFixed(8));
       } else {
         setAmount("0");
@@ -1540,6 +1541,7 @@ const Trading = ({
   // futures-specific
 
   const [marginType, setMarginType] = useState("CROSS");
+  const [isHedged, setIsHedged] = useState(false);
   const [positionSize, setPositionSize] = useState(0);
   const [reduceOnly, setReduceOnly] = useState(false);
 
@@ -1648,9 +1650,9 @@ const Trading = ({
           const perpetuals = res.data.result;
 
           const normalizedFutures = perpetuals
-            .filter((s) => s.symbol?.toUpperCase().endsWith("USDT")) 
+            .filter((s) => s.symbol?.toUpperCase().endsWith("USDT"))
             .map((s) => ({
-              symbol: s.symbol?.toLowerCase() || "", 
+              symbol: s.symbol?.toLowerCase() || "",
               baseAsset: (s.short_description || "").toUpperCase(),
               quoteAsset:
                 s.quoting_asset?.symbol || s.quoting_asset?.id || "USDT",
@@ -1700,7 +1702,7 @@ const Trading = ({
 
     try {
       tickerWS.current?.close();
-    } catch {}
+    } catch { }
     tickerWS.current = new WebSocket(`${WS_BASE}/${tickerStream}`);
     tickerWS.current.onmessage = throttle((e) => {
       setTicker(JSON.parse(e.data));
@@ -1708,7 +1710,7 @@ const Trading = ({
 
     try {
       depthWS.current?.close();
-    } catch {}
+    } catch { }
     depthWS.current = new WebSocket(`${WS_BASE}/${depthStream}`);
     depthWS.current.onmessage = (e) => {
       const d = JSON.parse(e.data);
@@ -1717,7 +1719,7 @@ const Trading = ({
 
     try {
       tradesWS.current?.close();
-    } catch {}
+    } catch { }
     tradesWS.current = new WebSocket(`${WS_BASE}/${aggStream}`);
     tradesWS.current.onmessage = (e) => {
       const d = JSON.parse(e.data);
@@ -1729,7 +1731,7 @@ const Trading = ({
 
     try {
       markWS.current?.close();
-    } catch {}
+    } catch { }
     markWS.current = new WebSocket(`${WS_BASE}/${markStream}`);
     markWS.current.onmessage = (e) => setMarkPrice(JSON.parse(e.data));
 
@@ -1739,7 +1741,7 @@ const Trading = ({
         depthWS.current?.close();
         tradesWS.current?.close();
         markWS.current?.close();
-      } catch {}
+      } catch { }
     };
   }, [selected, mode]);
 
@@ -1768,11 +1770,10 @@ const Trading = ({
           <button
             key={type}
             onClick={() => setTradeType(type)}
-            className={`font-semibold transition-all duration-200 ${
-              tradeType === type
-                ? "text-white underline underline-offset-4 decoration-purple-500"
-                : "text-gray-400 hover:text-white"
-            }`}
+            className={`font-semibold transition-all duration-200 ${tradeType === type
+              ? "text-white underline underline-offset-4 decoration-purple-500"
+              : "text-gray-400 hover:text-white"
+              }`}
           >
             {type}
           </button>
@@ -1787,11 +1788,10 @@ const Trading = ({
             <button
               key={type}
               onClick={() => setSelectedOrderType(type)}
-              className={`${
-                selectedOrderType === type
-                  ? "text-purple-400 font-semibold"
-                  : "text-gray-400 hover:text-white"
-              }`}
+              className={`${selectedOrderType === type
+                ? "text-purple-400 font-semibold"
+                : "text-gray-400 hover:text-white"
+                }`}
             >
               {type}
             </button>
@@ -1804,11 +1804,10 @@ const Trading = ({
                 <React.Fragment key={type}>
                   <button
                     onClick={() => setHoldingType(type)}
-                    className={`px-3 py-1 font-semibold transition-all duration-200 ${
-                      holdingType === type
-                        ? "bg-purple-600 text-white"
-                        : "text-gray-400 hover:text-white"
-                    }`}
+                    className={`px-3 py-1 font-semibold transition-all duration-200 ${holdingType === type
+                      ? "bg-purple-600 text-white"
+                      : "text-gray-400 hover:text-white"
+                      }`}
                   >
                     {type}
                   </button>
@@ -1866,11 +1865,10 @@ const Trading = ({
           {/* Mid Price */}
           <div className="text-center my-2">
             <span
-              className={`text-lg font-bold ${
-                ticker && parseFloat(ticker.P) < 0
-                  ? "text-red-400"
-                  : "text-green-400"
-              }`}
+              className={`text-lg font-bold ${ticker && parseFloat(ticker.P) < 0
+                ? "text-red-400"
+                : "text-green-400"
+                }`}
             >
               {fmt(ticker?.c, 2)} {selected.quoteAsset}
             </span>
@@ -1917,11 +1915,10 @@ const Trading = ({
             {trades.slice(0, 12).map((t, i) => (
               <div
                 key={i}
-                className={`grid grid-cols-3 text-xs items-center rounded-md px-2 py-1 ${
-                  t.m
-                    ? "bg-red-500/10 text-red-400"
-                    : "bg-green-500/10 text-green-400"
-                }`}
+                className={`grid grid-cols-3 text-xs items-center rounded-md px-2 py-1 ${t.m
+                  ? "bg-red-500/10 text-red-400"
+                  : "bg-green-500/10 text-green-400"
+                  }`}
               >
                 <span>{fmt(t.p)}</span>
                 <span className="text-right">{fmt(t.q, 4)}</span>
@@ -2001,28 +1998,72 @@ const Trading = ({
                   </div>
                 </div>
 
+                {/* Order Type Selector */}
+                <div className="flex space-x-2 mb-2">
+                  {orderTypes.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedOrderType(type)}
+                      className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${selectedOrderType === type
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                        }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Limit Price Input */}
+                {selectedOrderType === "Limit" && (
+                  <div className="bg-[#1E1F36] rounded p-2 text-xs sm:text-sm w-full max-w-sm mb-2">
+                    <div className="relative w-full">
+                      <label className="text-xs text-gray-400 block mb-1">Limit Price</label>
+                      <input
+                        type="number"
+                        value={limitPrice}
+                        onChange={(e) => setLimitPrice(e.target.value)}
+                        className="no-spinner w-full bg-transparent border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition duration-150"
+                        placeholder="Enter Price"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Margin Type Toggle */}
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setMarginType("CROSS")}
-                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${
-                      marginType === "CROSS"
-                        ? "bg-purple-600 text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
+                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${marginType === "CROSS"
+                      ? "bg-purple-600 text-white"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10"
+                      }`}
                   >
                     Cross
                   </button>
                   <button
                     onClick={() => setMarginType("ISOLATED")}
-                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${
-                      marginType === "ISOLATED"
-                        ? "bg-purple-600 text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
+                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition ${marginType === "ISOLATED"
+                      ? "bg-purple-600 text-white"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10"
+                      }`}
                   >
                     Isolated
                   </button>
+                </div>
+
+                {/* Hedge Mode Checkbox */}
+                <div className="flex items-center space-x-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="hedgeMode"
+                    checked={isHedged}
+                    onChange={(e) => setIsHedged(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                  />
+                  <label htmlFor="hedgeMode" className="text-xs text-gray-400 select-none cursor-pointer">
+                    Hedge Mode (Allow Long & Short)
+                  </label>
                 </div>
 
                 {/* Buy/Sell Prices Display */}
@@ -2054,11 +2095,10 @@ const Trading = ({
                 <div className="bg-[#1E1F36] rounded p-2 text-xs sm:text-sm w-full max-w-sm">
                   <div className="relative w-full">
                     <label
-                      className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${
-                        futuresAmount
-                          ? "text-[10px] sm:text-xs top-1"
-                          : "text-xs sm:text-sm top-2.5"
-                      }`}
+                      className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${futuresAmount
+                        ? "text-[10px] sm:text-xs top-1"
+                        : "text-xs sm:text-sm top-2.5"
+                        }`}
                     >
                       Quantity (Min: {contractValue} {selected.baseAsset})
                     </label>
@@ -2076,7 +2116,7 @@ const Trading = ({
                   </div>
                   {futuresAmount && parseFloat(futuresAmount) < parseFloat(contractValue) && (
                     <p className="text-red-400 text-[10px] mt-1">
-                      Minimum quantity is {contractValue} 
+                      Minimum quantity is {contractValue}
                     </p>
                   )}
                 </div>
@@ -2231,7 +2271,7 @@ const Trading = ({
                         })()}
                   </button> */}
 
-<button
+                  <button
                     onClick={() => handleFuturesOrder("buy")}
                     disabled={
                       isPlacingBuyOrder ||
@@ -2247,8 +2287,7 @@ const Trading = ({
                         return marginRequired > balance;
                       })()
                     }
-                    className={`flex-1 py-2 rounded-lg font-semibold transition ${
-                      isPlacingBuyOrder ||
+                    className={`flex-1 py-2 rounded-lg font-semibold transition ${isPlacingBuyOrder ||
                       !futuresAmount ||
                       parseFloat(futuresAmount) <= 0 ||
                       parseFloat(futuresAmount) < parseFloat(contractValue) ||
@@ -2260,15 +2299,15 @@ const Trading = ({
                           leverage;
                         return marginRequired > balance;
                       })()
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-green-500 hover:bg-green-600"
-                    }`}
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-500 hover:bg-green-600"
+                      }`}
                   >
                     {isPlacingBuyOrder
                       ? "Placing..."
                       : parseFloat(futuresAmount) < parseFloat(contractValue)
-                      ? `Buy/Long`
-                      : (() => {
+                        ? `Buy/Long`
+                        : (() => {
                           const marginRequired =
                             (parseFloat(futuresAmount || 0) *
                               futuresPrice *
@@ -2322,8 +2361,7 @@ const Trading = ({
                         return marginRequired > balance;
                       })()
                     }
-                    className={`flex-1 py-2 rounded-lg font-semibold transition ${
-                      isPlacingSellOrder ||
+                    className={`flex-1 py-2 rounded-lg font-semibold transition ${isPlacingSellOrder ||
                       !futuresAmount ||
                       parseFloat(futuresAmount) <= 0 ||
                       parseFloat(futuresAmount) < parseFloat(contractValue) ||
@@ -2335,15 +2373,15 @@ const Trading = ({
                           leverage;
                         return marginRequired > balance;
                       })()
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-red-500 hover:bg-red-600"
-                    }`}
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-red-500 hover:bg-red-600"
+                      }`}
                   >
                     {isPlacingSellOrder
                       ? "Placing..."
                       : parseFloat(futuresAmount) < parseFloat(contractValue)
-                      ? `Sell/Short`
-                      : (() => {
+                        ? `Sell/Short`
+                        : (() => {
                           const marginRequired =
                             (parseFloat(futuresAmount || 0) *
                               futuresPrice *
@@ -2363,21 +2401,19 @@ const Trading = ({
               <div className="flex space-x-4 mb-4">
                 <button
                   onClick={() => setSpotSide("buy")}
-                  className={`flex-1 py-1 rounded ${
-                    spotSide === "buy"
-                      ? "bg-green-500 text-white font-semibold"
-                      : "bg-white/5 text-gray-400"
-                  }`}
+                  className={`flex-1 py-1 rounded ${spotSide === "buy"
+                    ? "bg-green-500 text-white font-semibold"
+                    : "bg-white/5 text-gray-400"
+                    }`}
                 >
                   Buy
                 </button>
                 <button
                   onClick={() => setSpotSide("sell")}
-                  className={`flex-1 py-1 rounded ${
-                    spotSide === "sell"
-                      ? "bg-red-500 text-white font-semibold"
-                      : "bg-white/5 text-gray-400"
-                  }`}
+                  className={`flex-1 py-1 rounded ${spotSide === "sell"
+                    ? "bg-red-500 text-white font-semibold"
+                    : "bg-white/5 text-gray-400"
+                    }`}
                 >
                   Sell
                 </button>
@@ -2387,18 +2423,18 @@ const Trading = ({
                 <div className="space-y-3 mb-6">
                   <div className="text-xs text-gray-400">
                     <span className="ml-1">
-                    <div className="text-xs text-gray-400">
-  Avbl{" "}
-  <span className="ml-1">
-    {selectedChallenge
-      ? parseFloat(walletData?.available_balance).toLocaleString(undefined, {
-          maximumFractionDigits: 2,
-        })
-      : loading
-      ? "Loading..."
-      : `${balance} ${selected.quoteAsset}`}
-  </span>
-</div>
+                      <div className="text-xs text-gray-400">
+                        Avbl{" "}
+                        <span className="ml-1">
+                          {selectedChallenge
+                            ? parseFloat(walletData?.available_balance).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })
+                            : loading
+                              ? "Loading..."
+                              : `${balance} ${selected.quoteAsset}`}
+                        </span>
+                      </div>
 
                     </span>
                   </div>
@@ -2415,11 +2451,10 @@ const Trading = ({
                     <div className="bg-[#1E1F36] rounded p-2 text-xs sm:text-sm w-full max-w-sm">
                       <div className="relative w-full">
                         <label
-                          className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${
-                            amount
-                              ? "text-[10px] sm:text-xs top-1"
-                              : "text-xs sm:text-sm top-2.5"
-                          }`}
+                          className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${amount
+                            ? "text-[10px] sm:text-xs top-1"
+                            : "text-xs sm:text-sm top-2.5"
+                            }`}
                         >
                           Amount ({selected.baseAsset})
                         </label>
@@ -2465,44 +2500,44 @@ const Trading = ({
                       className="w-full accent-green-500 cursor-pointer"
                     /> */}
 
-<input
-  type="range"
-  min="0"
-  max="100"
-  step="1"
-  value={sliderValue}
-  onMouseDown={handleStart}
-  onMouseUp={handleEnd}
-  onTouchStart={handleStart}
-  onTouchEnd={handleEnd}
-  onChange={(e) => {
-    setIsSliderActive(true);
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={sliderValue}
+                      onMouseDown={handleStart}
+                      onMouseUp={handleEnd}
+                      onTouchStart={handleStart}
+                      onTouchEnd={handleEnd}
+                      onChange={(e) => {
+                        setIsSliderActive(true);
 
-    const percentage = Number(e.target.value);
+                        const percentage = Number(e.target.value);
 
-    // 👇 decide which balance to use
-    const usableBalance = selectedChallenge
-      ? Number(walletData.available_balance)
-      : balance;
+                        // 👇 decide which balance to use
+                        const usableBalance = selectedChallenge
+                          ? Number(walletData.available_balance)
+                          : balance;
 
-      // console.log(usableBalance,"the usable balanc 3c33")
-
-     
-
-    const maxBuyableAmount = usableBalance / price;
-    const calculatedAmount = (maxBuyableAmount * percentage) / 100;
-
-    setSliderValue(percentage);
-    setAmount(calculatedAmount.toFixed(8));
-
-    setTimeout(() => setIsSliderActive(false), 100);
-  }}
-  className="w-full accent-green-500 cursor-pointer"
-/>
+                        // console.log(usableBalance,"the usable balanc 3c33")
 
 
 
-                    
+                        const maxBuyableAmount = usableBalance / price;
+                        const calculatedAmount = (maxBuyableAmount * percentage) / 100;
+
+                        setSliderValue(percentage);
+                        setAmount(calculatedAmount.toFixed(8));
+
+                        setTimeout(() => setIsSliderActive(false), 100);
+                      }}
+                      className="w-full accent-green-500 cursor-pointer"
+                    />
+
+
+
+
 
                     {showTooltip && (
                       <div
@@ -2527,16 +2562,16 @@ const Trading = ({
                         : `Minimum 5 ${selected.quoteAsset}`}
                     </span> */}
 
-<span className="text-white">
-  {total > 0
-    ? `${Math.min(
-        total,
-        selectedChallenge
-          ? Number(walletData?.available_balance || 0)
-          : Number(balance || 0)
-      ).toFixed(2)} ${selected.quoteAsset}`
-    : `Minimum 5 ${selected.quoteAsset}`}
-</span>
+                    <span className="text-white">
+                      {total > 0
+                        ? `${Math.min(
+                          total,
+                          selectedChallenge
+                            ? Number(walletData?.available_balance || 0)
+                            : Number(balance || 0)
+                        ).toFixed(2)} ${selected.quoteAsset}`
+                        : `Minimum 5 ${selected.quoteAsset}`}
+                    </span>
 
                   </div>
 
@@ -2554,19 +2589,18 @@ const Trading = ({
                       (total > balance && sliderValue === 0) ||
                       amount <= 0
                     }
-                    className={`w-full ${
-                      isPlacingOrder ||
+                    className={`w-full ${isPlacingOrder ||
                       (total > balance && sliderValue === 0) ||
                       amount <= 0
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-green-500 hover:bg-green-600"
-                    } py-2 rounded-lg font-semibold`}
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-500 hover:bg-green-600"
+                      } py-2 rounded-lg font-semibold`}
                   >
                     {isPlacingOrder
                       ? "Placing your Order..."
                       : total > balance && sliderValue === 0
-                      ? "Insufficient Balance"
-                      : `Buy ${selected.baseAsset}`}
+                        ? "Insufficient Balance"
+                        : `Buy ${selected.baseAsset}`}
                   </button>
                 </div>
               ) : (
@@ -2592,11 +2626,10 @@ const Trading = ({
                     <div className="bg-[#1E1F36] rounded p-2 text-xs sm:text-sm w-full max-w-sm">
                       <div className="relative w-full">
                         <label
-                          className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${
-                            amount
-                              ? "text-[10px] sm:text-xs top-1"
-                              : "text-xs sm:text-sm top-2.5"
-                          }`}
+                          className={`absolute left-3 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none ${amount
+                            ? "text-[10px] sm:text-xs top-1"
+                            : "text-xs sm:text-sm top-2.5"
+                            }`}
                         >
                           Amount ({selected.baseAsset})
                         </label>
@@ -2662,10 +2695,10 @@ const Trading = ({
                   <div className="text-xs text-gray-400">
                     Available:{" "}
                     <span>
-  {selectedChallenge
-    ? `${walletData?.available_balance || 0} ${selected.quoteAsset}`
-    : `${balance} ${selected.quoteAsset}`}
-</span>
+                      {selectedChallenge
+                        ? `${walletData?.available_balance || 0} ${selected.quoteAsset}`
+                        : `${balance} ${selected.quoteAsset}`}
+                    </span>
 
                   </div>
 
@@ -2678,20 +2711,19 @@ const Trading = ({
                       amount <= 0
                     }
                     className={`w-full py-2 rounded-lg font-semibold transition 
-                    ${
-                      !tradeId ||
-                      spotBalance === 0 ||
-                      isPlacingOrder ||
-                      amount <= 0
+                    ${!tradeId ||
+                        spotBalance === 0 ||
+                        isPlacingOrder ||
+                        amount <= 0
                         ? "bg-gray-500 cursor-not-allowed opacity-50"
                         : "bg-red-500 hover:bg-red-600"
-                    }`}
+                      }`}
                   >
                     {isPlacingOrder
                       ? "Placing your Order..."
                       : !tradeId
-                      ? "No Open Position"
-                      : `Sell ${selected.baseAsset}`}
+                        ? "No Open Position"
+                        : `Sell ${selected.baseAsset}`}
                   </button>
                 </div>
               )}
@@ -2710,8 +2742,7 @@ const Trading = ({
       if (selectedChallenge) {
         // Challenge mode API
         response = await fetch(
-          `${baseURL}challenges/challenge-trades/${selected.baseAsset.toUpperCase()}/?week_id=${
-            selectedChallenge?.weekData.id
+          `${baseURL}challenges/challenge-trades/${selected.baseAsset.toUpperCase()}/?week_id=${selectedChallenge?.weekData.id
           }&trade_type=${mode.toUpperCase()}`,
           {
             method: "GET",
@@ -2806,52 +2837,50 @@ const Trading = ({
           <div className="flex flex-wrap items-center gap-2">
             {selectedChallenge
               ? (() => {
-                  const weekNumber =
-                    selectedChallenge?.weekData?.week_number || 1;
+                const weekNumber =
+                  selectedChallenge?.weekData?.week_number || 1;
 
-                  // Allowed modes based on week number
-                  let allowedModes = [];
-                  if (weekNumber === 1) allowedModes = ["spot"];
-                  else if (weekNumber === 2) allowedModes = ["spot", "futures"];
-                  else allowedModes = ["spot", "futures", "options"];
+                // Allowed modes based on week number
+                let allowedModes = [];
+                if (weekNumber === 1) allowedModes = ["spot"];
+                else if (weekNumber === 2) allowedModes = ["spot", "futures"];
+                else allowedModes = ["spot", "futures", "options"];
 
-                  // If current mode isn’t allowed, fallback to the first allowed one
-                  if (!allowedModes.includes(mode)) {
-                    setMode(allowedModes[0]);
-                  }
+                // If current mode isn’t allowed, fallback to the first allowed one
+                if (!allowedModes.includes(mode)) {
+                  setMode(allowedModes[0]);
+                }
 
-                  return (
-                    <div className="flex gap-2">
-                      {allowedModes.map((m) => (
-                        <button
-                          key={m}
-                          onClick={() => setMode(m)}
-                          className={`px-3 py-1 rounded-md transition ${
-                            mode === m
-                              ? "bg-purple-500/20 font-semibold text-white"
-                              : "text-gray-400 hover:bg-purple-500/10"
+                return (
+                  <div className="flex gap-2">
+                    {allowedModes.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setMode(m)}
+                        className={`px-3 py-1 rounded-md transition ${mode === m
+                          ? "bg-purple-500/20 font-semibold text-white"
+                          : "text-gray-400 hover:bg-purple-500/10"
                           }`}
-                        >
-                          {m.charAt(0).toUpperCase() + m.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })()
+                      >
+                        {m.charAt(0).toUpperCase() + m.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()
               : // Normal mode toggle when no challenge selected
-                ["spot", "futures", "options"].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMode(m)}
-                    className={`px-3 py-1 rounded-md transition ${
-                      mode === m
-                        ? "bg-purple-500/20 font-semibold text-white"
-                        : "text-gray-400 hover:bg-purple-500/10"
+              ["spot", "futures", "options"].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-3 py-1 rounded-md transition ${mode === m
+                    ? "bg-purple-500/20 font-semibold text-white"
+                    : "text-gray-400 hover:bg-purple-500/10"
                     }`}
-                  >
-                    {m.charAt(0).toUpperCase() + m.slice(1)}
-                  </button>
-                ))}
+                >
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </button>
+              ))}
           </div>
         </div>
 
@@ -3003,11 +3032,10 @@ const Trading = ({
               <div className="block sm:hidden -mt-2 space-y-3">
                 {/* Big Last Price */}
                 <div
-                  className={`text-xl -mt-4 font-mono font-extrabold ${
-                    tickerData && parseFloat(tickerData.P) < 0
-                      ? "text-red-400"
-                      : "text-green-400"
-                  }`}
+                  className={`text-xl -mt-4 font-mono font-extrabold ${tickerData && parseFloat(tickerData.P) < 0
+                    ? "text-red-400"
+                    : "text-green-400"
+                    }`}
                 >
                   {fmt(tickerData?.c, 2)} {selected.quoteAsset}
                 </div>
@@ -3020,11 +3048,10 @@ const Trading = ({
                       24h Change
                     </div>
                     <div
-                      className={`font-medium ${
-                        tickerData && parseFloat(tickerData.P) < 0
-                          ? "text-red-400"
-                          : "text-white"
-                      }`}
+                      className={`font-medium ${tickerData && parseFloat(tickerData.P) < 0
+                        ? "text-red-400"
+                        : "text-white"
+                        }`}
                     >
                       ({fmt(tickerData?.P, 2)}%)
                     </div>
@@ -3072,11 +3099,10 @@ const Trading = ({
                     Last Price
                   </div>
                   <div
-                    className={`font-bold text-base sm:text-lg ${
-                      tickerData && parseFloat(tickerData.P) < 0
-                        ? "text-red-400"
-                        : "text-green-400"
-                    }`}
+                    className={`font-bold text-base sm:text-lg ${tickerData && parseFloat(tickerData.P) < 0
+                      ? "text-red-400"
+                      : "text-green-400"
+                      }`}
                   >
                     {fmt(tickerData?.c, 8)} {selected.quoteAsset}
                   </div>
@@ -3088,11 +3114,10 @@ const Trading = ({
                     24h Change
                   </div>
                   <div
-                    className={`font-semibold ${
-                      tickerData && parseFloat(tickerData.P) < 0
-                        ? "text-red-400"
-                        : "text-white"
-                    }`}
+                    className={`font-semibold ${tickerData && parseFloat(tickerData.P) < 0
+                      ? "text-red-400"
+                      : "text-white"
+                      }`}
                   >
                     ({fmt(tickerData?.P, 2)}%)
                   </div>

@@ -32,6 +32,7 @@ from .serializers import (
     TradeHistorySerializer,
 )
 from .wallet_services import WalletService
+from .services import TradingService
 from apps.permission.permissions import   HasActiveSubscription
 
 # class TradeViewSet(viewsets.ModelViewSet):
@@ -65,9 +66,38 @@ class TradeViewSet(viewsets.ModelViewSet):
         current_price = request.data.get("current_price")
         if current_price:
             pnl = trade.calculate_unrealized_pnl(Decimal(current_price))
+            
+            # TRIGGER PENDING ORDERS CHECK
+            TradingService.process_pending_orders(request.user, {trade.asset_symbol: current_price})
+
             return Response({"unrealized_pnl": str(pnl)})
         return Response({"error": "Current price is required"}, status=400)
 
+        return Response({"error": "Current price is required"}, status=400)
+
+
+class CheckOrdersView(APIView):
+    """
+    Endpoint to trigger checking of pending orders and expiry.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # 1. Process Pending Limit/Stop Orders
+            filled_orders = TradingService.process_pending_orders(request.user)
+            
+            # 2. Check Expiry
+            closed_trades = TradingService.check_expired_trades(request.user)
+            
+            return Response({
+                "filled_orders": filled_orders,
+                "closed_trades": closed_trades,
+                "message": "Order check completed"
+            })
+        except Exception as e:
+            logger.error(f"Error checking orders: {str(e)}", exc_info=True)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated, HasActiveSubscription]
@@ -112,7 +142,14 @@ class PlaceOrderView(APIView):
         direction = data["direction"]
         quantity = data["quantity"]
         price = data["price"]
+        quantity = data["quantity"]
+        price = data["price"]
         holding_type = data["holding_type"]
+        order_type = data.get("order_type", "MARKET")
+
+        # HANDLE LIMIT/STOP ORDERS
+        if order_type in ["LIMIT", "STOP", "STOP_LIMIT"]:
+            return self._handle_pending_spot_order(user, data)
 
         # FIND EXISTING POSITIONS (only same holding_type and same direction)
         existing_trade = Trade.objects.filter(
@@ -418,19 +455,169 @@ class PlaceOrderView(APIView):
         }
 
     # =====================================================================
-    # FUTURES TRADING - COMPLETE FIX
+    # PENDING/LIMIT ORDER HANDLERS
+    # =====================================================================
+
+    def _handle_pending_spot_order(self, user, data):
+        """Handle pending SPOT orders (LIMIT, STOP)"""
+        direction = data["direction"]
+        quantity = data["quantity"]
+        limit_price = data.get("limit_price")
+        trigger_price = data.get("trigger_price")
+        order_type = data["order_type"]
+        holding_type = data["holding_type"]
+
+        # Validate prices
+        execution_price = limit_price if limit_price else trigger_price
+        if not execution_price:
+             raise ValidationError("Limit or Trigger price required for pending orders")
+
+        amount = quantity * execution_price
+
+        if direction == "BUY":
+            # Check USDT Balance
+            if not WalletService.check_balance(user, amount):
+                current = WalletService.get_balance(user)
+                raise ValidationError(f"Insufficient balance for Limit Order. Need: {amount}, Have: {current}")
+            
+            # Block Coins (Deduct for now, will refund if cancelled)
+            WalletService.deduct_coins(
+                user=user,
+                amount=amount,
+                description=f"Limit Buy Order: {quantity} {data['asset_symbol']} @ {execution_price}"
+            )
+        else:
+            # Check Asset Balance (for Sell)
+            # Logic for checking asset balance is complex without a dedicated AssetWallet
+            # For now, we assume we check against OPEN trades or just allow it if we don't track asset balances strictly in wallet
+            # BUT, we should check if they have enough "Remaining Quantity" in open trades? 
+            # OR if this is a "Short" (Margin)? No, Spot Sell is closing a position.
+            # If Spot Sell Limit: We usually lock the asset. 
+            pass 
+
+        # Create Pending Trade
+        trade = Trade.objects.create(
+            user=user,
+            asset_symbol=data["asset_symbol"],
+            asset_name=data.get("asset_name", ""),
+            asset_exchange=data.get("asset_exchange", ""),
+            trade_type="SPOT",
+            direction=direction,
+            status="PENDING",
+            holding_type=holding_type,
+            total_quantity=quantity,
+            remaining_quantity=quantity,
+            limit_price=limit_price,
+            trigger_price=trigger_price,
+            order_type=order_type,
+            average_price=execution_price, # Set est. price
+            total_invested=amount if direction == "BUY" else 0,
+        )
+
+        TradeHistory.objects.create(
+            trade=trade,
+            user=user,
+            action=direction,
+            order_type=order_type,
+            quantity=quantity,
+            price=execution_price,
+            amount=amount,
+        )
+
+        return {
+            "trade_id": str(trade.id),
+            "status": "PENDING",
+            "message": f"{order_type} Order Placed Successfully",
+            "blocked_amount": str(amount) if direction == "BUY" else "0"
+        }
+
+    def _handle_pending_futures_order(self, user, data):
+        """Handle pending FUTURES orders"""
+        quantity = data["quantity"]
+        limit_price = data.get("limit_price")
+        trigger_price = data.get("trigger_price")
+        order_type = data["order_type"]
+        leverage = data.get("leverage", Decimal("1"))
+
+        execution_price = limit_price if limit_price else trigger_price
+        if not execution_price:
+            raise ValidationError("Limit/Trigger price required")
+
+        position_value = quantity * execution_price
+        margin_required = position_value / leverage
+
+        # Check and Block Margin
+        if not WalletService.check_balance(user, margin_required):
+             raise ValidationError(f"Insufficient margin. Need: {margin_required}")
+
+        WalletService.block_coins(
+            user=user,
+            amount=margin_required,
+            description=f"Limit Futures {data['direction']}: {quantity} @ {execution_price}"
+        )
+
+        trade = Trade.objects.create(
+            user=user,
+            asset_symbol=data["asset_symbol"],
+            asset_name=data.get("asset_name", ""),
+            asset_exchange=data.get("asset_exchange", ""),
+            trade_type="FUTURES",
+            direction=data["direction"],
+            status="PENDING",
+            holding_type=data.get("holding_type", "INTRADAY"),
+            total_quantity=quantity,
+            remaining_quantity=quantity,
+            limit_price=limit_price,
+            trigger_price=trigger_price,
+            order_type=order_type,
+            average_price=execution_price,
+            total_invested=margin_required,
+            margin_mode=data.get("margin_mode", "ISOLATED")
+        )
+
+        FuturesDetails.objects.create(
+            trade=trade,
+            leverage=leverage,
+            margin_required=margin_required,
+            margin_used=margin_required,
+            expiry_date=data["expiry_date"],
+            contract_size=data.get("contract_size", Decimal("1")),
+            is_hedged=data.get("is_hedged", False),
+        )
+        
+        return {
+            "trade_id": str(trade.id),
+            "status": "PENDING",
+            "message": f"{order_type} Order Placed",
+            "margin_blocked": str(margin_required)
+        }
+
+    # =====================================================================
+    # FUTURES TRADING - PRIOR FIX
     # =====================================================================
 
     def _process_futures_order(self, user, data):
         """Handle futures trading logic"""
         asset_symbol = data["asset_symbol"]
+        order_type = data.get("order_type", "MARKET")
 
-        existing_trade = Trade.objects.filter(
-            user=user,
-            asset_symbol=asset_symbol,
-            trade_type="FUTURES",
-            status__in=["OPEN", "PARTIALLY_CLOSED"],
-        ).first()
+        if order_type in ["LIMIT", "STOP", "STOP_LIMIT"]:
+            return self._handle_pending_futures_order(user, data)
+
+        is_hedged = data.get("is_hedged", False)
+        
+        filter_kwargs = {
+            "user": user,
+            "asset_symbol": asset_symbol,
+            "trade_type": "FUTURES",
+            "status__in": ["OPEN", "PARTIALLY_CLOSED"],
+        }
+        
+        if is_hedged:
+            # Hedge Mode: Maintain separate positions for Buy/Sell
+            filter_kwargs["direction"] = data["direction"]
+
+        existing_trade = Trade.objects.filter(**filter_kwargs).first()
 
         if existing_trade:
             return self._handle_existing_futures_position(user, data, existing_trade)

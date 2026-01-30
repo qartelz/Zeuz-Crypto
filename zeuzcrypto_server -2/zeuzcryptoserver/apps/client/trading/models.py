@@ -35,6 +35,18 @@ class Trade(models.Model):
         ('LONGTERM', 'Long Term'),
     ]
 
+    MARGIN_MODES = [
+        ('ISOLATED', 'Isolated'),
+        ('CROSS', 'Cross'),
+    ]
+
+    ORDER_TYPES = [
+        ('MARKET', 'Market'),
+        ('LIMIT', 'Limit'),
+        ('STOP', 'Stop Loss'),
+        ('STOP_LIMIT', 'Stop Limit'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades')
     
@@ -47,6 +59,13 @@ class Trade(models.Model):
     direction = models.CharField(max_length=4, choices=DIRECTIONS)
     status = models.CharField(max_length=20, choices=STATUSES, default='PENDING')
     holding_type = models.CharField(max_length=10, choices=HOLDING_TYPES, default='INTRADAY')
+    margin_mode = models.CharField(max_length=10, choices=MARGIN_MODES, default='ISOLATED')
+    order_type = models.CharField(max_length=15, choices=ORDER_TYPES, default='MARKET')
+
+    # Limit / Stop Order Details
+    limit_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
+    trigger_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
+    is_triggered = models.BooleanField(default=False)  # For Stop orders
     
     # Position details
     total_quantity = models.DecimalField(max_digits=20, decimal_places=8, validators=[MinValueValidator(Decimal('0'))])

@@ -57,11 +57,25 @@ class PlaceOrderSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=20, decimal_places=8, min_value=Decimal('0'))
     order_type = serializers.ChoiceField(choices=TradeHistory.ORDER_TYPES, default='MARKET')
     
+    margin_mode = serializers.ChoiceField(
+        choices=["ISOLATED", "CROSS"], default="ISOLATED"
+    )
+    order_type = serializers.ChoiceField(
+        choices=["MARKET", "LIMIT", "STOP", "STOP_LIMIT"], default="MARKET"
+    )
+    limit_price = serializers.DecimalField(
+        max_digits=20, decimal_places=8, required=False, allow_null=True
+    )
+    trigger_price = serializers.DecimalField(
+        max_digits=20, decimal_places=8, required=False, allow_null=True
+    )
+    is_hedged = serializers.BooleanField(default=False)
+    contract_size = serializers.DecimalField(max_digits=20, decimal_places=8, required=False, default=Decimal('1'))
+    is_hedged = serializers.BooleanField(required=False, default=False)
+    
     # Futures specific fields
     leverage = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal('1'))
     expiry_date = serializers.DateField(required=False)
-    contract_size = serializers.DecimalField(max_digits=20, decimal_places=8, required=False, default=Decimal('1'))
-    is_hedged = serializers.BooleanField(required=False, default=False)
     
     # Options specific fields
     option_type = serializers.ChoiceField(choices=OptionsDetails.OPTION_TYPES, required=False)
@@ -89,6 +103,14 @@ class PlaceOrderSerializer(serializers.Serializer):
         # Validate long-term trades can only be BUY for SPOT
         if trade_type == 'SPOT' and data.get('holding_type') == 'LONGTERM' and data.get('direction') != 'BUY':
             raise serializers.ValidationError("Long-term spot trades can only be BUY orders")
+
+        # Validate Limit Orders
+        if data.get('order_type') in ['LIMIT', 'STOP_LIMIT'] and not data.get('limit_price'):
+             raise serializers.ValidationError("Limit price is required for Limit orders")
+
+        # Validate Stop Orders
+        if data.get('order_type') in ['STOP', 'STOP_LIMIT'] and not data.get('trigger_price'):
+             raise serializers.ValidationError("Trigger price is required for Stop orders")
         
         return data
 

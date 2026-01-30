@@ -4128,6 +4128,31 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
     fetchData();
   }, [navigate]);
 
+  // Trigger Pending Order Check on Load
+  useEffect(() => {
+    if (tokens?.access) {
+      fetch(`${baseURL}trading/check-orders/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${tokens.access}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.filled_orders && data.filled_orders.length > 0) {
+            toast.success(`${data.filled_orders.length} Pending Orders Filled!`);
+            fetchData(); // Refresh list
+          }
+          if (data.closed_trades && data.closed_trades.length > 0) {
+            toast.success(`${data.closed_trades.length} Expired Trades Closed!`);
+            fetchData(); // Refresh list
+          }
+        })
+        .catch(err => console.error("Order check failed", err));
+    }
+  }, []);
+
   const [optionsSellQty, setOptionsSellQty] = useState(0);
   const [isClosingOptions, setIsClosingOptions] = useState(false);
 
@@ -4139,19 +4164,24 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
   const [isPlacingFuturesOrder, setIsPlacingFuturesOrder] = useState(false);
 
   const handleTradeClick = (holding) => {
-    if (holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED") {
-      if (holding.trade_type === "SPOT") {
+    const status = holding?.status?.toUpperCase();
+    const tradeType = holding?.trade_type?.toUpperCase();
+
+    if (status === "OPEN" || status === "PARTIALLY_CLOSED") {
+      if (tradeType === "SPOT") {
         setSelectedOrder(holding);
         setAmount(holding.remaining_quantity);
         setSpotSide("buy");
-      } else if (holding.trade_type === "FUTURES") {
+      } else if (tradeType === "FUTURES") {
         setSelectedFuturesOrder(holding);
         setFuturesAmount(holding.remaining_quantity);
         setFuturesSpotSide("buy");
-      } else if (holding.trade_type === "OPTIONS") {
+      } else if (tradeType === "OPTIONS") {
         setSelectedOptionsOrder(holding);
         setOptionsQuantity(holding.remaining_quantity);
       }
+    } else {
+      toast.error(`Cannot trade order with status: ${holding?.status}`);
     }
   };
 
@@ -4536,57 +4566,60 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
                               </td>
 
                               <td className="py-4 px-4 text-sm text-right text-gray-300">
-                                {Number(holding.average_price).toFixed(4)}
+                                {holding.status === "PENDING" ? "-" : Number(holding.average_price).toFixed(4)}
                               </td>
 
                               <td className="py-4 px-4 text-sm text-right text-gray-300">
-                                {pnlData.isLive ? (
+                                {holding.status === "PENDING" ? "-" : (pnlData.isLive ? (
                                   <span className="flex w-full font-bold items-center justify-end gap-1">
                                     {pnlData.currentPrice}
                                   </span>
                                 ) : (
                                   <span className="text-gray-500">-</span>
-                                )}
+                                ))}
                               </td>
 
                               <td className="py-4 px-4 text-sm text-right text-gray-300">
-                                {Number(holding.total_invested).toFixed(2)}
+                                {holding.status === "PENDING" ? "-" : Number(holding.total_invested).toFixed(2)}
                               </td>
 
                               <td className="py-4 w-28 px-4 text-sm text-right">
-                                <div className="flex flex-col items-end">
-                                  <span
-                                    className={
-                                      Number(pnlData.pnl) >= 0
-                                        ? "text-green-400 font-semibold"
-                                        : "text-red-400 font-semibold"
-                                    }
-                                  >
-                                    {pnlData.pnl}
-                                  </span>
-                                  <span
-                                    className={`text-xs ${Number(pnlData.pnl) >= 0
-                                      ? "text-green-400"
-                                      : "text-red-400"
-                                      }`}
-                                  >
-                                    ({Number(pnlData.percentage).toFixed(4)}%)
-                                  </span>
-                                </div>
+                                {holding.status === "PENDING" ? (
+                                  <span className="text-gray-500">-</span>
+                                ) : (
+                                  <div className="flex flex-col items-end">
+                                    <span
+                                      className={
+                                        Number(pnlData.pnl) >= 0
+                                          ? "text-green-400 font-semibold"
+                                          : "text-red-400 font-semibold"
+                                      }
+                                    >
+                                      {pnlData.pnl}
+                                    </span>
+                                    <span
+                                      className={`text-xs ${Number(pnlData.pnl) >= 0
+                                        ? "text-green-400"
+                                        : "text-red-400"
+                                        }`}
+                                    >
+                                      ({Number(pnlData.percentage).toFixed(4)}%)
+                                    </span>
+                                  </div>
+                                )}
                               </td>
 
                               <td className="py-4 px-4 text-sm text-center">
                                 <span
                                   className={`px-3 py-1 rounded text-xs 
-                                  ${
-                                    //  holding.status === "OPEN"
-                                    // ?
-                                    "bg-blue-500/20 text-blue-400"
-                                    // : "bg-green-500/20 text-green-400"
+                                  ${holding.status === "OPEN" || holding.status === "PARTIALLY_CLOSED"
+                                      ? "bg-blue-500/20 text-blue-400"
+                                      : holding.status === "PENDING"
+                                        ? "bg-yellow-500/20 text-yellow-400"
+                                        : "bg-green-500/20 text-green-400"
                                     }`}
                                 >
-                                  {/* {holding.status} */}
-                                  OPEN
+                                  {holding.status}
                                 </span>
                               </td>
 
