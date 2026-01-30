@@ -1665,26 +1665,37 @@ export default function Challenges() {
             {
               name: "Firecracker",
               range: "76 - 100%",
-              color: "text-orange-400",
+              color: userProgressData?.tier_info?.name === "Firecracker" ? "text-orange-400 font-bold border-b-2 border-orange-400" : "text-orange-400",
             },
             {
               name: "Wave Hopper",
               range: "51 - 75%",
-              color: "text-yellow-400",
+              color: userProgressData?.tier_info?.name === "Wave Hopper" ? "text-yellow-400 font-bold border-b-2 border-yellow-400" : "text-yellow-400",
             },
-            { name: "Coin Scout", range: "26 - 50%", color: "text-blue-400" },
+            {
+              name: "Coin Scout",
+              range: "26 - 50%",
+              color: userProgressData?.tier_info?.name === "Coin Scout" ? "text-blue-400 font-bold border-b-2 border-blue-400" : "text-blue-400"
+            },
             {
               name: "Byte Bouncer",
-              range: "16 - 28%",
-              color: "text-purple-400",
+              range: "16 - 25%",
+              color: userProgressData?.tier_info?.name === "Byte Bouncer" ? "text-purple-400 font-bold border-b-2 border-purple-400" : "text-purple-400",
             },
+            {
+              name: "Unranked",
+              range: "0 - 15%",
+              color: "text-gray-400"
+            }
           ],
-          currentScore: 10,
+          currentScore: userProgressData?.score_details?.total_score
+            ? Math.round(Number(userProgressData.score_details.total_score))
+            : 0,
         },
         challengeTiers: [
-          { name: "Bronze", level: "Beginner - Level 1", unlocked: true },
-          { name: "Silver", level: "Intermediate - Level 2", unlocked: false },
-          { name: "Gold", level: "Advanced - Level 3", unlocked: false },
+          { name: "Bronze", level: "Beginner - Level 1", unlocked: weekData.week_number >= 1 },
+          { name: "Silver", level: "Intermediate - Level 2", unlocked: weekData.week_number >= 2 },
+          { name: "Gold", level: "Advanced - Level 3", unlocked: weekData.week_number >= 3 },
         ],
         status: "available",
         weekData: weekData,
@@ -1820,14 +1831,14 @@ export default function Challenges() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {/* Available */}
+                    {/* Available (Equity) */}
                     <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-green-500/30 transition-all">
                       <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1 sm:mb-1.5 uppercase tracking-wide">
-                        Available
+                        Current (Equity)
                       </p>
                       <p className="text-base sm:text-lg font-bold text-green-400 tabular-nums">
                         {parseFloat(
-                          walletData.available_balance
+                          walletData.current_balance
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}
