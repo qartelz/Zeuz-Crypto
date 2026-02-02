@@ -1,4 +1,4 @@
-
+    
 # ==================== FILE: apps/challenges/serializers/trade_serializers.py ====================
 
 from rest_framework import serializers
@@ -10,11 +10,30 @@ from rest_framework import serializers
 from apps.admin.challenge.models.analytics_models import ChallengeTradeAnalytics
 from apps.admin.challenge.models.trade_models import ChallengeFuturesDetails, ChallengeOptionsDetails,ChallengeTrade,ChallengeTradeHistory
 
+class ChallengeTradeHistorySerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    asset_symbol = serializers.CharField(source='trade.asset_symbol', read_only=True)
+    
+    class Meta:
+        model = ChallengeTradeHistory
+        fields = [
+            'id', 'asset_symbol', 'action', 'action_display',
+            'order_type', 'quantity', 'price', 'amount',
+            'realized_pnl', 'created_at'
+        ]
+        # read_only_fields = '__all__'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+                field.read_only = True
+
+
 class ChallengeTradeSerializer(serializers.ModelSerializer):
     total_pnl = serializers.ReadOnlyField()
     pnl_percentage = serializers.ReadOnlyField()
     is_profitable = serializers.ReadOnlyField()
     user_email = serializers.CharField(source='user.email', read_only=True)
+    history = ChallengeTradeHistorySerializer(many=True, read_only=True)
     
     class Meta:
         model = ChallengeTrade
@@ -25,7 +44,8 @@ class ChallengeTradeSerializer(serializers.ModelSerializer):
             'average_entry_price', 'current_price', 'total_invested',
             'realized_pnl', 'unrealized_pnl', 'total_pnl', 'pnl_percentage',
             'is_profitable', 'allocation_percentage',
-            'opened_at', 'closed_at', 'updated_at'
+            'opened_at', 'closed_at', 'updated_at',
+            'history'
         ]
         read_only_fields = [
             'id', 'user_email', 'total_pnl', 'pnl_percentage',
@@ -58,24 +78,6 @@ class ChallengeTradeCloseSerializer(serializers.Serializer):
         choices=['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT'],
         default='MARKET'
     )
-
-
-class ChallengeTradeHistorySerializer(serializers.ModelSerializer):
-    action_display = serializers.CharField(source='get_action_display', read_only=True)
-    asset_symbol = serializers.CharField(source='trade.asset_symbol', read_only=True)
-    
-    class Meta:
-        model = ChallengeTradeHistory
-        fields = [
-            'id', 'asset_symbol', 'action', 'action_display',
-            'order_type', 'quantity', 'price', 'amount',
-            'realized_pnl', 'created_at'
-        ]
-        # read_only_fields = '__all__'
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-                field.read_only = True
 
 
 class ChallengeFuturesDetailsSerializer(serializers.ModelSerializer):

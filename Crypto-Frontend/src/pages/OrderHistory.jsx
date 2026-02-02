@@ -20,7 +20,10 @@
 
 //   console.log(selectedChallenge,"the seleted data in holdings of challnge")
 
-//   const [holdings, setHoldings] = useState([]);
+// const [holdings, setHoldings] = useState(() => {
+//   const saved = localStorage.getItem("cachedHoldings_OrderHistory");
+//   return saved ? JSON.parse(saved) : [];
+// });
 //   // console.log(holdings, "the holdings");
 //   const [isloading, setLoading] = useState(false);
 //   const [error, setError] = useState(null);
@@ -2835,7 +2838,10 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
 
   console.log(selectedChallenge, "the seleted data in holdings of challnge");
 
-  const [holdings, setHoldings] = useState([]);
+  const [holdings, setHoldings] = useState(() => {
+    const saved = localStorage.getItem("cachedHoldings_OrderHistory");
+    return saved ? JSON.parse(saved) : [];
+  });
   // console.log(holdings, "the holdings");
   const [isloading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -2853,9 +2859,18 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
   const [amount, setAmount] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
   const [lastTradePrice, setLastTradePrice] = useState(null);
-  const [livePrices, setLivePrices] = useState({});
+  const [livePrices, setLivePrices] = useState(() => {
+    // Initialize from local storage if available for instant load
+    const saved = localStorage.getItem("livePrices");
+    return saved ? JSON.parse(saved) : {};
+  });
 
-  // console.log(livePrices, "the live price");
+  // Persist livePrices to localStorage whenever they update
+  useEffect(() => {
+    if (Object.keys(livePrices).length > 0) {
+      localStorage.setItem("livePrices", JSON.stringify(livePrices));
+    }
+  }, [livePrices]);
 
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const navigate = useNavigate();
@@ -3759,7 +3774,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
   };
 
   useEffect(() => {
-    if (activeTab !== "holdings" || holdings.length === 0) return;
+    if (holdings.length === 0) return;
 
     // 🔹 Separate holdings by trade type
     const spotHoldings = holdings.filter((h) => h.trade_type === "SPOT");
@@ -3891,8 +3906,9 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
     return () => {
       if (binanceWs) binanceWs.close();
       if (deltaWs) deltaWs.close();
+      if (deltaOptionsWs) deltaOptionsWs.close();
     };
-  }, [activeTab, holdings]);
+  }, [holdings]);
 
   const maxAmount =
     spotSide === "buy"
@@ -4004,7 +4020,10 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
   }, [spotSide]);
 
   const fetchData = async () => {
-    setLoading(true);
+    // Only show loading if we don't have cached data
+    if (holdings.length === 0) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -4030,6 +4049,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
           errorData?.detail === "Given token not valid for any token type"
         ) {
           localStorage.removeItem("authTokens");
+          localStorage.removeItem("cachedHoldings_OrderHistory");
           navigate("/login");
           return;
         }
@@ -4117,6 +4137,11 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
 
       setOrderHistory(formattedHistory);
       setHoldings(formattedHoldings);
+
+      // Update Cache
+      if (formattedHoldings.length > 0) {
+        localStorage.setItem("cachedHoldings_OrderHistory", JSON.stringify(formattedHoldings));
+      }
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -4126,7 +4151,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
 
   useEffect(() => {
     fetchData();
-  }, [navigate]);
+  }, [navigate, selectedChallenge]);
 
   // Trigger Pending Order Check on Load
   useEffect(() => {
@@ -4252,15 +4277,17 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
     }
     return true;
   });
-  // console.log("Filtered History:", filteredHistory);
+  console.log("Filtered History:", filteredHistory);
 
   return (
     <div className="min-h-screen  text-white">
 
       <div className="max-w-[1400px] mx-auto p-4 md:p-6 ">
-        {/* <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-          Order History
-        </h1> */}
+        {selectedChallenge?.weekData && (
+          <h1 className="text-xl sm:text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Week {selectedChallenge.weekData.week_number} Portfolio
+          </h1>
+        )}
 
 
         <div className=" p-1 mb-6 ">

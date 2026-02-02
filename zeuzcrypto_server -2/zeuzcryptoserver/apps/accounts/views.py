@@ -45,9 +45,15 @@ class LoginView(APIView):
 
         user = serializer.validated_data['user']
         user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
+        
+        # Calculate session_id properly
+        import uuid
+        session_id = str(uuid.uuid4())
+        user.active_session_id = session_id
+        user.save(update_fields=['last_login', 'active_session_id'])
 
         refresh = RefreshToken.for_user(user)
+        refresh['session_id'] = session_id # Custom claim
 
         # ✅ Fetch the most recent active subscription
         subscription = (

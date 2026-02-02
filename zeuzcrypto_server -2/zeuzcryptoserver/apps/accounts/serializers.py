@@ -307,10 +307,29 @@ class ApprovalActionSerializer(serializers.Serializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name')
     last_name = serializers.CharField(source='user.last_name')
+    subscription = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['first_name', 'last_name', 'avatar', 'address', 'city']
+        fields = ['first_name', 'last_name', 'avatar', 'address', 'city', 'subscription']
+
+    def get_subscription(self, obj):
+        subscription = (
+            Subscription.objects
+            .filter(user=obj.user, status__iexact='active')
+            .select_related('plan')
+            .first()
+        )
+
+        if subscription:
+            return {
+                "plan_name": subscription.plan.name if subscription.plan else None,
+                "plan_id": str(subscription.plan.id) if subscription.plan else None,
+                "start_date": subscription.start_date,
+                "end_date": subscription.end_date,
+                "status": subscription.status.lower(),
+            }
+        return None
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})

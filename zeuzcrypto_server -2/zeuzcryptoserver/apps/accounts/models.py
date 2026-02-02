@@ -135,6 +135,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     password_setup_token = models.CharField(max_length=64, blank=True, null=True)
     password_setup_expires = models.DateTimeField(null=True, blank=True)
 
+    # Session Management
+    active_session_id = models.CharField(max_length=64, blank=True, null=True)
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"

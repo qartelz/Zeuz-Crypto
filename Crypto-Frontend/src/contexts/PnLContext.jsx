@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { AuthContext } from "./AuthContext"; // Import AuthContext
 
 const PnLContext = createContext();
 
@@ -12,9 +13,20 @@ export const usePnL = () => {
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 export const PnLProvider = ({ children }) => {
-  const [totalPnL, setTotalPnL] = useState(0);
-  const [totalPnLPercentage, setTotalPnLPercentage] = useState(0);
-  const [holdings, setHoldings] = useState([]);
+  const { user } = useContext(AuthContext); // Consume user from AuthContext
+  // Initialize from cache if available for instant load
+  const [totalPnL, setTotalPnL] = useState(() => {
+    const saved = localStorage.getItem("cachedTotalPnL");
+    return saved ? Number(saved) : 0;
+  });
+  const [totalPnLPercentage, setTotalPnLPercentage] = useState(() => {
+    const saved = localStorage.getItem("cachedTotalPnLPercentage");
+    return saved ? Number(saved) : 0;
+  });
+  const [holdings, setHoldings] = useState(() => {
+    const saved = localStorage.getItem("cachedHoldings_PnL");
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [livePrices, setLivePrices] = useState({});
   const [isLoading, setisLoading] = useState(false);
@@ -22,9 +34,16 @@ export const PnLProvider = ({ children }) => {
   // Fetch holdings
   const fetchHoldings = async () => {
     try {
+      if (!user) { // If no user, don't fetch and clear state
+        setHoldings([]);
+        setTotalPnL(0);
+        setTotalPnLPercentage(0);
+        return;
+      }
+
       setisLoading(true);
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-      
+
       if (!tokens?.access) {
         return;
       }
@@ -41,7 +60,7 @@ export const PnLProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      
+
       // Get only open holdings
       const openHoldings = data.results.filter(
         (trade) => trade.status === "OPEN" || trade.status === "PARTIALLY_CLOSED"
@@ -133,8 +152,8 @@ export const PnLProvider = ({ children }) => {
     }
 
 
-     // DELTA (OPTIONS)
-     if (optionsHoldings.length > 0) {
+    // DELTA (OPTIONS)
+    if (optionsHoldings.length > 0) {
       deltaWs = new WebSocket("wss://socket.delta.exchange");
 
       deltaWs.onopen = () => {
@@ -155,9 +174,9 @@ export const PnLProvider = ({ children }) => {
       deltaWs.onmessage = (event) => {
         const response = JSON.parse(event.data);
 
-      
+
         if (
-          response?.type === "v2/ticker" 
+          response?.type === "v2/ticker"
         ) {
           setLivePrices((prev) => ({
             ...prev,
@@ -189,7 +208,7 @@ export const PnLProvider = ({ children }) => {
 
     holdings.forEach((holding) => {
       const currentPrice = livePrices[holding.asset_symbol];
-      
+
       if (!currentPrice) {
         // If no live price, use existing PnL from backend
         totalPnLValue += Number(holding.total_pnl || 0);
@@ -210,7 +229,7 @@ export const PnLProvider = ({ children }) => {
       }
 
       const totalHoldingPnL = Number(holding.realized_pnl) + unrealizedPnL;
-      
+
       totalPnLValue += totalHoldingPnL;
       totalInvested += invested;
     });
@@ -221,15 +240,44 @@ export const PnLProvider = ({ children }) => {
     );
   }, [holdings, livePrices]);
 
-  // Initial fetch
+  // Initial fetch and refresh logic dependent on User state
   useEffect(() => {
-    fetchHoldings();
-    
-    // Refresh holdings every 30 seconds
-    const interval = setInterval(fetchHoldings, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    if (user) {
+      fetchHoldings(); // Fetch immediately when user changes (login)
+      const interval = setInterval(fetchHoldings, 30000); // Poll every 30s
+      return () => clearInterval(interval);
+    } else {
+      // Clear state if no user (logout)
+      setHoldings([]);
+      setTotalPnL(0);
+      setTotalPnLPercentage(0);
+      setLivePrices({});
+
+      // Clear cache
+      localStorage.removeItem("cachedTotalPnL");
+      localStorage.removeItem("cachedTotalPnLPercentage");
+      localStorage.removeItem("cachedHoldings_PnL");
+    }
+  }, [user]); // Re-run when user changes
+
+  // Update Cache when values change
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("cachedTotalPnL", totalPnL);
+      localStorage.setItem("cachedTotalPnLPercentage", totalPnLPercentage);
+      if (holdings.length > 0) {
+        localStorage.setItem("cachedHoldings_PnL", JSON.stringify(holdings));
+      }
+    }
+  }, [totalPnL, totalPnLPercentage, holdings, user]);
+
+  // Update Cache when values change
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("cachedTotalPnL", totalPnL);
+      localStorage.setItem("cachedTotalPnLPercentage", totalPnLPercentage);
+    }
+  }, [totalPnL, totalPnLPercentage, user]);
 
   const value = {
     totalPnL,

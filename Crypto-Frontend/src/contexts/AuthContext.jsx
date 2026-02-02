@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   );
   const [loginResponse, setLoginResponse] = useState(null);
 
-  console.log(loginResponse,"yeeeeeeeeeeeeeee")
+  console.log(loginResponse, "yeeeeeeeeeeeeeee")
   const navigate = useNavigate();
   const refreshTimerRef = useRef(null);
 
@@ -27,6 +27,34 @@ export const AuthProvider = ({ children }) => {
     console.log('👤 User Updated:', user);
   }, [user]);
 
+  // Global Fetch Interceptor for 401 Handling
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401) {
+        // Clone response to read body without consuming it for the actual caller
+        const clone = response.clone();
+        try {
+          const data = await clone.json();
+          // Check for our specific session expiry code or generic 401
+          if (data.code === 'session_expired') {
+            console.warn("Session expired detected via Interceptor");
+            logoutUser();
+            toast.error("Session expired. Logged in on another device.");
+          }
+        } catch (e) {
+          // If json parse fails, ignore
+        }
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   // 🔄 REFRESH TOKEN
   const refreshToken = async () => {
     if (!authTokens?.refresh) {
@@ -34,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       logoutUser();
       return null;
     }
-    console.log(loginResponse,"the login response")
+    console.log(loginResponse, "the login response")
 
     try {
       console.log('🔄 Refreshing access token...');
@@ -49,10 +77,10 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         console.log('✅ Token refreshed successfully');
         const newTokens = { access: data.access, refresh: data.refresh };
-        
+
         setAuthTokens(newTokens);
         localStorage.setItem('authTokens', JSON.stringify(newTokens));
-        
+
         return data.access;
       } else {
         console.log('❌ Token refresh failed:', data);
@@ -83,15 +111,15 @@ export const AuthProvider = ({ children }) => {
       const payload = JSON.parse(atob(tokenParts[1]));
       const expiresAt = payload.exp * 1000; // Convert to milliseconds
       const now = Date.now();
-      
-    
+
+
       const refreshTime = expiresAt - now - 60000;
 
-  
+
 
       if (refreshTime > 0) {
         refreshTimerRef.current = setTimeout(() => {
-        
+
           refreshToken();
         }, refreshTime);
       } else {
@@ -193,38 +221,37 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-  
+
       const data = await response.json();
 
-      console.log(data,"thhhhhhhhhhhhhhhhhhhh")
+      console.log(data, "thhhhhhhhhhhhhhhhhhhh")
 
 
-  
+
       if (response.ok) {
         const userRole = data.user?.role;
         const currentPath = window.location.pathname; // get the current URL path
-  
+
         setAuthTokens({ access: data.access, refresh: data.refresh });
         setUser(data.user);
         setLoginResponse(data);
-  
+
         localStorage.setItem('authTokens', JSON.stringify({ access: data.access, refresh: data.refresh }));
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('subscription', JSON.stringify(data.subscription));
-  
+
         // ✅ Only show success toast if role matches the login route
         const showToast =
           (userRole === 'admin' && currentPath === '/admin-login') ||
           (userRole === 'b2b_admin' && currentPath === '/b2badmin-login') ||
           ((userRole === 'b2c_user' || userRole === 'b2b_user') && currentPath === '/login');
-  
+
         if (showToast) {
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? 'animate-enter' : 'animate-leave'
-                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                  } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4">
                   <div className="flex items-start">
@@ -243,17 +270,16 @@ export const AuthProvider = ({ children }) => {
             { position: 'top-right', duration: 2000 }
           );
         }
-  
+
         return { success: true, user: data.user };
       } else {
         const errorMessage = data.non_field_errors ? data.non_field_errors[0] : 'Login failed';
-  
+
         toast.custom(
           (t) => (
             <div
-              className={`${
-                t.visible ? 'animate-enter' : 'animate-leave'
-              } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+              className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
             >
               <div className="flex-1 w-0 p-4">
                 <div className="flex items-start">
@@ -271,7 +297,7 @@ export const AuthProvider = ({ children }) => {
           ),
           { position: 'top-right', duration: 2000 }
         );
-  
+
         return { success: false, message: errorMessage };
       }
     } catch (error) {
@@ -279,7 +305,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message: 'Something went wrong during login' };
     }
   };
-  
+
 
   // ✅ LOGOUT
   const logoutUser = () => {
@@ -298,9 +324,8 @@ export const AuthProvider = ({ children }) => {
     // 🚪 Modern logout toast
     toast.custom((t) => (
       <div
-        className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+        className={`${t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
       >
         <div className="flex-1 w-0 p-4">
           <div className="flex items-start">

@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useContext } from 'react';
 import toast from 'react-hot-toast';
-import { User, MapPin, Mail, Save, Edit2, Loader2, CheckCircle, XCircle, Sparkles } from 'lucide-react';
+import { User, MapPin, Mail, Save, Edit2, Loader2, CheckCircle, XCircle, Sparkles, CloudCog } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 const ProfilePage = () => {
   const { authTokens, user } = useContext(AuthContext);
   const [profileData, setProfileData] = useState(null);
+  console.log(profileData, "the profile data");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -82,6 +83,7 @@ const ProfilePage = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data, "the user profile data");
         setProfileData(data);
         setFormData({
           first_name: data.first_name || '',
@@ -91,7 +93,7 @@ const ProfilePage = () => {
           avatar: data.avatar || null
         });
         setIsEditing(false);
-        
+
         toast.custom((t) => (
           <div className="bg-green-500/10 border border-green-500/20 backdrop-blur-xl rounded-lg p-4 flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
@@ -205,16 +207,16 @@ const ProfilePage = () => {
           {/* Subtle Gradient Overlay */}
           <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-purple-500/10 to-transparent pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-blue-500/10 to-transparent pointer-events-none"></div>
-          
+
           <div className="relative p-8">
             <div className="flex items-start gap-8">
               {/* Avatar Section with Glow */}
               <div className="flex-shrink-0">
                 <div className="relative group">
                   {formData.avatar ? (
-                    <img 
-                      src={formData.avatar} 
-                      alt="Profile" 
+                    <img
+                      src={formData.avatar}
+                      alt="Profile"
                       className="w-28 h-28 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/20"
                     />
                   ) : (
@@ -250,11 +252,10 @@ const ProfilePage = () => {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       placeholder="Enter first name"
-                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${
-                        !isEditing 
-                          ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed' 
-                          : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
-                      }`}
+                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${!isEditing
+                        ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed'
+                        : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
+                        }`}
                     />
                   </div>
                   <div>
@@ -269,11 +270,10 @@ const ProfilePage = () => {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       placeholder="Enter last name"
-                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${
-                        !isEditing 
-                          ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed' 
-                          : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
-                      }`}
+                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${!isEditing
+                        ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed'
+                        : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
+                        }`}
                     />
                   </div>
                 </div>
@@ -306,11 +306,10 @@ const ProfilePage = () => {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       placeholder="Enter address"
-                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${
-                        !isEditing 
-                          ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed' 
-                          : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
-                      }`}
+                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${!isEditing
+                        ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed'
+                        : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
+                        }`}
                     />
                   </div>
                   <div>
@@ -325,11 +324,10 @@ const ProfilePage = () => {
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       placeholder="Enter city"
-                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${
-                        !isEditing 
-                          ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed' 
-                          : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
-                      }`}
+                      className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-all backdrop-blur-sm ${!isEditing
+                        ? 'bg-white/5 border-white/10 text-gray-400 cursor-not-allowed'
+                        : 'bg-white/10 border-purple-500/30 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none placeholder:text-gray-500'
+                        }`}
                     />
                   </div>
                 </div>
@@ -344,13 +342,53 @@ const ProfilePage = () => {
               </div>
               <div className="flex-1 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
                 <p className="text-xs text-gray-400">Member Since</p>
-                <p className="text-sm font-medium text-blue-300 mt-0.5">{new Date().getFullYear()}</p>
+                <p className="text-sm font-medium text-blue-300 mt-0.5">{user?.date_joined ? new Date(user.date_joined).getFullYear() : 'N/A'}</p>
               </div>
               <div className="flex-1 bg-pink-500/10 border border-pink-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
                 <p className="text-xs text-gray-400">Role</p>
                 <p className="text-sm font-medium text-pink-300 mt-0.5">{user?.role || 'User'}</p>
               </div>
             </div>
+
+            {/* Subscription Section */}
+            {profileData?.subscription && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-lg font-medium text-gray-200 mb-4 flex items-center gap-2">
+                  <CloudCog className="w-5 h-5 text-purple-400" />
+                  Subscription Details
+                </h3>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                    <div>
+                      <p className="text-xs text-gray-400">Plan</p>
+                      <p className="text-sm font-semibold text-white mt-1">{profileData.subscription.plan_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Status</p>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${profileData.subscription.status === 'active'
+                        ? 'bg-green-500/20 text-green-300'
+                        : 'bg-red-500/20 text-red-300'
+                        }`}>
+                        {profileData.subscription.status?.toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Joined Date</p>
+                      <p className="text-sm text-gray-300 mt-1">
+                        {new Date(profileData.subscription.start_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Expires On</p>
+                      {authTokens?.user_role === 'ADMIN' ? <p className="text-sm text-gray-300 mt-1">Lifetime</p> :
+                        <p className="text-sm text-gray-300 mt-1">
+                          {new Date(profileData.subscription.end_date).toLocaleDateString()}
+                        </p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

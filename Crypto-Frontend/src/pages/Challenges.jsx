@@ -1781,6 +1781,8 @@ export default function Challenges() {
     );
   }
 
+  const currentWeekData = getCurrentWeekData();
+
   if (isChallengeStarted && selectedChallenge) {
     return (
       <div className="min-h-screen text-white">
@@ -1883,7 +1885,7 @@ export default function Challenges() {
 
         <div className={walletData ? "mt-4 sm:-mt-16" : "mt-0"}>
           <OrderHistory
-            selectedChallenge={selectedChallenge}
+            selectedChallenge={selectedChallenge || { weekData: currentWeekData }}
             walletData={walletData}
             walletLoading={walletLoading}
           />
@@ -1892,7 +1894,7 @@ export default function Challenges() {
     );
   }
 
-  const currentWeekData = getCurrentWeekData();
+
 
   // Challenge Detail View
   if (selectedChallenge) {
@@ -2327,13 +2329,21 @@ export default function Challenges() {
           </h2>
 
           {currentWeekData?.description && (
-            <p
-              className="text-purple-300 mb-4 sm:mb-6 text-sm sm:text-base quill-content"
-              dangerouslySetInnerHTML={{
-                __html: currentWeekData.description,
-              }}
-            />
-
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+              <p
+                className="text-purple-300 text-sm sm:text-base quill-content flex-1"
+                dangerouslySetInnerHTML={{
+                  __html: currentWeekData.description,
+                }}
+              />
+              <button
+                onClick={() => handleShowHoldings(true)}
+                className="flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-1.5 sm:py-2 px-2 sm:px-4 rounded-full sm:rounded-lg transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+              >
+                <LineChart className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-xs sm:text-base">Week {currentWeekData.week_number} Portfolio</span>
+              </button>
+            </div>
           )}
 
           <div className="w-full">
