@@ -32,6 +32,7 @@ import SubscriptionPage from "./pages/admin/SubscriptionPage";
 import ChallengesManagement from "./pages/admin/ChallengesManagement";
 import B2bAdminDetailsPage from "./pages/admin/B2bAdminDetailsPage";
 import B2bDashboard from "./pages/b2badmin/B2bDashboard";
+import B2bStudentDetails from "./pages/b2badmin/B2bStudentDetails";
 
 function App() {
   return (
@@ -96,6 +97,7 @@ function App() {
                 <Route path="/b2b" element={<B2bAdminLayout />}>
                   <Route path="dashboard" element={<B2bDashboard />} />
                   <Route path="batches" element={<BatchesList />} />
+                  <Route path="batches/student/:userId" element={<B2bStudentDetails />} />
                 </Route>
               </Route>
             </Routes>

@@ -57,12 +57,12 @@ const B2bDashboard = () => {
           <p className="text-gray-400 mt-1">Welcome back to your command center</p>
         </div>
         <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-md text-sm transition-all border border-white/10">
-                Last 7 Days
-            </button>
-            <button className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg text-sm font-semibold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all">
-                Download Report
-            </button>
+          <button className="px-4 py-2 font-semibold text-white bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-md text-sm transition-all border border-white/10">
+            Last 7 Days
+          </button>
+          <button className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg text-sm font-semibold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all">
+            Download Report
+          </button>
         </div>
       </div>
 
@@ -71,10 +71,10 @@ const B2bDashboard = () => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="group relative bg-[#0F0F1E] border border-white/5 p-6 rounded-2xl overflow-hidden hover:border-white/10 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            className="group relative border border-white/20 p-6 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
           >
             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-10 blur-3xl -mr-16 -mt-16 transition-opacity group-hover:opacity-20`} />
-            
+
             <div className="flex justify-between items-start mb-4">
               <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} bg-opacity-20`}>
                 <stat.icon className="text-white w-6 h-6" />
@@ -83,7 +83,7 @@ const B2bDashboard = () => {
                 {stat.change}
               </span>
             </div>
-            
+
             <h3 className="text-gray-400 text-sm font-medium">{stat.title}</h3>
             <p className="text-2xl font-bold text-white mt-1">{stat.value}</p>
           </div>
@@ -93,7 +93,7 @@ const B2bDashboard = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         {/* Main Chart */}
-        <div className="lg:col-span-2 bg-[#0F0F1E] border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+        <div className="lg:col-span-2 border border-white/20 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-indigo-400" />
@@ -105,18 +105,18 @@ const B2bDashboard = () => {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorNew" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                 <XAxis dataKey="name" stroke="#666" axisLine={false} tickLine={false} />
                 <YAxis stroke="#666" axisLine={false} tickLine={false} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333', borderRadius: '8px' }}
                   itemStyle={{ color: '#fff' }}
                 />
@@ -128,8 +128,8 @@ const B2bDashboard = () => {
         </div>
 
         {/* Side Panel / Recent Activity */}
-        <div className="bg-[#0F0F1E] border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-           <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <div className="border border-white/20 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
             <Activity className="w-5 h-5 text-pink-400" />
             Recent Actions
           </h3>

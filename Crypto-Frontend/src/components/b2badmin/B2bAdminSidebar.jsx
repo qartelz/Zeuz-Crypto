@@ -99,7 +99,7 @@ function B2bAdminSidebar() {
       </nav>
 
       {/* Footer / User Profile */}
-      <div className="p-4 border-t border-zinc-800 bg-black">
+      <div className="p-4  bg-black">
          {/* User Mini Profile Card could go here, for now just a stylized logout */}
         <button
           onClick={handleLogout}
