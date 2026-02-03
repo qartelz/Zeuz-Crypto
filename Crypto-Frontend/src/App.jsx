@@ -33,6 +33,7 @@ import ChallengesManagement from "./pages/admin/ChallengesManagement";
 import B2bAdminDetailsPage from "./pages/admin/B2bAdminDetailsPage";
 import B2bDashboard from "./pages/b2badmin/B2bDashboard";
 import B2bStudentDetails from "./pages/b2badmin/B2bStudentDetails";
+import B2bSubscriptionPage from "./pages/b2badmin/B2bSubscriptionPage";
 
 function App() {
   return (
@@ -98,6 +99,7 @@ function App() {
                   <Route path="dashboard" element={<B2bDashboard />} />
                   <Route path="batches" element={<BatchesList />} />
                   <Route path="batches/student/:userId" element={<B2bStudentDetails />} />
+                  <Route path="subscriptions" element={<B2bSubscriptionPage />} />
                 </Route>
               </Route>
             </Routes>

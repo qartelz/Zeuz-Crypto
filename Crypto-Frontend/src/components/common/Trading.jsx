@@ -105,18 +105,22 @@ const Trading = ({
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   useEffect(() => {
-    if (spotSide === "buy" && sliderValue > 0 && price > 0) {
+    if (sliderValue > 0 && price > 0) {
+      if (spotSide === "buy") {
+        const usableBalance = selectedChallenge
+          ? Number(walletData?.available_balance ?? 0)
+          : Number(balance ?? 0);
 
-      const usableBalance = selectedChallenge
-        ? Number(walletData?.available_balance ?? 0)
-        : Number(balance ?? 0);
-
-      const maxBuyableAmount = usableBalance / price;
-
-      const calculatedAmount = (maxBuyableAmount * sliderValue) / 100;
-      setAmount(calculatedAmount.toFixed(8));
+        const maxBuyableAmount = usableBalance / price;
+        const calculatedAmount = (maxBuyableAmount * sliderValue) / 100;
+        setAmount(calculatedAmount.toFixed(8));
+      } else if (spotSide === "sell") {
+        // For sell, use the holding balance (spotBalance)
+        const calculatedAmount = (Number(spotBalance) * sliderValue) / 100;
+        setAmount(calculatedAmount.toFixed(8));
+      }
     }
-  }, [price, balance, sliderValue, spotSide]);
+  }, [price, balance, sliderValue, spotSide, spotBalance, selectedChallenge, walletData]);
 
   useEffect(() => {
     setAmount("");
@@ -397,7 +401,7 @@ const Trading = ({
             participation_id: selectedChallenge.participationId,
             asset_symbol: selected.baseAsset,
             asset_name: selected.baseAsset,
-            trade_type: mode === "spot" ? "SPOT" : "FUT",
+            trade_type: mode === "spot" ? "SPOT" : "FUTURES",
             direction: spotSide.toUpperCase(), // SELL
             total_quantity: parseFloat(amount),
             entry_price: parseFloat(price.toFixed(2)),
@@ -406,6 +410,8 @@ const Trading = ({
             order_type: selectedOrderType.toUpperCase(),
             limit_price: selectedOrderType === "Limit" ? parseFloat(limitPrice) : null,
           };
+
+          console.log("📉 CHALLENGE SELL PAYLOAD:", JSON.stringify(payload, null, 2));
 
           const response = await fetch(endpoint, {
             method: "POST",
@@ -417,6 +423,7 @@ const Trading = ({
           });
 
           const data = await response.json();
+          console.log("📉 CHALLENGE SELL RESPONSE:", data);
 
           if (response.ok) {
             toast.custom(
@@ -428,12 +435,12 @@ const Trading = ({
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      SELL order placed successfully
+                      {data.direction || "SELL"} Order Successful: {data.total_quantity} {data.asset_symbol} @ {data.average_entry_price || data.entry_price}
                     </p>
                   </div>
                 </div>
               ),
-              { position: "top-right", duration: 2500 }
+              { position: "top-right", duration: 4000 }
             );
 
             await refreshWallet();
@@ -453,7 +460,7 @@ const Trading = ({
                   <div className="flex-1 w-0 p-4 flex items-center">
                     <XCircle className="h-6 w-6 text-red-500 mr-2" />
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {data.detail || data.message || "Something went wrong"}
+                      {data.error || data.detail || data.message || "Something went wrong"}
                     </p>
                   </div>
                 </div>
@@ -559,7 +566,7 @@ const Trading = ({
                   <XCircle className="h-6 w-6 text-red-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     ❌ Error:{" "}
-                    {data.detail || data.message || "Something went wrong"}
+                    {data.error || data.detail || data.message || "Something went wrong"}
                   </p>
                 </div>
               </div>
@@ -581,7 +588,7 @@ const Trading = ({
             participation_id: selectedChallenge.participationId,
             asset_symbol: selected.baseAsset,
             asset_name: selected.baseAsset,
-            trade_type: mode === "spot" ? "SPOT" : "FUT",
+            trade_type: mode === "spot" ? "SPOT" : "FUTURES",
             direction: spotSide.toUpperCase(),
             total_quantity: parseFloat(amount),
             entry_price: parseFloat(price.toFixed(2)),
@@ -597,7 +604,7 @@ const Trading = ({
             asset_symbol: selected.baseAsset,
             asset_name: selected.baseAsset,
             asset_exchange: selected.exchange || "BINANCE",
-            trade_type: mode === "spot" ? "SPOT" : "FUT",
+            trade_type: mode === "spot" ? "SPOT" : "FUTURES",
             direction: spotSide.toUpperCase(),
             holding_type:
               mode === "spot" ? "LONGTERM" : holdingType.toUpperCase(),
@@ -608,7 +615,7 @@ const Trading = ({
           };
         }
 
-        console.log(payload, "the payload");
+        console.log("🚀 ORDER PAYLOAD:", JSON.stringify(payload, null, 2));
 
         const response = await fetch(endpoint, {
           method: "POST",
@@ -620,7 +627,11 @@ const Trading = ({
         });
 
         const data = await response.json();
-        console.log(data, "the buy data response");
+        console.log("🚀 ORDER RESPONSE DATA:", data);
+        if (!response.ok) {
+          console.error("❌ ORDER FAILED STATUS:", response.status);
+          console.error("❌ ORDER FAILED DETAILS:", data);
+        }
 
         if (response.ok) {
           toast.custom(
@@ -632,13 +643,12 @@ const Trading = ({
                 <div className="flex-1 w-0 p-4 flex items-center">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Order placed: {data.action || spotSide.toUpperCase()}{" "}
-                    {data.quantity || amount} @ {data.price || price.toFixed(2)}
+                    Order Placed: {data.direction || spotSide.toUpperCase()} {data.total_quantity || data.quantity || amount} {data.asset_symbol} @ {data.average_entry_price || data.price || price.toFixed(2)}
                   </p>
                 </div>
               </div>
             ),
-            { position: "top-right", duration: 2500 }
+            { position: "top-right", duration: 4000 }
           );
 
           await refreshWallet();
@@ -689,6 +699,9 @@ const Trading = ({
       setIsPlacingOrder(false); // Always reset loading
     }
   };
+
+
+
   const [futuresTradeId, setFuturesTradeId] = useState(null);
   const [futuresPositionSize, setFuturesPositionSize] = useState(0);
 
@@ -2776,7 +2789,7 @@ const Trading = ({
           data.open_and_partial_trades.length > 0
         ) {
           const totalQuantity = data.open_and_partial_trades.reduce(
-            (sum, trade) => sum + parseFloat(trade.total_quantity),
+            (sum, trade) => sum + parseFloat(trade.remaining_quantity),
             0
           );
           setSpotBalance(totalQuantity);

@@ -143,9 +143,10 @@ class SubscriptionOrder(models.Model):
     """
 
     ORDER_TYPE_CHOICES = [
-        ("ADMIN_ASSIGNED", "Admin Assigned"),
         ("SELF_PURCHASED", "Self Purchased"),
-        ("SYSTEM", "System Generated"),
+        ("ADMIN_ASSIGNED", "Admin Assigned"),
+        ("SYSTEM_GENERATED", "System Generated"),
+        ("B2B_REQUEST", "B2B Request"),
     ]
 
     ORDER_STATUS_CHOICES = [

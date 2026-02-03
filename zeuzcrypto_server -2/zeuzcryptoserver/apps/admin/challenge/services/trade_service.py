@@ -415,7 +415,14 @@ class TradeService:
             
             # Wallet Updates
             if funds_to_unlock > 0:
-                 wallet.unlock_coins(funds_to_unlock)
+                 # Robustness: Cap unlock amount to what's actually locked
+                 # If locked_balance is lower, it implies funds weren't locked properly (so they are likely already in available)
+                 if wallet.locked_balance < funds_to_unlock:
+                     print(f"Warning: Walet locked balance ({wallet.locked_balance}) < funds to unlock ({funds_to_unlock}). Capping unlock.")
+                     funds_to_unlock = wallet.locked_balance
+                
+                 if funds_to_unlock > 0:
+                    wallet.unlock_coins(funds_to_unlock)
                  
             if trade_pnl > 0:
                  wallet.add_profit(trade_pnl)

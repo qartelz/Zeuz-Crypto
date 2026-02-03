@@ -134,7 +134,12 @@ class ChallengeWeekSerializer(serializers.ModelSerializer):
         return obj.is_ongoing()
     
     def get_is_completed(self, obj):
-        return obj.is_completed()
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            participation = obj.participants.filter(user=request.user).first()
+            if participation:
+                return participation.status == 'COMPLETED'
+        return False
 
 
 

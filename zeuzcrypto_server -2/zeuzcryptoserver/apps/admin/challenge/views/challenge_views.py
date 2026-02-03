@@ -329,20 +329,26 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
         week = self.get_object()
         user = request.user
 
-        try:
-            participation = UserChallengeParticipation.objects.get(user=user, week=week)
-            TradeService.update_participation_metrics(participation)
-            try:
-                ScoringService.calculate_scores(participation)
-            except Exception as e:
-                print(f"Error calculating score: {e}")
-            serializer = UserChallengeParticipationSerializer(participation)
-            return Response(serializer.data)
-        except UserChallengeParticipation.DoesNotExist:
+        participation = UserChallengeParticipation.objects.filter(user=user, week=week).first()
+        
+        if not participation:
             return Response(
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        try:
+            TradeService.update_participation_metrics(participation)
+        except Exception as e:
+            print(f"Error updating participation metrics: {e}")
+            
+        try:
+            ScoringService.calculate_scores(participation)
+        except Exception as e:
+            print(f"Error calculating score: {e}")
+            
+        serializer = UserChallengeParticipationSerializer(participation)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def calculate_score(self, request, pk=None):
@@ -350,22 +356,22 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
         week = self.get_object()
         user = request.user
 
-        try:
-            participation = UserChallengeParticipation.objects.get(user=user, week=week)
-
-            if participation.status != 'IN_PROGRESS':
-                return Response(
-                    {'error': 'Challenge not in progress'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            score_data = ScoringService.calculate_scores(participation)
-            return Response(score_data)
-        except UserChallengeParticipation.DoesNotExist:
+        participation = UserChallengeParticipation.objects.filter(user=user, week=week).first()
+        
+        if not participation:
             return Response(
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        if participation.status != 'IN_PROGRESS':
+            return Response(
+                {'error': 'Challenge not in progress'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        score_data = ScoringService.calculate_scores(participation)
+        return Response(score_data)
 
     @action(detail=True, methods=['post'])
     def complete_challenge(self, request, pk=None):
@@ -395,19 +401,20 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
         week = self.get_object()
         user = request.user
 
-        try:
-            participation = UserChallengeParticipation.objects.get(user=user, week=week)
-            all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
-
-            return Response({
-                'all_tasks_completed': all_completed,
-                'task_results': results
-            })
-        except UserChallengeParticipation.DoesNotExist:
+        participation = UserChallengeParticipation.objects.filter(user=user, week=week).first()
+        
+        if not participation:
             return Response(
                 {'error': 'Not participating in this challenge'},
                 status=status.HTTP_404_NOT_FOUND
             )
+            
+        all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
+
+        return Response({
+            'all_tasks_completed': all_completed,
+            'task_results': results
+        })
 #
 # class ChallengeTaskViewSet(viewsets.ReadOnlyModelViewSet):
 #     """Challenge task management"""

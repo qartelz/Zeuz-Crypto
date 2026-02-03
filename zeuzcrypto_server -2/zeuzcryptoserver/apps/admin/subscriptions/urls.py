@@ -83,6 +83,52 @@ urlpatterns = [
     path('subscriptions/idle_status/', views.SubscriptionViewSet.as_view({
         'get': 'idle_status'
     }), name='subscription-idle-status'),
+
+    # B2B Batch Subscription URLs
+    path('batches/', views.B2bBatchSubscriptionViewSet.as_view({
+        'get': 'list'
+    }), name='b2b-batch-list'),
+
+    path('batches/request_subscription/', views.B2bBatchSubscriptionViewSet.as_view({
+        'post': 'request_subscription'
+    }), name='b2b-batch-request-subscription'),
+    
+    path('batches/<uuid:pk>/', views.B2bBatchSubscriptionViewSet.as_view({
+        'get': 'retrieve'
+    }), name='b2b-batch-detail'),
+    
+    path('batches/<uuid:pk>/students/', views.B2bBatchSubscriptionViewSet.as_view({
+        'get': 'students'
+    }), name='b2b-batch-students'),
+
+    # Subscription Order URLs
+    path('orders/', views.SubscriptionOrderViewSet.as_view({
+        'get': 'list', 
+        'post': 'create'
+    }), name='order-list'),
+
+    path('orders/pending_orders/', views.SubscriptionOrderViewSet.as_view({
+        'get': 'pending_orders'
+    }), name='order-pending'),
+
+    path('orders/admin_assign_plan/', views.SubscriptionOrderViewSet.as_view({
+        'post': 'admin_assign_plan'
+    }), name='order-admin-assign'),
+
+    path('orders/<uuid:pk>/', views.SubscriptionOrderViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='order-detail'),
+
+    path('orders/<uuid:pk>/complete_order/', views.SubscriptionOrderViewSet.as_view({
+        'post': 'complete_order'
+    }), name='order-complete'),
+
+    path('orders/<uuid:pk>/cancel_order/', views.SubscriptionOrderViewSet.as_view({
+        'post': 'cancel_order'
+    }), name='order-cancel'),
 ]
 
 """

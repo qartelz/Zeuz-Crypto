@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 # from apps.challenges.models import (
 #     ChallengeProgram, ChallengeWeek, ChallengeStatistics
 # )
-from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeStatistics
+from apps.admin.challenge.models.challenge_models import ChallengeProgram, ChallengeWeek, ChallengeStatistics, UserChallengeParticipation
 
 # from apps.challenges.serializers.admin_serializers import (
 #     ChallengeProgramAdminSerializer, ChallengeWeekAdminSerializer,
@@ -177,3 +177,120 @@ class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
         week = self.get_object()
         return AdminService.export_participants_csv(week)
 
+
+# Add imports at the top if not present, but I'll add them inside the method or file if possible, 
+# or I'll split this into two edits: one for imports, one for the class.
+# Let's try to add the class first, assuming some imports might be needed.
+# Actually, I should check existing imports.
+# Existing imports: 
+# from apps.admin.challenge.models.challenge_models import ...
+# I need User and Subscription.
+# User is likely in apps.accounts.models
+# Subscription is in apps.admin.subscriptions.models
+
+from apps.accounts.models import User
+from apps.admin.subscriptions.models import Subscription, Plan
+from django.db.models import Count, Sum
+from django.db.models.functions import TruncMonth
+from datetime import timedelta
+from django.utils import timezone
+
+class AdminDashboardViewSet(viewsets.ViewSet):
+    """
+    Dashboard Aggregated Statistics
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        # 1. User Metrics
+        total_users = User.objects.count()
+        new_users_last_7_days = User.objects.filter(
+            date_joined__gte=timezone.now() - timedelta(days=7)
+        ).count()
+
+        # 2. Challenge Metrics
+        active_challenges_count = ChallengeWeek.objects.filter(is_active=True).count()
+        completed_challenges_count = UserChallengeParticipation.objects.filter(status='COMPLETED').count()
+        
+        # 3. Subscription/Financial Metrics
+        from apps.admin.subscriptions.models import SubscriptionOrder
+        active_subs = Subscription.objects.filter(status='ACTIVE').count()
+        
+        # Revenue & Orders
+        # Use Subscription model for revenue as Orders might be missing for legacy data
+        total_revenue = Subscription.objects.aggregate(Sum('final_price'))['final_price__sum'] or 0
+        
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        new_subs_30d = Subscription.objects.filter(start_date__gte=thirty_days_ago).count()
+
+        # 4. Charts Data
+        
+        # User Growth (Last 6 months)
+        six_months_ago = timezone.now() - timedelta(days=180)
+        user_growth_qs = User.objects.filter(date_joined__gte=six_months_ago)\
+            .annotate(month=TruncMonth('date_joined'))\
+            .values('month')\
+            .annotate(count=Count('id'))\
+            .order_by('month')
+            
+        user_growth_data = [
+            {
+                "month": entry['month'].strftime('%b'),
+                "users": entry['count']
+            }
+            for entry in user_growth_qs
+        ]
+
+        # Subscription Plan Distribution
+        plan_distribution_qs = Subscription.objects.values('plan__name').annotate(count=Count('id'))
+        plan_distribution_data = [
+            {"name": item['plan__name'], "value": item['count']} for item in plan_distribution_qs
+        ]
+        
+        # Monthly Revenue (Last 6 months)
+        revenue_growth_qs = Subscription.objects.filter(
+            created_at__gte=six_months_ago
+        ).annotate(month=TruncMonth('created_at'))\
+         .values('month')\
+         .annotate(revenue=Sum('final_price'))\
+         .order_by('month')
+
+        revenue_chart_data = [
+            {
+                "month": entry['month'].strftime('%b'),
+                "revenue": float(entry['revenue'])
+            }
+            for entry in revenue_growth_qs
+        ]
+        
+        # 5. Recent Activity (Latest 5 users)
+        recent_users_qs = User.objects.order_by('-date_joined')[:5]
+        recent_users_data = [
+            {
+                "id": u.id,
+                "name": f"{u.first_name} {u.last_name}",
+                "email": u.email,
+                "joined_at": u.date_joined,
+                "status": "Active" if u.is_active else "Inactive"
+            }
+            for u in recent_users_qs
+        ]
+
+        return Response({
+            "overview": {
+                "total_users": total_users,
+                "new_users_7d": new_users_last_7_days,
+                "active_challenges": active_challenges_count,
+                "completed_participations": completed_challenges_count,
+                "active_subscriptions": active_subs,
+                "total_revenue": float(total_revenue),
+                "new_subs_30d": new_subs_30d
+            },
+            "charts": {
+                "user_growth": user_growth_data,
+                "plan_distribution": plan_distribution_data,
+                "revenue_trend": revenue_chart_data
+            },
+            "recent_activity": recent_users_data
+        })

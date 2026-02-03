@@ -37,6 +37,7 @@ router.register(r'trades', trade_views.ChallengeTradeViewSet, basename='trade')
 # Admin endpoints
 router.register(r'admin/challenges', admin_views.ChallengeAdminViewSet, basename='admin-challenge')
 router.register(r'admin/weeks', admin_views.ChallengeWeekAdminViewSet, basename='admin-week')
+router.register(r'admin/dashboard', admin_views.AdminDashboardViewSet, basename='admin-dashboard')
 
 # Fix: Ensure trade views are correctly registered if they were intended to be under admin
 # router.register(r'admin/trades', trade_views.ChallengeTradeViewSet, basename='admin-trade')

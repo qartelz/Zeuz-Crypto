@@ -721,8 +721,137 @@ class SubscriptionOrderViewSet(viewsets.ModelViewSet):
             cancelled_orders=Count("id", filter=Q(status="CANCELLED")),
             failed_orders=Count("id", filter=Q(status="FAILED")),
             total_revenue=Sum("final_amount", filter=Q(status="COMPLETED")),
-            admin_assigned=Count("id", filter=Q(order_type="ADMIN_ASSIGNED")),
             self_purchased=Count("id", filter=Q(order_type="SELF_PURCHASED")),
         )
 
         return Response(stats)
+
+
+from apps.accounts.models import UserBatch
+from .serializers import BatchSubscriptionStatsSerializer, UserSubscriptionStatusSerializer, SubscriptionRequestSerializer
+
+class B2bBatchSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for B2B Admins to view Batches and their subscription statistics.
+    """
+    from django_filters.rest_framework import DjangoFilterBackend
+    
+    permission_classes = [permissions.IsAuthenticated] # detailed perms logic in get_queryset usually, or IsAdminUser
+    serializer_class = BatchSubscriptionStatsSerializer
+    filter_backends = [SearchFilter, OrderingFilter, DjangoFilterBackend]
+    search_fields = ['name']
+    filterset_fields = ['created_by']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        # Only return batches created by the logged-in B2B admin
+        # If superuser, maybe show all? For now restrict to created_by matches
+        user = self.request.user
+        qs = UserBatch.objects.all()
+        
+        if not (user.is_superuser or user.role == 'admin'):
+             qs = qs.filter(created_by=user)
+             
+        # Optimized Annotations
+        now = timezone.now()
+        
+        return qs.annotate(
+            annotated_total_students=Count('users', distinct=True),
+            annotated_active_subs=Count(
+                'users__subscriptions', 
+                filter=Q(
+                    users__subscriptions__status='ACTIVE',
+                    users__subscriptions__start_date__lte=now,
+                    users__subscriptions__end_date__gte=now
+                ),
+                distinct=True
+            ),
+             # Note: logic for expired is complex (users with expired AND no active).
+             # We skip annotating that for now to avoid complexity errors.
+            annotated_pending_requests=Count(
+                'users__subscription_orders',
+                filter=Q(
+                    users__subscription_orders__order_type='B2B_REQUEST',
+                    users__subscription_orders__status='PENDING'
+                ),
+                distinct=True
+            )
+        )
+
+    @action(detail=True, methods=['get'])
+    def students(self, request, pk=None):
+        """
+        Get all students in this batch with their subscription status.
+        Optimized to prevent N+1 queries.
+        """
+        batch = self.get_object()
+        
+        # Prefetch logic to optimize UserSubscriptionStatusSerializer
+        # We need to prefetch 'subscription' related sets (SubscriptionOrder/B2B_REQUEST, Subscription/ACTIVE)
+        # But UserSubscriptionStatusSerializer logic is dynamic (check pending first, then active...)
+        # We can at least prefetch the related objects
+        
+        from django.db.models import Prefetch
+        
+        # Prefetch pending requests
+        pending_requests_prefetch = Prefetch(
+            'subscription_orders',
+            queryset=SubscriptionOrder.objects.filter(
+                order_type="B2B_REQUEST",
+                status="PENDING"
+            ).select_related('plan'),
+            to_attr='prefetched_pending_requests'
+        )
+
+        # Prefetch active subscriptions
+        active_subs_prefetch = Prefetch(
+            'subscriptions',
+            queryset=Subscription.objects.filter(
+                status='ACTIVE',
+                start_date__lte=timezone.now(),
+                end_date__gte=timezone.now()
+            ).select_related('plan'),
+            to_attr='prefetched_active_subs'
+        )
+        
+        students = batch.users.all().prefetch_related(
+            pending_requests_prefetch,
+            active_subs_prefetch
+        ).order_by('first_name', 'last_name')
+        
+        # Pagination
+        page = self.paginate_queryset(students)
+        if page is not None:
+             serializer = UserSubscriptionStatusSerializer(page, many=True, context={'prefetched': True})
+             return self.get_paginated_response(serializer.data)
+             
+        serializer = UserSubscriptionStatusSerializer(students, many=True, context={'prefetched': True})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def request_subscription(self, request):
+        """
+        Request a subscription for a student
+        """
+        serializer = SubscriptionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Additional check: Ensure the user belongs to a batch owned by this admin
+        user_id = serializer.validated_data['user_id']
+        # We can fetch the user since we know it exists from serializer validation
+        # But for optimization, let's verify ownership
+        
+        # Only if not superuser/admin
+        if not (request.user.is_superuser or request.user.role == 'admin'):
+             is_owned = UserBatch.objects.filter(created_by=request.user, users__id=user_id.id).exists()
+             if not is_owned:
+                 return Response(
+                     {"detail": "You can only request subscriptions for your own students."},
+                     status=status.HTTP_403_FORBIDDEN
+                 )
+
+        order = serializer.save()
+        return Response(
+            {"detail": "Subscription request submitted successfully.", "order_id": order.id}, 
+            status=status.HTTP_201_CREATED
+        )

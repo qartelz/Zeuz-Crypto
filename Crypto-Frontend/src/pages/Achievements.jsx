@@ -12,7 +12,8 @@ import {
   ArrowLeft,
   BarChart3,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  TrendingDown
 } from "lucide-react";
 
 export default function Achievements() {
@@ -303,8 +304,8 @@ export default function Achievements() {
                     <div className="text-4xl font-bold mb-2">
                       {achievementsData.portfolioChallenge.portfolioValue.total}
                     </div>
-                    <div className="text-green-400 font-semibold flex items-center gap-2">
-                      <TrendingUp size={20} />
+                    <div className={`${achievementsData.portfolioChallenge.portfolioValue.isProfit ? "text-green-400" : "text-red-400"} font-semibold flex items-center gap-2`}>
+                      {achievementsData.portfolioChallenge.portfolioValue.isProfit ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                       {
                         achievementsData.portfolioChallenge.portfolioValue
                           .profit

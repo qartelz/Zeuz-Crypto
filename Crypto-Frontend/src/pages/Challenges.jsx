@@ -1195,6 +1195,7 @@ import {
   Wallet,
   ArrowLeft,
   LineChart,
+  CheckCircle,
 } from "lucide-react";
 import Trading from "../components/common/Trading";
 import OrderHistory from "./OrderHistory";
@@ -1240,6 +1241,8 @@ export default function Challenges() {
   const [weeksData, setWeeksData] = useState([]);
   const [userProgress, setUserProgress] = useState(null);
   const [joiningChallenge, setJoiningChallenge] = useState(false);
+  const [completingChallenge, setCompletingChallenge] = useState(false);
+  const [userProgressLoading, setUserProgressLoading] = useState(false);
 
   console.log(weeksData, "weeks data")
   console.log(userProgress, "the user progress")
@@ -1425,13 +1428,21 @@ export default function Challenges() {
 
       setWeeksData(sortedWeeks);
 
-      // Set first week as selected by default
+      // Set default week logic:
+      // 1. URL param "week"
+      // 2. First incomplete week (Current user progress)
+      // 3. Fallback to first week
       if (sortedWeeks.length > 0 && selectedWeek === undefined) {
         const weekParam = searchParams.get("week");
         if (weekParam) {
           setSelectedWeek(weekParam);
         } else {
-          handleSetSelectedWeek(sortedWeeks[0].id);
+          // Find the first week that is NOT completed
+          const activeWeek = sortedWeeks.find(w => !w.is_completed);
+          // If all completed, maybe go to the last week or first week. Let's start with activeWeek or the first one.
+          // User request: "initially in the 2nd" (next one).
+          const defaultId = activeWeek ? activeWeek.id : sortedWeeks[sortedWeeks.length - 1].id;
+          handleSetSelectedWeek(defaultId);
         }
       }
       setLoading(false);
@@ -1442,9 +1453,17 @@ export default function Challenges() {
     }
   };
 
+  // Ensure user progress is fetched whenever selectedWeek updates
+  useEffect(() => {
+    if (selectedWeek) {
+      fetchUserProgress(selectedWeek);
+    }
+  }, [selectedWeek]);
+
 
   const fetchUserProgress = async (weekId) => {
     try {
+      setUserProgressLoading(true);
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const url = `${baseURL}challenges/weeks/${weekId}/user_progress/`;
 
@@ -1475,6 +1494,8 @@ export default function Challenges() {
       console.error("Error fetching user progress:", err);
       setUserProgress(null);
       return null;
+    } finally {
+      setUserProgressLoading(false);
     }
   };
 
@@ -1939,24 +1960,110 @@ export default function Challenges() {
                 </span>
               </div>
 
-              <div className="flex justify-start lg:justify-start items-start py-4 sm:py-6">
-                <button
-                  onClick={handleChallengeAction}
-                  disabled={joiningChallenge}
-                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {joiningChallenge ? (
-                    <>
-                      <Loader2 className="animate-spin" size={20} />
-                      <span className="text-sm sm:text-base">Joining...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={18} />
-                      <span className="text-sm sm:text-base">{getChallengeButtonText()}</span>
-                    </>
-                  )}
-                </button>
+              <div className="flex justify-start lg:justify-start items-center gap-4 py-4 sm:py-6">
+                {userProgressLoading ? (
+                  <button
+                    disabled
+                    className="w-full sm:w-auto bg-gray-600/20 text-gray-400 font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-base sm:text-lg cursor-wait"
+                  >
+                    <Loader2 className="animate-spin" size={20} />
+                    <span className="text-sm sm:text-base">Loading Status...</span>
+                  </button>
+                ) : (!userProgress || (userProgress.status !== 'COMPLETED' && !userProgress.is_completed)) ? (
+                  <>
+                    <button
+                      onClick={handleChallengeAction}
+                      disabled={joiningChallenge}
+                      className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {joiningChallenge ? (
+                        <>
+                          <Loader2 className="animate-spin" size={20} />
+                          <span className="text-sm sm:text-base">Joining...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play size={18} />
+                          <span className="text-sm sm:text-base">{getChallengeButtonText()}</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Complete Challenge Button */}
+                    {userProgress && userProgress.status === 'IN_PROGRESS' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            setCompletingChallenge(true); // Ensure this state is defined
+                            const tokens = JSON.parse(localStorage.getItem("authTokens"));
+                            const participationId = userProgress.id;
+
+                            const response = await fetch(`${baseURL}challenges/participations/${participationId}/complete-challenge/`, {
+                              method: 'POST',
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${tokens?.access}`,
+                              }
+                            });
+
+                            const data = await response.json();
+
+                            if (data.error) {
+                              toast.error(data.error, {
+                                duration: 4000,
+                                position: "top-center",
+                                style: {
+                                  background: "#1f1730",
+                                  color: "#fff",
+                                  border: "1px solid #ef4444",
+                                },
+                              });
+                            } else {
+                              toast.success("Challenge Completed Successfully!", {
+                                duration: 4000,
+                                position: "top-center",
+                                style: {
+                                  background: "#1f1730",
+                                  color: "#fff",
+                                  border: "1px solid #22c55e",
+                                },
+                              });
+                              // Update local state to reflect completion
+                              setUserProgress({ ...userProgress, status: 'COMPLETED' });
+                            }
+                          } catch (err) {
+                            console.error("Error completing challenge:", err);
+                            toast.error("An error occurred", {
+                              duration: 4000,
+                              position: "top-center",
+                              style: {
+                                background: "#1f1730",
+                                color: "#fff",
+                                border: "1px solid #ef4444",
+                              },
+                            });
+                          } finally {
+                            setCompletingChallenge(false);
+                          }
+                        }}
+                        disabled={completingChallenge}
+                        className="w-full sm:w-auto bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 font-bold py-2 sm:py-2.5 px-3 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-1.5 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {completingChallenge ? (
+                          <Loader2 className="animate-spin" size={20} />
+                        ) : (
+                          <CheckCircle size={20} />
+                        )}
+                        <span className="text-sm sm:text-base">Complete Challenge</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-6 py-3 rounded-xl font-bold flex items-center gap-2">
+                    <CheckCircle size={20} />
+                    Challenge Completed
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2302,23 +2409,36 @@ export default function Challenges() {
         {/* Week Selector */}
         <div className="mb-6 sm:mb-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {weeksData.slice(0, 4).map((week) => (
-              <button
-                key={week.id}
-                onClick={() => handleSetSelectedWeek(week.id)}
-                className={`p-3 sm:p-2 rounded-xl border transition-all ${selectedWeek === week.id
-                  ? "bg-purple-900/30 border-purple-500 shadow-md shadow-purple-800/30"
-                  : "border-purple-500/30 hover:border-purple-400/50"
-                  }`}
-              >
-                <div className="text-lg sm:text-xl font-bold mb-1">
-                  Week {week.week_number}
-                </div>
-                <div className="text-xs text-purple-300">
-                  {week.tasks.length} Task{week.tasks.length !== 1 ? "s" : ""}
-                </div>
-              </button>
-            ))}
+            {weeksData.slice(0, 4).map((week) => {
+              // Determine if this is the active/next week (first incomplete one)
+              const isFocusedWeek = !week.is_completed && weeksData.find(w => !w.is_completed)?.id === week.id;
+
+              return (
+                <button
+                  key={week.id}
+                  onClick={() => handleSetSelectedWeek(week.id)}
+                  className={`relative p-3 sm:p-2 rounded-xl border transition-all ${selectedWeek === week.id
+                    ? "bg-purple-900/30 border-purple-500 shadow-md shadow-purple-800/30"
+                    : "border-purple-500/30 hover:border-purple-400/50"
+                    }`}
+                >
+                  {isFocusedWeek && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-400 shadow-sm flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        Current
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-lg sm:text-xl font-bold mb-1">
+                    Week {week.week_number}
+                  </div>
+                  <div className="text-xs text-purple-300">
+                    {week.tasks.length} Task{week.tasks.length !== 1 ? "s" : ""}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
