@@ -34,6 +34,7 @@ import B2bAdminDetailsPage from "./pages/admin/B2bAdminDetailsPage";
 import B2bDashboard from "./pages/b2badmin/B2bDashboard";
 import B2bStudentDetails from "./pages/b2badmin/B2bStudentDetails";
 import B2bSubscriptionPage from "./pages/b2badmin/B2bSubscriptionPage";
+import RewardTemplates from "./pages/admin/RewardTemplates";
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
                   <Route path="coupons" element={<CouponsManagement />} />
                   <Route path="subscriptions" element={<SubscriptionPage />} />
                   <Route path="challenges" element={<ChallengesManagement />} />
+                  <Route path="rewards" element={<RewardTemplates />} />
                   <Route
                     path="adminspage/b2b-admin-details/:adminId"
                     element={<B2bAdminDetailsPage />}

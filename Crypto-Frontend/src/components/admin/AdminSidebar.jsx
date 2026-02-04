@@ -33,7 +33,7 @@
 //   const handleLogout = () => {
 //     setLoggingOut(true);   
 //     logoutUser();
-    
+
 //     toast.info('👋 Logged out successfully!', {
 //       position: 'top-right',
 //       autoClose: 2000,
@@ -123,6 +123,7 @@ import {
   CreditCard,
   Flag,
   X,
+  Trophy // Added import
 } from "lucide-react";
 import { useContext, useState } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -143,6 +144,7 @@ function AdminSidebar({ closeSidebar }) {
     { to: "/admin/plans", label: "Plans", icon: DollarSign },
     { to: "/admin/coupons", label: "Coupons", icon: Tag },
     { to: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
+    { to: "/admin/rewards", label: "Rewards", icon: Trophy },
   ];
 
   const handleLogout = () => {
@@ -194,11 +196,10 @@ function AdminSidebar({ closeSidebar }) {
                 key={to}
                 to={to}
                 onClick={closeSidebar}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${isActive
                     ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
                     : "text-purple-300/70 hover:bg-purple-500/10 hover:text-white"
-                }`}
+                  }`}
               >
                 <Icon size={20} />
                 {label}
@@ -212,11 +213,10 @@ function AdminSidebar({ closeSidebar }) {
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className={`flex items-center justify-center gap-3 px-4 py-2.5 w-full rounded-lg transition-all duration-200 font-medium ${
-              loggingOut
+            className={`flex items-center justify-center gap-3 px-4 py-2.5 w-full rounded-lg transition-all duration-200 font-medium ${loggingOut
                 ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
                 : "bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border border-red-500/20"
-            }`}
+              }`}
           >
             <LogOut size={20} />
             {loggingOut ? "Logging out..." : "Logout"}

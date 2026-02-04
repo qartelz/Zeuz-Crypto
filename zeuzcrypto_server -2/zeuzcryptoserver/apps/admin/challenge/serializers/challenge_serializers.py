@@ -83,7 +83,7 @@ class ChallengeRewardSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChallengeReward
         fields = [
-            'id', 'badge_name', 'badge_description', 'badge_icon',
+            'id', 'week', 'badge_name', 'badge_description', 'badge_icon',
             'profit_bonus_coins', 'loss_recovery_coins', 'is_active'
         ]
         read_only_fields = ['id']
@@ -351,14 +351,56 @@ class UserChallengeParticipationListSerializer(serializers.ModelSerializer):
     week_id = serializers.UUIDField(source='week.id', read_only=True)
     program_id = serializers.UUIDField(source='week.program.id', read_only=True)
     
+    # Added for detailed achievement view
+    score_details = serializers.SerializerMethodField()
+    wallet_balance = serializers.SerializerMethodField()
+    reward_earned = serializers.SerializerMethodField()
+
     class Meta:
         model = UserChallengeParticipation
         fields = [
             'id', 'program_name', 'program_id', 
             'week_title', 'week_number', 'week_id',
             'status', 'portfolio_return_pct', 'total_trades', 
-            'joined_at', 'completed_at'
+            'joined_at', 'completed_at',
+            'starting_balance', 'current_balance',
+            'score_details', 'wallet_balance', 'reward_earned'
         ]
-        # read_only_fields must be a list or tuple
         read_only_fields = fields
+
+    def get_score_details(self, obj):
+        try:
+            score = obj.score
+            return ChallengeScoreSerializer(score).data
+        except:
+            return None
+    
+    def get_wallet_balance(self, obj):
+        try:
+            wallet = obj.wallet
+            return {
+                'id': str(wallet.id),
+                'initial': str(wallet.initial_balance),
+                'available': str(wallet.available_balance),
+                'locked': str(wallet.locked_balance),
+                'earned': str(wallet.earned_balance),
+                'total': str(wallet.total_balance),
+                'current': str(wallet.current_balance)
+            }
+        except:
+            return None
+
+    def get_reward_earned(self, obj):
+        try:
+            reward = obj.earned_rewards.first()
+            if reward:
+                return {
+                    'badge_name': reward.reward_template.badge_name,
+                    'badge_icon': reward.reward_template.badge_icon,
+                    'coins_earned': reward.coins_earned,
+                    'earned_at': reward.earned_at
+                }
+            return None
+        except Exception:
+            return None
 

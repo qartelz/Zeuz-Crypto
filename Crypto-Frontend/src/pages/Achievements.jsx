@@ -9,12 +9,17 @@ import {
   CheckCircle,
   Lock,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ArrowLeft,
   BarChart3,
   Loader2,
   AlertCircle,
-  TrendingDown
+  TrendingDown,
+  Shield,
+  Clock
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Achievements() {
   const [currentView, setCurrentView] = useState("portfolio"); // 'portfolio' or 'badges'
@@ -40,28 +45,35 @@ export default function Achievements() {
   };
 
   useEffect(() => {
-    const fetchRewards = async () => {
+    const fetchData = async () => {
       try {
+        setLoading(true);
         const authTokens = localStorage.getItem("authTokens");
         if (!authTokens) {
           throw new Error("User not authenticated");
         }
         const tokens = JSON.parse(authTokens);
+        const headers = {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tokens.access}`,
+        };
 
-        const response = await fetch(`${baseURL}challenges/rewards/my-rewards/`, {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${tokens.access}`,
-          },
-        });
+        // Fetch all required data in parallel
+        const [weeksRes, partsRes, rewardsRes] = await Promise.all([
+          fetch(`${baseURL}challenges/weeks/`, { headers }),
+          fetch(`${baseURL}challenges/participations/`, { headers }),
+          fetch(`${baseURL}challenges/rewards/my-rewards/`, { headers })
+        ]);
 
-        if (!response.ok) {
+        if (!weeksRes.ok || !partsRes.ok || !rewardsRes.ok) {
           throw new Error("Failed to fetch achievements data");
         }
 
-        const data = await response.json();
-        const processedData = processAchievementsData(data);
-        setAchievementsData(processedData);
+        const weeksData = await weeksRes.json();
+        const partsData = await partsRes.json();
+        const rewardsData = await rewardsRes.json();
+
+        processAchievementsData(weeksData, partsData, rewardsData);
       } catch (err) {
         console.error("Error fetching achievements:", err);
         setError(err.message);
@@ -70,151 +82,125 @@ export default function Achievements() {
       }
     };
 
-    fetchRewards();
+    fetchData();
   }, []);
 
-  const processAchievementsData = (apiData) => {
-    // If no data, return a basic empty structure or handle appropriately
-    if (!apiData || apiData.length === 0) {
-      // Fallback or empty state could be handled here
-      // For now, let's assume we might have at least one week joined if they are here
-      // But if truly empty, we'll return a safe default
-      return null;
+  const processAchievementsData = (weeks, participations, rewards) => {
+    // 1. Sort weeks safely
+    const weeksArray = Array.isArray(weeks) ? weeks : (weeks.results || []);
+    const sortedWeeks = [...weeksArray].sort((a, b) => a.week_number - b.week_number);
+
+    if (sortedWeeks.length === 0) {
+      setAchievementsData(null);
+      return;
     }
 
-    // Sort by week number to ensure order
-    const sortedData = [...apiData].sort((a, b) => a.week_number - b.week_number);
+    // 2. Map Participations & Rewards
+    const partMap = new Map();
+    const partsArray = Array.isArray(participations) ? participations : (participations.results || []);
+    partsArray.forEach(p => partMap.set(p.week_id, p));
 
-    // Get the latest active or completed week (current context)
-    const currentWeekData = sortedData[sortedData.length - 1];
+    const rewardsArray = Array.isArray(rewards) ? rewards : (rewards.results || []);
 
-    // Calculate total portfolio stats
-    // Note: If the backend logic changes to aggregation, update here. 
-    // Currently taking the latest week's balance as "current portfolio value" proxy
-    const currentBalance = parseFloat(currentWeekData.current_balance || 0);
-    const startingBalance = parseFloat(currentWeekData.starting_balance || 0);
-    const totalProfit = currentBalance - startingBalance;
-    const profitPct = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
+    // 3. Build Detailed Timeline for Cards
+    const timeline = sortedWeeks.map(week => {
+      const participation = partMap.get(week.id);
 
-    // Weekly Progress Mapping
-    const weeklyProgress = sortedData.map(item => ({
-      week: item.week_number,
-      return: parseFloat(item.portfolio_return_pct || 0).toFixed(1),
-      target: parseFloat(item.week_target_goal || 5), // Default to 5% if missing
-      status: item.badge_earned ? "Goal Met ✓" : (item.portfolio_return_pct >= item.week_target_goal ? "Goal Met ✓" : "Below Target"),
-      completed: !!item.badge_earned,
-      active: !item.badge_earned // simplified logic
-    }));
+      const isCompleted = participation?.status === 'COMPLETED';
+      const isInProgress = participation?.status === 'IN_PROGRESS';
 
-    // Weekly Badges Mapping
-    const weeklyBadges = [1, 2, 3, 4].map(weekNum => {
-      const weekData = sortedData.find(d => d.week_number === weekNum);
+      let status = "LOCKED";
+      if (isCompleted) status = "COMPLETED";
+      else if (isInProgress) status = "IN_PROGRESS";
+
+      // Calculate Metrics
+      const startingBalance = participation ? parseFloat(participation.starting_balance || 0) : 0;
+      const currentBalance = participation ? parseFloat(participation.current_balance || 0) : 0;
+      const totalProfit = currentBalance - startingBalance;
+      const profitPct = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
+      const targetReturn = parseFloat(week.target_goal || 5); // Assuming 5% if missing
+
+      // Progress calculation
+      const returnPct = participation ? parseFloat(participation.portfolio_return_pct || 0) : 0;
+      const progressToGoal = Math.min(100, Math.max(0, (returnPct / targetReturn) * 100));
+
       return {
-        week: weekNum,
-        title: weekData?.badge_name || `Week ${weekNum} Badge`,
-        description: BADGE_DESCRIPTIONS[weekNum] || "Complete the weekly challenge to unlock.",
-        icon: WEEK_ICONS[weekNum] || "🏆",
-        unlocked: !!weekData?.badge_earned,
-        unlockDate: weekData?.earned_at ? new Date(weekData.earned_at).toISOString().split('T')[0] : null
+        id: week.id,
+        weekNumber: week.week_number,
+        title: week.title,
+        description: week.description,
+        status: status,
+        targetReturn: targetReturn,
+
+        // Detailed Metrics
+        currentReturn: returnPct,
+        totalPnl: totalProfit,
+        profitPct: profitPct,
+        startingBalance: startingBalance,
+        currentBalance: currentBalance,
+        progressPct: progressToGoal,
+
+        // Days to Goal Mock (can be refined if data exists)
+        daysToGoal: isInProgress ? "2 days" : "-",
+        avgDailyReturn: "+0.31%", // Mock until backend provides
+
+        badgeName: week.reward?.badge_name || `Week ${week.week_number} Badge`,
       };
     });
 
-    // Behavioral Insights (Taking from latest week w/ evaluation)
-    const latestEval = currentWeekData.evaluation || {};
+    // 4. Determine Current Context (latest active or completed)
+    const currentWeekItem = timeline.find(t => t.status === 'IN_PROGRESS') || timeline[timeline.length - 1];
+    const currentPart = partMap.get(currentWeekItem.id) || {};
+    const latestEval = currentPart.score_details || {};
 
-    return {
+    // 5. Weekly Badges Mapping
+    const weeklyBadges = [1, 2, 3, 4].map(weekNum => {
+      const weekData = sortedWeeks.find(d => d.week_number === weekNum);
+      const isEarned = rewardsArray.some(r => r.week_number === weekNum || r.reward_template?.week?.week_number === weekNum);
+      const reward = rewardsArray.find(r => r.week_number === weekNum || r.reward_template?.week?.week_number === weekNum);
+
+      return {
+        week: weekNum,
+        title: reward?.badge_name || `Week ${weekNum} Badge`,
+        description: BADGE_DESCRIPTIONS[weekNum] || "Complete the weekly challenge to unlock.",
+        icon: WEEK_ICONS[weekNum] || "🏆",
+        unlocked: isEarned,
+        unlockDate: reward?.earned_at ? new Date(reward.earned_at).toISOString().split('T')[0] : null
+      };
+    });
+
+    setAchievementsData({
+      timeline: timeline,
       portfolioChallenge: {
-        title: `${currentWeekData.week_title} - Portfolio Challenge`,
-        subtitle: `Track your progress toward a ${parseFloat(currentWeekData.week_target_goal || 20)}% return target`,
-        metrics: [
-          {
-            label: `Week ${currentWeekData.week_number} Return`,
-            value: `${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(2)}%`,
-            change: `${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(2)}%`,
-            icon: TrendingUp,
-          },
-          {
-            label: "Total P&L",
-            value: `$${totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            change: `${profitPct > 0 ? '+' : ''}${profitPct.toFixed(1)}%`,
-            icon: Target,
-          },
-          {
-            label: "Avg Daily Return",
-            value: "+0.31%", // Placeholder / Mock for now as daily data isn't in summary
-            change: "+0.31%",
-            icon: BarChart3,
-          },
-          {
-            label: "Days to Goal",
-            value: "2 days", // Mock for now
-            change: "--40%",
-            icon: Target,
-          },
-        ],
-        portfolioValue: {
-          total: `$${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-          profit: `$${Math.abs(totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${Math.abs(profitPct).toFixed(1)}%)`,
-          starting: `$${startingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        },
-        progressToGoal: {
-          current: parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(1),
-          target: parseFloat(currentWeekData.week_target_goal || 20),
-          percentage: Math.min(100, (parseFloat(currentWeekData.portfolio_return_pct || 0) / parseFloat(currentWeekData.week_target_goal || 20)) * 100),
-        },
-        weeklyProgress: weeklyProgress,
-        analysis: [
-          // Dynamic analysis based on evaluation if available, else placeholders
-          {
-            icon: "✓",
-            text: latestEval.key_issue
-              ? `Focus: ${latestEval.key_issue}`
-              : `Currently at ${parseFloat(currentWeekData.portfolio_return_pct || 0).toFixed(1)}% return. Keep pushing!`,
-          },
-          ...(latestEval.next_challenge_focus || []).map(focus => ({
-            icon: "📋",
-            text: `Rec: ${focus}`
-          }))
-        ],
+        title: "Your Trading Journey",
+        subtitle: `Track your progress across ${sortedWeeks.length} Challenge Weeks`,
+        // Header Metrics can be aggregated or pulled from current week
+        metrics: [], // Simplified for now as full cards show details
       },
       behavioralInsights: {
-        level: latestEval.tier_name || "Initiate", // or map level number
-        title: currentWeekData.behavioral_tag || "Trader",
-        score: parseFloat(currentWeekData.total_score || 0).toFixed(0),
-        capitalUsage: parseFloat(currentWeekData.capital_usage_pct || 0).toFixed(1),
-        totalTrades: currentWeekData.total_trades || 0,
-        xpPoints: currentWeekData.coins_earned || 0, // Using coins as XP proxy
-        progressToNext: {
-          current: currentWeekData.coins_earned || 0,
-          required: 50000, // Mock target
-          percentage: Math.min(100, ((currentWeekData.coins_earned || 0) / 50000) * 100),
-        },
+        level: latestEval.tier_name || "Initiate",
+        title: latestEval.behavioral_tag || "Trader",
+        score: parseFloat(latestEval.total_score || 0).toFixed(0),
+        capitalUsage: parseFloat(latestEval.capital_usage_pct || 0).toFixed(1),
+        totalTrades: currentPart.total_trades || 0,
+        xpPoints: rewardsArray.reduce((acc, r) => acc + (r.coins_earned || 0), 0),
         keyInsights: [
           { type: "info", icon: "ℹ️", text: latestEval.key_issue || "Keep trading to generate insights." }
-        ],
-        tradingStyle: [
-          // Mock breakdown until exposed
-          { label: "Aggressive", value: 72, color: "from-red-500 to-orange-500" },
-          { label: "Risk Management", value: 85, color: "from-green-500 to-emerald-500" },
-          { label: "Patience", value: 45, color: "from-yellow-500 to-orange-500" },
-        ],
-        recommendations: (latestEval.next_challenge_focus || ["Focus on risk management"]).map((rec, i) => ({
-          icon: "💡", text: rec, color: ["blue", "green", "purple"][i % 3]
-        })),
+        ]
       },
       stats: {
-        badgesEarned: sortedData.filter(d => d.badge_earned).length,
-        xpPoints: sortedData.reduce((acc, curr) => acc + (curr.coins_earned || 0), 0),
-        currentStreak: 3, // Mock
-        completionRate: Math.round((sortedData.filter(d => d.badge_earned).length / 4) * 100),
+        badgesEarned: rewardsArray.length,
+        xpPoints: rewardsArray.reduce((acc, r) => acc + (r.coins_earned || 0), 0),
+        currentStreak: 3,
+        completionRate: Math.round((rewardsArray.length / 4) * 100),
       },
       journey: {
-        currentWeek: currentWeekData.week_number,
+        currentWeek: currentWeekItem.weekNumber,
         totalWeeks: 4,
-        progress: (currentWeekData.week_number / 4) * 100,
+        progress: (currentWeekItem.weekNumber / 4) * 100,
       },
       weeklyBadges: weeklyBadges,
-    };
+    });
   };
 
   if (loading) {
@@ -249,264 +235,111 @@ export default function Achievements() {
   // Portfolio Performance Challenge View (First Page)
   if (currentView === "portfolio") {
     return (
-      <div className="min-h-screen text-white p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">
-              {achievementsData.portfolioChallenge.title}
+      <div className="min-h-screen text-white p-4 md:p-8 max-w-7xl mx-auto pb-24">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Your Trading Journey
             </h1>
-            <p className="text-purple-300 text-lg">
-              {achievementsData.portfolioChallenge.subtitle}
+            <p className="text-purple-200 mt-2">
+              Master the market one week at a time.
             </p>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Portfolio Value & Progress */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Total Portfolio Value */}
-              <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
-                {/* Metrics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  {achievementsData.portfolioChallenge.metrics.map(
-                    (metric, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-5"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <metric.icon className="text-purple-400" size={24} />
-                          <span
-                            className={`text-sm font-semibold ${metric.change.startsWith("+")
-                              ? "text-green-400"
-                              : metric.change.startsWith("-")
-                                ? "text-red-400"
-                                : "text-purple-300"
-                              }`}
-                          >
-                            {metric.change}
-                          </span>
-                        </div>
-                        <div className="text-sm text-purple-300 mb-1">
-                          {metric.label}
-                        </div>
-                        <div className="text-2xl font-bold">{metric.value}</div>
-                      </div>
-                    )
-                  )}
-                </div>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-purple-300 mb-2">
-                      Total Portfolio Value
-                    </h2>
-                    <div className="text-4xl font-bold mb-2">
-                      {achievementsData.portfolioChallenge.portfolioValue.total}
-                    </div>
-                    <div className={`${achievementsData.portfolioChallenge.portfolioValue.isProfit ? "text-green-400" : "text-red-400"} font-semibold flex items-center gap-2`}>
-                      {achievementsData.portfolioChallenge.portfolioValue.isProfit ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                      {
-                        achievementsData.portfolioChallenge.portfolioValue
-                          .profit
-                      }
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-purple-300 mb-1">
-                      Starting Value
-                    </div>
-                    <div className="text-2xl font-bold text-purple-400">
-                      {
-                        achievementsData.portfolioChallenge.portfolioValue
-                          .starting
-                      }
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress to Goal */}
-                <div className="bg-black/30 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Target className="text-purple-400" size={20} />
-                      <span className="font-semibold">
-                        Progress to Goal
-                      </span>
-                    </div>
-                    <span className="text-lg font-bold text-purple-400">
-                      {achievementsData.portfolioChallenge.progressToGoal.current}% /{" "}
-                      {achievementsData.portfolioChallenge.progressToGoal.target}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-purple-900/50 rounded-full h-3">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${achievementsData.portfolioChallenge.progressToGoal.percentage}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4-Week Challenge Progress */}
-              <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
-                <h3 className="text-2xl font-bold mb-6">
-                  4-Week Challenge Progress
-                </h3>
-                <div className="space-y-4">
-                  {achievementsData.portfolioChallenge.weeklyProgress.map(
-                    (week, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-center justify-between p-4 rounded-lg border ${week.active
-                          ? "bg-purple-900/30 border-purple-500/50"
-                          : "bg-black/20 border-purple-500/20"
-                          }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {week.active ? (
-                            <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
-                              <div className="w-3 h-3 rounded-full bg-white"></div>
-                            </div>
-                          ) : (
-                            <CheckCircle className="text-green-400" size={24} />
-                          )}
-                          <div>
-                            <div className="font-bold">Week {week.week}</div>
-                            {week.active && (
-                              <div className="text-sm text-purple-300">
-                                Active {week.status === "Goal Met ✓" && "- Goal Met"}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="text-sm text-purple-300">
-                            Target: +{week.target}%
-                          </div>
-                          <div className={`font-bold text-lg ${parseFloat(week.return) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                            Actual Return: {parseFloat(week.return) > 0 ? "+" : ""}{week.return}%
-                          </div>
-                        </div>
-
-                        <div>
-                          {week.status === "Goal Met ✓" ? (
-                            <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-semibold">
-                              {week.status}
-                            </span>
-                          ) : (
-                            <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-full text-sm font-semibold">
-                              {week.status}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Analysis & Insights */}
-              <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
-                <h3 className="text-2xl font-bold mb-4">
-                  Analysis & Insights
-                </h3>
-                <div className="space-y-3">
-                  {achievementsData.portfolioChallenge.analysis.map(
-                    (item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-3 p-3 bg-black/20 rounded-lg"
-                      >
-                        <span className="text-xl">{item.icon}</span>
-                        <p className="text-purple-100">{item.text}</p>
-                      </div>
-                    )
-                  )}
-                  {achievementsData.portfolioChallenge.analysis.length === 0 && (
-                    <p className="text-gray-400 italic">No analysis available yet. Complete more trades to generate insights.</p>
-                  )}
-                </div>
+          {/* Quick Stats Summary */}
+          <div className="flex gap-4 bg-[#160C26] p-2 rounded-xl border border-purple-500/20">
+            <div className="px-4 py-2 text-center border-r border-gray-700">
+              <div className="text-xs text-gray-400 uppercase tracking-wider">Badges</div>
+              <div className="text-xl font-bold text-yellow-400 flex items-center justify-center gap-1">
+                <Shield size={16} /> {achievementsData?.stats?.badgesEarned || 0}
               </div>
             </div>
-
-            {/* Right Sidebar - Behavioral Insights Card */}
-            <div className="space-y-6">
-              <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
-
-                <div className="mb-4">
-                  <h3 className="font-bold text-xl ">Behavioral Insights</h3>
-                </div>
-                <div className="text-center mb-4">
-
-                  <div className="flex">
-                    <div className="w-24 h-24 mx-auto mb-4 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                      <span className="text-5xl">🛡️</span>
-                    </div>
-
-                    <div>
-
-                      <div className="text-sm text-purple-300 mb-1">
-                        Level {achievementsData.behavioralInsights.level}
-                      </div>
-                      <h3 className="text-2xl font-bold mb-2">
-                        {achievementsData.behavioralInsights.title}
-                      </h3>
-                      <div className="flex items-center justify-center gap-2 mb-4">
-                        <span className="text-purple-300">Score:</span>
-                        <span className="text-3xl font-bold text-yellow-400">
-                          {achievementsData.behavioralInsights.score}
-                        </span>
-
-
-                      </div>
-                    </div>
-
-
-
-                  </div>
-
-                </div>
-
-                {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-2 mb-6">
-                  <div className="bg-black/30 rounded-lg p-3 text-center">
-                    <div className="text-xs text-purple-300 mb-1">Capital</div>
-                    <div className="text-lg font-bold text-purple-400">
-                      {achievementsData.behavioralInsights.capitalUsage}%
-                    </div>
-                  </div>
-                  <div className="bg-black/30 rounded-lg p-3 text-center">
-                    <div className="text-xs text-purple-300 mb-1">Trades</div>
-                    <div className="text-lg font-bold text-blue-400">
-                      {achievementsData.behavioralInsights.totalTrades}
-                    </div>
-                  </div>
-                  <div className="bg-black/30 rounded-lg p-3 text-center">
-                    <div className="text-xs text-purple-300 mb-1">XP</div>
-                    <div className="text-lg font-bold text-orange-400">
-                      {achievementsData.behavioralInsights.xpPoints}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setCurrentView("badges")}
-                  className="w-full border border-[#FF3BD4] text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
-                  style={{
-                    backgroundImage: 'linear-gradient(to top, rgba(255, 59, 212, 0.2), rgba(113, 48, 195, 0.2))'
-                  }}
-                >
-                  View Full Behavioral Insight
-                  <ChevronRight size={20} />
-                </button>
-
+            <div className="px-4 py-2 text-center">
+              <div className="text-xs text-gray-400 uppercase tracking-wider">Progress</div>
+              <div className="text-xl font-bold text-green-400">
+                {achievementsData?.stats?.completionRate || 0}%
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* Main Column: Timeline */}
+          <div className="lg:col-span-2 space-y-8">
+            {achievementsData?.timeline?.map((week) => (
+              <DetailedChallengeCard key={week.id} week={week} />
+            ))}
+          </div>
+
+          {/* Right Column: Behavioral Insights Sidebar */}
+          <div className="space-y-6">
+            <div className="bg-[#10081C] backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 sticky top-8">
+              <div className="mb-4">
+                <h3 className="font-bold text-xl ">Behavioral Insights</h3>
+              </div>
+              <div className="text-center mb-6">
+                <div className="flex flex-col items-center">
+                  <div className="w-24 h-24 mb-4 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center relative">
+                    <span className="text-5xl">🛡️</span>
+                    <div className="absolute -bottom-3 bg-gray-800 text-xs px-2 py-1 rounded-full border border-gray-600">
+                      Level {achievementsData?.behavioralInsights.level || "Initiate"}
+                    </div>
+                  </div>
+
+                  <h3 className="text-2xl font-bold mb-1">
+                    {achievementsData?.behavioralInsights.title || "Trader"}
+                  </h3>
+                  <div className="text-sm text-purple-300 uppercase tracking-widest mb-4">
+                    {achievementsData?.behavioralInsights.keyInsights[0]?.text || "Inconsistent"}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 mb-4 bg-white/5 px-6 py-2 rounded-lg">
+                    <span className="text-purple-300 text-sm uppercase">Score</span>
+                    <span className="text-3xl font-bold text-yellow-400">
+                      {achievementsData?.behavioralInsights.score || 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                <div className="bg-black/30 rounded-lg p-3 text-center border border-gray-800">
+                  <div className="text-xs text-purple-300 mb-1">Capital</div>
+                  <div className="text-sm font-bold text-white">
+                    {achievementsData?.behavioralInsights.capitalUsage}%
+                  </div>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3 text-center border border-gray-800">
+                  <div className="text-xs text-purple-300 mb-1">Trades</div>
+                  <div className="text-sm font-bold text-blue-400">
+                    {achievementsData?.behavioralInsights.totalTrades}
+                  </div>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3 text-center border border-gray-800">
+                  <div className="text-xs text-purple-300 mb-1">XP</div>
+                  <div className="text-sm font-bold text-orange-400">
+                    {achievementsData?.behavioralInsights.xpPoints}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setCurrentView("badges")}
+                className="w-full border border-[#FF3BD4] text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20"
+                style={{
+                  backgroundImage: 'linear-gradient(to top, rgba(255, 59, 212, 0.2), rgba(113, 48, 195, 0.2))'
+                }}
+              >
+                View Full Behavioral Insight
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     );
@@ -713,3 +546,177 @@ export default function Achievements() {
     </div>
   );
 }
+
+// COMPONENT: Detailed Challenge Card (The requested UI)
+const DetailedChallengeCard = ({ week }) => {
+  const isLocked = week.status === "LOCKED";
+  const isCompleted = week.status === "COMPLETED";
+  const isInProgress = week.status === "IN_PROGRESS";
+
+  // Default to expanded only if in progress
+  const [isExpanded, setIsExpanded] = useState(isInProgress);
+
+  return (
+    <div className={`
+      relative rounded-2xl p-6 border transition-all duration-300
+      ${isLocked ? 'bg-[#0f1016]/50 border-gray-800 opacity-70' :
+        isCompleted ? 'bg-[#131422] border-green-500/30 ring-1 ring-green-500/20' :
+          'bg-[#131422] border-purple-500/30 shadow-xl shadow-purple-900/10'
+      }
+    `}>
+      {/* LOCKED OVERLAY */}
+      {isLocked && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-2xl">
+          <div className="bg-gray-800 p-3 rounded-full mb-3 shadow-lg">
+            <Lock className="text-gray-400" size={32} />
+          </div>
+          {/* <h3 className="text-xl font-bold text-gray-300"> Locked</h3> */}
+          <p className="text-gray-400 text-sm mt-1">Join Week {week.weekNumber} to unlock</p>
+        </div>
+      )}
+
+      {/* HEADER */}
+      <div
+        className="mb-6 flex justify-between items-start cursor-pointer"
+        onClick={() => !isLocked && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold mb-1 flex items-center gap-2">
+            Week {week.weekNumber} - {week.title}
+            {isCompleted && <CheckCircle className="text-green-500" size={24} />}
+          </h2>
+          <div className="mt-3 max-w-xl">
+            <div className="flex justify-between text-xs mb-1 font-semibold text-purple-300 uppercase tracking-wider">
+              <span>Progress</span>
+              <span>{week.progressPct?.toFixed(0) || 0}%</span>
+            </div>
+            <div className="w-full bg-gray-800/50 rounded-full h-2 overflow-hidden border border-gray-700/50">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}
+                style={{ width: `${week.progressPct || 0}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          {isInProgress && (
+            <span className="bg-purple-600 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+              IN PROGRESS
+            </span>
+          )}
+          {!isLocked && (
+            <button className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition">
+              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* COLLAPSIBLE CONTENT */}
+      {isExpanded && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* METRICS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+            {/* Return */}
+            <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <TrendingUp className="text-purple-400" size={20} />
+                <span className={`font-bold ${week.currentReturn > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                  {week.currentReturn > 0 ? '+' : ''}{week.currentReturn.toFixed(2)}%
+                </span>
+              </div>
+              <div className="text-gray-400 text-xs uppercase tracking-wider">Return</div>
+              <div className="text-xl font-bold mt-1">{week.currentReturn.toFixed(2)}%</div>
+            </div>
+
+            {/* Total P&L */}
+            <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <Target className="text-purple-400" size={20} />
+                <span className={`font-bold ${week.totalPnl > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                  {week.profitPct > 0 ? '+' : ''}{week.profitPct.toFixed(1)}%
+                </span>
+              </div>
+              <div className="text-gray-400 text-xs uppercase tracking-wider">Total P&L</div>
+              <div className="text-xl font-bold mt-1">${week.totalPnl.toFixed(2)}</div>
+            </div>
+
+            {/* Avg Daily Return (Mock for now) */}
+            <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <BarChart3 className="text-purple-400" size={20} />
+                <span className="font-bold text-green-400">+0.31%</span>
+              </div>
+              <div className="text-gray-400 text-xs uppercase tracking-wider">Avg Daily Return</div>
+              <div className="text-xl font-bold mt-1">+0.31%</div>
+            </div>
+
+            {/* Days to Goal */}
+            <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <Clock className="text-purple-400" size={20} />
+                <span className="font-bold text-gray-400">---</span>
+              </div>
+              <div className="text-gray-400 text-xs uppercase tracking-wider">Days to Goal</div>
+              <div className="text-xl font-bold mt-1 max-w-full truncate">{week.daysToGoal}</div>
+            </div>
+          </div>
+
+          {/* PORTFOLIO & PROGRESS ROW */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+
+            {/* Portfolio Values */}
+            <div className="flex justify-between items-end bg-[#1a1b2e]/50 p-4 rounded-xl">
+              <div>
+                <div className="text-gray-400 text-xs mb-1">Total Portfolio Value</div>
+                <div className="text-3xl font-bold text-white">
+                  ${week.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className={`text-sm flex items-center gap-1 ${week.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {week.totalPnl >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  ${Math.abs(week.totalPnl).toFixed(2)} ({Math.abs(week.profitPct).toFixed(1)}%)
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-gray-500 text-xs mb-1">Starting Value</div>
+                <div className="text-xl font-bold text-gray-300">
+                  ${week.startingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="bg-black/20 p-4 rounded-xl border border-gray-800">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="text-purple-400" size={18} />
+                  <span className="text-sm font-bold text-gray-200">Progress to Goal</span>
+                </div>
+                <div className="text-lg font-bold text-purple-400">
+                  {week.currentReturn.toFixed(1)}% / {week.targetReturn}%
+                </div>
+              </div>
+
+              <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-1000 ${isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}
+                  style={{ width: `${week.progressPct}%` }}
+                />
+              </div>
+
+              {/* {isInProgress && (
+                <div className="mt-4 text-center">
+                  <Link to="/trading" className="inline-block w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">
+                    Continue Trading
+                  </Link>
+                </div>
+              )} */}
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
