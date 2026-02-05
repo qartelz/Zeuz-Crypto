@@ -2537,7 +2537,7 @@ export default function Challenges() {
                       <div className="text-purple-200/60 text-xs font-medium uppercase tracking-wider">target</div>
                     </div>
                     <div className="font-bold text-pink-300 text-xl">
-                      ${parseFloat(task.target_value).toFixed(2)}
+                     + {parseFloat(task.target_value).toFixed(2)} %
                     </div>
                   </div>
                   <div className="bg-gradient-to-br from-green-900/20 to-transparent rounded-xl p-5 backdrop-blur-sm border border-green-500/20">

@@ -84,6 +84,21 @@ class ChallengeAdminViewSet(viewsets.ModelViewSet):
         details = AdminService.get_program_details(program)
         return Response(details)
 
+    @action(detail=False, methods=['delete'])
+    def delete_all(self, request):
+        """Delete all challenge programs"""
+        try:
+            count, _ = ChallengeProgram.objects.all().delete()
+            return Response(
+                {'message': f'Successfully deleted {count} challenges'},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
     """Admin week management (staff only)"""
@@ -91,6 +106,16 @@ class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
 
     serializer_class = ChallengeWeekAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        """Filter weeks by program if provided"""
+        queryset = ChallengeWeek.objects.all()
+        program_id = self.request.query_params.get('program')
+        
+        if program_id:
+            queryset = queryset.filter(program_id=program_id)
+            
+        return queryset
     
     def create(self, request, *args, **kwargs):
         """Create a new challenge week with debug logging"""

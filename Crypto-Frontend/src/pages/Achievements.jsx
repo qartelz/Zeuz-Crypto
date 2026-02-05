@@ -98,13 +98,14 @@ export default function Achievements() {
     // 2. Map Participations & Rewards
     const partMap = new Map();
     const partsArray = Array.isArray(participations) ? participations : (participations.results || []);
-    partsArray.forEach(p => partMap.set(p.week_id, p));
+    // Use string comparison for IDs to be safe
+    partsArray.forEach(p => partMap.set(String(p.week_id), p));
 
     const rewardsArray = Array.isArray(rewards) ? rewards : (rewards.results || []);
 
     // 3. Build Detailed Timeline for Cards
     const timeline = sortedWeeks.map(week => {
-      const participation = partMap.get(week.id);
+      const participation = partMap.get(String(week.id));
 
       const isCompleted = participation?.status === 'COMPLETED';
       const isInProgress = participation?.status === 'IN_PROGRESS';
@@ -118,11 +119,18 @@ export default function Achievements() {
       const currentBalance = participation ? parseFloat(participation.current_balance || 0) : 0;
       const totalProfit = currentBalance - startingBalance;
       const profitPct = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
-      const targetReturn = parseFloat(week.target_goal || 5); // Assuming 5% if missing
+
+      // Ensure target is parsed correctly
+      const targetReturn = week.target_goal ? parseFloat(week.target_goal) : 5; // Default to 5% if missing
 
       // Progress calculation
       const returnPct = participation ? parseFloat(participation.portfolio_return_pct || 0) : 0;
-      const progressToGoal = Math.min(100, Math.max(0, (returnPct / targetReturn) * 100));
+
+      // Progress logic: (Current Return / Target) * 100
+      let progressToGoal = 0;
+      if (targetReturn > 0) {
+        progressToGoal = Math.min(100, Math.max(0, (returnPct / targetReturn) * 100));
+      }
 
       return {
         id: week.id,
@@ -622,24 +630,28 @@ const DetailedChallengeCard = ({ week }) => {
             <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
               <div className="flex justify-between items-start mb-2">
                 <TrendingUp className="text-purple-400" size={20} />
-                <span className={`font-bold ${week.currentReturn > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                <span className={`font-bold ${week.currentReturn > 0 ? 'text-green-400' : week.currentReturn < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                   {week.currentReturn > 0 ? '+' : ''}{week.currentReturn.toFixed(2)}%
                 </span>
               </div>
               <div className="text-gray-400 text-xs uppercase tracking-wider">Return</div>
-              <div className="text-xl font-bold mt-1">{week.currentReturn.toFixed(2)}%</div>
+              <div className={`text-xl font-bold mt-1 ${week.currentReturn > 0 ? 'text-green-400' : week.currentReturn < 0 ? 'text-red-400' : 'text-white'}`}>
+                {week.currentReturn.toFixed(2)}%
+              </div>
             </div>
 
             {/* Total P&L */}
             <div className="bg-[#1a1b2e] border border-gray-700/50 rounded-xl p-4">
               <div className="flex justify-between items-start mb-2">
                 <Target className="text-purple-400" size={20} />
-                <span className={`font-bold ${week.totalPnl > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                <span className={`font-bold ${week.profitPct > 0 ? 'text-green-400' : week.profitPct < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                   {week.profitPct > 0 ? '+' : ''}{week.profitPct.toFixed(1)}%
                 </span>
               </div>
               <div className="text-gray-400 text-xs uppercase tracking-wider">Total P&L</div>
-              <div className="text-xl font-bold mt-1">${week.totalPnl.toFixed(2)}</div>
+              <div className={`text-xl font-bold mt-1 ${week.totalPnl > 0 ? 'text-green-400' : week.totalPnl < 0 ? 'text-red-400' : 'text-white'}`}>
+                ${week.totalPnl.toFixed(2)}
+              </div>
             </div>
 
             {/* Avg Daily Return (Mock for now) */}
@@ -687,14 +699,18 @@ const DetailedChallengeCard = ({ week }) => {
             </div>
 
             {/* Progress Bar */}
-            <div className="bg-black/20 p-4 rounded-xl border border-gray-800">
+            {/* <div className="bg-black/20 p-4 rounded-xl border border-gray-800">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <Target className="text-purple-400" size={18} />
                   <span className="text-sm font-bold text-gray-200">Progress to Goal</span>
                 </div>
-                <div className="text-lg font-bold text-purple-400">
-                  {week.currentReturn.toFixed(1)}% / {week.targetReturn}%
+                <div className="text-lg font-bold">
+                  <span className={`${week.currentReturn > 0 ? 'text-green-400' : week.currentReturn < 0 ? 'text-red-400' : 'text-purple-400'}`}>
+                    {week.currentReturn.toFixed(1)}%
+                  </span>
+                  <span className="text-gray-500"> / </span>
+                  <span className="text-purple-400">+{week.targetReturn}%</span>
                 </div>
               </div>
 
@@ -705,14 +721,14 @@ const DetailedChallengeCard = ({ week }) => {
                 />
               </div>
 
-              {/* {isInProgress && (
+              {isInProgress && (
                 <div className="mt-4 text-center">
                   <Link to="/trading" className="inline-block w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">
                     Continue Trading
                   </Link>
                 </div>
-              )} */}
-            </div>
+              )}
+            </div> */}
 
           </div>
         </div>
