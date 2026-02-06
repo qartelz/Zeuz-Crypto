@@ -128,8 +128,28 @@ const Trading = ({
   }, [spotSide]);
 
   useEffect(() => {
-    if (selectedChallenge?.category) {
-      setMode(selectedChallenge.category.toLowerCase());
+    if (selectedChallenge) {
+      // Robustly determine trading type
+      const tradeType = selectedChallenge.weekData?.trading_type || selectedChallenge.trading_type || selectedChallenge.category;
+      const weekNum = selectedChallenge.weekData?.week_number || selectedChallenge.week_number || 1;
+
+      let allowedModes = ["spot"];
+      if (tradeType === "SPOT_FUTURES") allowedModes = ["spot", "futures"];
+      else if (tradeType === "SPOT_FUTURES_OPTIONS" || tradeType === "PORTFOLIO") allowedModes = ["spot", "futures", "options"];
+      else if (tradeType === "SPOT") allowedModes = ["spot"];
+      else {
+        // Fallback based on week number
+        if (weekNum === 1) allowedModes = ["spot"];
+        else if (weekNum === 2) allowedModes = ["spot", "futures"];
+        else allowedModes = ["spot", "futures", "options"];
+      }
+
+      setMode(prev => {
+        // If current mode is allowed, keep it. specific check for lowercase
+        const current = prev.toLowerCase();
+        if (allowedModes.includes(current)) return current;
+        return allowedModes[0];
+      });
     }
   }, [selectedChallenge, setMode]);
 
@@ -1969,7 +1989,11 @@ const Trading = ({
                       type="number"
                       value={leverage}
                       min={1}
-                      max={futuresTicker?.leverage}
+                      max={() => {
+                        const challengeMax = selectedChallenge?.weekData?.max_leverage_allowed || selectedChallenge?.max_leverage_allowed || 100;
+                        const tickerMax = futuresTicker?.leverage || 100;
+                        return Math.min(challengeMax, tickerMax);
+                      }}
                       onChange={(e) => {
                         let val = e.target.value;
 
@@ -1981,11 +2005,17 @@ const Trading = ({
 
                         // Convert to number
                         val = Number(val);
-                        const maxLeverage = futuresTicker?.leverage || 100;
+
+                        const challengeMax = selectedChallenge?.weekData?.max_leverage_allowed || selectedChallenge?.max_leverage_allowed || 100;
+                        const tickerMax = futuresTicker?.leverage || 100;
+                        const maxLeverage = Math.min(challengeMax, tickerMax);
+
 
                         // Restrict typing above maxLeverage
                         if (val > maxLeverage) {
                           val = maxLeverage;
+                          // Optional warning
+                          // showToast(`Max leverage allowed is ${maxLeverage}x`, "error");
                         }
 
                         // Restrict below min
@@ -1997,7 +2027,10 @@ const Trading = ({
                       }}
                       onBlur={() => {
                         let val = Number(leverage);
-                        const maxLeverage = futuresTicker?.leverage || 100;
+
+                        const challengeMax = selectedChallenge?.weekData?.max_leverage_allowed || selectedChallenge?.max_leverage_allowed || 100;
+                        const tickerMax = futuresTicker?.leverage || 100;
+                        const maxLeverage = Math.min(challengeMax, tickerMax);
 
                         if (isNaN(val) || val < 1) val = 1;
                         else if (val > maxLeverage) val = maxLeverage;
@@ -2008,6 +2041,11 @@ const Trading = ({
                     />
 
                     <span className="text-gray-400">x</span>
+                    {selectedChallenge && (selectedChallenge.weekData?.max_leverage_allowed || selectedChallenge.max_leverage_allowed) && (
+                      <span className="text-[10px] text-red-400 ml-1">
+                        (Max {selectedChallenge.weekData?.max_leverage_allowed || selectedChallenge.max_leverage_allowed}x)
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -2850,18 +2888,28 @@ const Trading = ({
           <div className="flex flex-wrap items-center gap-2">
             {selectedChallenge
               ? (() => {
-                const weekNumber =
-                  selectedChallenge?.weekData?.week_number || 1;
+                const tradeType = selectedChallenge.weekData?.trading_type || selectedChallenge.trading_type || selectedChallenge.category;
+                const weekNumber = selectedChallenge.weekData?.week_number || selectedChallenge.week_number || 1;
 
-                // Allowed modes based on week number
-                let allowedModes = [];
-                if (weekNumber === 1) allowedModes = ["spot"];
-                else if (weekNumber === 2) allowedModes = ["spot", "futures"];
-                else allowedModes = ["spot", "futures", "options"];
+                // Allowed modes based on trading_type (Priority) or week number (Fallback)
+                let allowedModes = ["spot"];
+
+                if (tradeType === "SPOT_FUTURES") {
+                  allowedModes = ["spot", "futures"];
+                } else if (tradeType === "SPOT_FUTURES_OPTIONS" || tradeType === "PORTFOLIO") {
+                  allowedModes = ["spot", "futures", "options"];
+                } else if (tradeType === "SPOT") {
+                  allowedModes = ["spot"];
+                } else {
+                  // Fallback
+                  if (weekNumber === 1) allowedModes = ["spot"];
+                  else if (weekNumber === 2) allowedModes = ["spot", "futures"];
+                  else allowedModes = ["spot", "futures", "options"];
+                }
 
                 // If current mode isn’t allowed, fallback to the first allowed one
                 if (!allowedModes.includes(mode)) {
-                  setMode(allowedModes[0]);
+                  // Logic handled by useEffect
                 }
 
                 return (

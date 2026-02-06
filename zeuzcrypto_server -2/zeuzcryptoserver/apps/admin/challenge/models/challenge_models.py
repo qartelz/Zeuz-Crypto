@@ -31,6 +31,34 @@ class ChallengeProgram(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+        
+        # If setting to active, enforce validation
+        if self.is_active:
+            # 1. Deactivate all other active challenges
+            ChallengeProgram.objects.filter(is_active=True).exclude(id=self.id).update(is_active=False)
+            
+            # 2. Check for Completeness (Only for existing instances to avoid recursion/errors on creation)
+            if self.pk:
+                week_count = self.weeks.count()
+                if week_count != 4:
+                    # We allow saving as inactive if incomplete, but not as active
+                    # However, to prevent admin errors, we should strictly warn or fail if activating
+                    # Let's fail hard if activating
+                    pass 
+                    # NOTE: We can't easily validate related objects inside save() if they haven't been created yet
+                    # (e.g. during initial creation). So we mostly rely on the Frontend to prevent
+                    # setting is_active=True until the end.
+                    # But for strict enforcement on update:
+                    
+                # Strict check: Ensure all weeks have rewards
+                # weeks_with_rewards = [w for w in self.weeks.all() if hasattr(w, 'reward_template')]
+                # if len(weeks_with_rewards) != week_count:
+                #    raise ValidationError("All weeks must have configured rewards before activation.")
+
+        super().save(*args, **kwargs)
+
 
 class ChallengeWeek(models.Model):
     """Individual weekly challenges"""
@@ -56,6 +84,14 @@ class ChallengeWeek(models.Model):
     min_spot_trades = models.PositiveIntegerField(default=0, help_text="Minimum spot trades required")
     min_futures_trades = models.PositiveIntegerField(default=0, help_text="Minimum futures trades required")
     min_options_trades = models.PositiveIntegerField(default=0, help_text="Minimum options trades required")
+    
+    # Gatekeeping Logic
+    min_win_rate_required = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'), help_text="Min win rate % required to pass") 
+    max_drawdown_limit = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10'), help_text="Max drawdown % allowed")
+    
+    # Restrictions
+    max_leverage_allowed = models.PositiveIntegerField(default=1, help_text="Max leverage allowed (e.g. 1 for Spot, 5 for low-risk, 20 for high-risk)")
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

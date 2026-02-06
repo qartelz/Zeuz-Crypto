@@ -1,1984 +1,4 @@
-// import React, { useState, useEffect } from "react";
-// import {
-//   Plus,
-//   Calendar,
-//   Users,
-//   Trophy,
-//   ChevronRight,
-//   Loader,
-//   Target,
-//   Clock,
-//   TrendingUp,
-//   Star,
-//   Award,
-//   Lock,
-//   Unlock,
-//   ArrowLeft,
-//   Trash2,
-// } from "lucide-react";
-
-// const baseURL = import.meta.env.VITE_API_BASE_URL;
-
-// // Toast Component
-// const Toast = ({ message, type, onClose }) => {
-//   useEffect(() => {
-//     const timer = setTimeout(onClose, 4000);
-//     return () => clearTimeout(timer);
-//   }, [onClose]);
-
-//   const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-//   const icon = type === "success" ? "✓" : "✕";
-
-//   return (
-//     <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3`}>
-//       <span className="text-xl font-bold">{icon}</span>
-//       <span>{message}</span>
-//     </div>
-//   );
-// };
-
-// // Create New Challenge Component
-// const CreateChallenge = ({ onBack, onSuccess }) => {
-//   const [step, setStep] = useState(1); // 1: Challenge, 2: Weeks, 3: Tasks
-//   const [challengeId, setChallengeId] = useState(null);
-//   console.log(challengeId,"the challenge id")
-//   const [formData, setFormData] = useState({
-//     name: "",
-//     description: "",
-//     difficulty: "BEGINNER",
-//     is_active: true,
-//   });
-//   const [weeks, setWeeks] = useState([]);
-//   const [currentWeek, setCurrentWeek] = useState(1);
-//   const [weekFormData, setWeekFormData] = useState({
-//     title: "",
-//     description: "",
-//     learning_outcome: "",
-//     trading_type: "SPOT",
-//     start_date: "",
-//     end_date: "",
-//     target_goal: 5,
-//     min_trades_required: 8,
-//     is_active: true,
-//   });
-//   const [tasks, setTasks] = useState({});
-//   const [currentTask, setCurrentTask] = useState({
-//     title: "",
-//     description: "",
-//     task_type: "PORTFOLIO_BALANCE",
-//     target_value: 10,
-//     is_mandatory: true,
-//     order: 1,
-//   });
-//   const [loading, setLoading] = useState(false);
-//   const [toast, setToast] = useState(null);
-
-//   const showToast = (message, type) => {
-//     setToast({ message, type });
-//   };
-
-//   const handleChallengeSubmit = async (e) => {
-//     e.preventDefault();
-//     setLoading(true);
-
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const response = await fetch(`${baseURL}challenges/admin/challenges/`, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${tokens.access}`,
-//         },
-//         body: JSON.stringify(formData),
-//       });
-
-//       const data = await response.json();
-//       console.log(data,"the data of the respone when creatin challenge")
-
-//       if (response.ok) {
-//         setChallengeId(data.data.id);
-//         showToast("Challenge created successfully!", "success");
-//         setTimeout(() => setStep(2), 1000);
-//       } else {
-//         showToast(data.detail || "Failed to create challenge", "error");
-//       }
-//     } catch (error) {
-//       showToast("Error creating challenge: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleWeekSave = () => {
-//     if (!weekFormData.title || !weekFormData.start_date || !weekFormData.end_date) {
-//       showToast("Please fill all required fields", "error");
-//       return;
-//     }
-
-//     setWeeks((prev) => {
-//       const newWeeks = [...prev];
-//       newWeeks[currentWeek - 1] = {
-//         ...weekFormData,
-//         week_number: currentWeek,
-//       };
-//       return newWeeks;
-//     });
-
-//     showToast(`Week ${currentWeek} data saved`, "success");
-//   };
-
-//   const handleWeeksSubmit = async () => {
-//     if (weeks.length === 0) {
-//       showToast("Please add at least one week", "error");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const createdWeeks = [];
-
-//       for (const week of weeks) {
-//         const response = await fetch(
-//           `${baseURL}challenges/admin/weeks/?program_id=${challengeId}`,
-//           {
-//             method: "POST",
-//             headers: {
-//               "Content-Type": "application/json",
-//               Authorization: `Bearer ${tokens.access}`,
-//             },
-//             body: JSON.stringify({
-//               program: challengeId,
-//               ...week,
-//             }),
-//           }
-//         );
-
-//         const data = await response.json();
-
-//         console.log(data,"the resoponse creating week")
-//         if (response.ok) {
-//           createdWeeks.push(data);
-//         } else {
-//           showToast(`Failed to create week ${week.week_number}: ${data.detail || "Unknown error"}`, "error");
-//           setLoading(false);
-//           return;
-//         }
-//       }
-
-//       showToast("All weeks created successfully!", "success");
-//       setWeeks(createdWeeks);
-//       setTimeout(() => setStep(3), 1000);
-//     } catch (error) {
-//       showToast("Error creating weeks: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Check if current week already has a task
-// const currentWeekHasTask = tasks[currentWeek] && tasks[currentWeek].length > 0;
-//   // const handleAddTask = () => {
-//   //   if (!currentTask.title || !currentTask.description) {
-//   //     showToast("Please fill task title and description", "error");
-//   //     return;
-//   //   }
-
-//   //   setTasks((prev) => {
-//   //     const weekTasks = prev[currentWeek] || [];
-//   //     return {
-//   //       ...prev,
-//   //       [currentWeek]: [...weekTasks, { ...currentTask }],
-//   //     };
-//   //   });
-
-//   //   setCurrentTask({
-//   //     title: "",
-//   //     description: "",
-//   //     task_type: "PORTFOLIO_BALANCE",
-//   //     target_value: 10,
-//   //     is_mandatory: true,
-//   //     order: (tasks[currentWeek]?.length || 0) + 2,
-//   //   });
-
-//   //   showToast("Task added", "success");
-//   // };
-
-//   const handleAddTask = () => {
-//     if (!currentTask.title || !currentTask.description) {
-//       showToast("Please fill task title and description", "error");
-//       return;
-//     }
-
-//     if (currentWeekHasTask) {
-//       showToast("This week already has a task. Remove it first to add a new one.", "error");
-//       return;
-//     }
-
-//     setTasks((prev) => ({
-//       ...prev,
-//       [currentWeek]: [{ ...currentTask }],
-//     }));
-
-//     setCurrentTask({
-//       title: "",
-//       description: "",
-//       task_type: "PORTFOLIO_BALANCE",
-//       target_value: 10,
-//       is_mandatory: true,
-//       order: 1,
-//     });
-
-//     showToast("Task added", "success");
-//   };
-
-//   // const handleRemoveTask = (weekNum, taskIndex) => {
-//   //   setTasks((prev) => {
-//   //     const weekTasks = [...(prev[weekNum] || [])];
-//   //     weekTasks.splice(taskIndex, 1);
-//   //     return {
-//   //       ...prev,
-//   //       [weekNum]: weekTasks,
-//   //     };
-//   //   });
-//   //   showToast("Task removed", "success");
-//   // };
-
-//   const handleRemoveTask = (weekNum) => {
-//     setTasks((prev) => {
-//       const newTasks = { ...prev };
-//       delete newTasks[weekNum];
-//       return newTasks;
-//     });
-//     showToast("Task removed", "success");
-//   };
-
-//   // const handleTasksSubmit = async () => {
-//   //   setLoading(true);
-//   //   try {
-//   //     const tokens = JSON.parse(localStorage.getItem("authTokens"));
-
-//   //     for (const [weekNumber, weekTasks] of Object.entries(tasks)) {
-//   //       const weekData = weeks.find(w => w.week_number === parseInt(weekNumber));
-//   //       if (!weekData) continue;
-
-//   //       for (const task of weekTasks) {
-//   //         const response = await fetch(
-//   //           `${baseURL}challenges/admin/tasks/`,
-//   //           {
-//   //             method: "POST",
-//   //             headers: {
-//   //               "Content-Type": "application/json",
-//   //               Authorization: `Bearer ${tokens.access}`,
-//   //             },
-//   //             body: JSON.stringify({
-//   //               week: weekData.id,
-//   //               ...task,
-//   //             }),
-//   //           }
-//   //         );
-
-//   //         const data = await response.json();
-
-//   //         console.log(data,"the resposnse data")
-//   //         if (!response.ok) {
-//   //           showToast(`Failed to create task: ${data.detail || "Unknown error"}`, "error");
-//   //           setLoading(false);
-//   //           return;
-//   //         }
-//   //       }
-//   //     }
-
-//   //     showToast("Challenge created successfully with all weeks and tasks!", "success");
-//   //     setTimeout(() => onSuccess(), 1500);
-//   //   } catch (error) {
-//   //     showToast("Error creating tasks: " + error.message, "error");
-//   //   } finally {
-//   //     setLoading(false);
-//   //   }
-//   // };
-
-//   const handleTasksSubmit = async () => {
-//     setLoading(true);
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-
-//       for (const [weekNumber, weekTasks] of Object.entries(tasks)) {
-//         const weekData = weeks.find(w => w.week_number === parseInt(weekNumber));
-//         if (!weekData) continue;
-
-//         for (const task of weekTasks) {
-//           const response = await fetch(
-//             `${baseURL}challenges/tasks/?week=${weekData.id}`, // Changed: Added week query parameter
-//             {
-//               method: "POST",
-//               headers: {
-//                 "Content-Type": "application/json",
-//                 Authorization: `Bearer ${tokens.access}`,
-//               },
-//               body: JSON.stringify({
-//                 week: weekData.id, // This stays in the body
-//                 ...task,
-//               }),
-//             }
-//           );
-
-//           const data = await response.json();
-
-//           console.log(data,"the response data")
-//           if (!response.ok) {
-//             showToast(`Failed to create task: ${data.detail || "Unknown error"}`, "error");
-//             setLoading(false);
-//             return;
-//           }
-//         }
-//       }
-
-//       showToast("Challenge created successfully with all weeks and tasks!", "success");
-//       setTimeout(() => onSuccess(), 1500);
-//     } catch (error) {
-//       showToast("Error creating tasks: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleSkipTasks = () => {
-//     showToast("Challenge created successfully!", "success");
-//     setTimeout(() => onSuccess(), 1000);
-//   };
-
-//   useEffect(() => {
-//     if (step === 2 && currentWeek <= weeks.length && weeks[currentWeek - 1]) {
-//       setWeekFormData(weeks[currentWeek - 1]);
-//     } else if (step === 2) {
-//       setWeekFormData({
-//         title: "",
-//         description: "",
-//         learning_outcome: "",
-//         trading_type: "SPOT",
-//         start_date: "",
-//         end_date: "",
-//         target_goal: 5,
-//         min_trades_required: 8,
-//         is_active: true,
-//       });
-//     }
-//   }, [currentWeek, step]);
-
-//   return (
-//     <div className="min-h-screen text-white p-6">
-//       {toast && (
-//         <Toast
-//           message={toast.message}
-//           type={toast.type}
-//           onClose={() => setToast(null)}
-//         />
-//       )}
-
-//       <div className="max-w-6xl mx-auto">
-//         <button
-//           onClick={onBack}
-//           className="mb-6 flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors"
-//         >
-//           <ArrowLeft size={20} />
-//           Back to Challenges
-//         </button>
-
-//         {/* Progress Steps */}
-//         <div className="mb-8 flex items-center justify-center gap-4">
-//           <div className={`flex items-center gap-2 ${step >= 1 ? 'text-purple-400' : 'text-gray-500'}`}>
-//             <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 1 ? 'border-purple-400 bg-purple-400/20' : 'border-gray-500'}`}>
-//               1
-//             </div>
-//             <span className="font-medium">Challenge</span>
-//           </div>
-//           <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-purple-400' : 'bg-gray-500'}`} />
-//           <div className={`flex items-center gap-2 ${step >= 2 ? 'text-purple-400' : 'text-gray-500'}`}>
-//             <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 2 ? 'border-purple-400 bg-purple-400/20' : 'border-gray-500'}`}>
-//               2
-//             </div>
-//             <span className="font-medium">Weeks</span>
-//           </div>
-//           <div className={`w-12 h-0.5 ${step >= 3 ? 'bg-purple-400' : 'bg-gray-500'}`} />
-//           <div className={`flex items-center gap-2 ${step >= 3 ? 'text-purple-400' : 'text-gray-500'}`}>
-//             <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 3 ? 'border-purple-400 bg-purple-400/20' : 'border-gray-500'}`}>
-//               3
-//             </div>
-//             <span className="font-medium">Tasks</span>
-//           </div>
-//         </div>
-
-//         <div className="rounded-2xl border border-purple-500/30 p-8">
-//           <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
-//             <Plus className="text-purple-400" size={32} />
-//             {step === 1 ? 'Create New Challenge' : step === 2 ? 'Add Weeks' : 'Add Tasks'}
-//           </h1>
-
-//           {/* Step 1: Challenge Form */}
-//           {step === 1 && (
-//             <form onSubmit={handleChallengeSubmit} className="space-y-6">
-//               <div>
-//                 <label className="block text-sm font-medium text-purple-300 mb-2">
-//                   Challenge Name
-//                 </label>
-//                 <input
-//                   type="text"
-//                   required
-//                   value={formData.name}
-//                   onChange={(e) =>
-//                     setFormData({ ...formData, name: e.target.value })
-//                   }
-//                   className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                   placeholder="e.g., ZeuzMonth - March 2025"
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-medium text-purple-300 mb-2">
-//                   Description
-//                 </label>
-//                 <textarea
-//                   required
-//                   value={formData.description}
-//                   onChange={(e) =>
-//                     setFormData({ ...formData, description: e.target.value })
-//                   }
-//                   className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[120px]"
-//                   placeholder="Describe the challenge objectives and structure..."
-//                 />
-//               </div>
-
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">
-//                     Difficulty
-//                   </label>
-//                   <select
-//                     value={formData.difficulty}
-//                     onChange={(e) =>
-//                       setFormData({ ...formData, difficulty: e.target.value })
-//                     }
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                   >
-//                     <option value="BEGINNER" className="bg-gray-900">Beginner</option>
-//                     <option value="INTERMEDIATE" className="bg-gray-900">Intermediate</option>
-//                     <option value="ADVANCED" className="bg-gray-900">Advanced</option>
-//                     <option value="EXPERT" className="bg-gray-900">Expert</option>
-//                   </select>
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">
-//                     Status
-//                   </label>
-//                   <select
-//                     value={formData.is_active}
-//                     onChange={(e) =>
-//                       setFormData({ ...formData, is_active: e.target.value === "true" })
-//                     }
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                   >
-//                     <option value="true" className="bg-gray-900">Active</option>
-//                     <option value="false" className="bg-gray-900">Inactive</option>
-//                   </select>
-//                 </div>
-//               </div>
-
-//               <div className="flex gap-4 pt-4">
-//                 <button
-//                   type="button"
-//                   onClick={onBack}
-//                   className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-//                 >
-//                   Cancel
-//                 </button>
-//                 <button
-//                   type="submit"
-//                   disabled={loading}
-//                   className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
-//                 >
-//                   {loading ? (
-//                     <>
-//                       <Loader className="animate-spin" size={20} />
-//                       Creating...
-//                     </>
-//                   ) : (
-//                     <>
-//                       Next: Add Weeks
-//                       <ChevronRight size={20} />
-//                     </>
-//                   )}
-//                 </button>
-//               </div>
-//             </form>
-//           )}
-
-//           {/* Step 2: Weeks Form */}
-//           {step === 2 && (
-//             <div className="space-y-6">
-//               {/* Week Selector */}
-//               <div className="grid grid-cols-4 gap-4 mb-6">
-//                 {[1, 2, 3, 4].map((weekNum) => (
-//                   <button
-//                     key={weekNum}
-//                     type="button"
-//                     onClick={() => setCurrentWeek(weekNum)}
-//                     className={`p-4 rounded-xl border transition-all ${
-//                       currentWeek === weekNum
-//                         ? "bg-purple-900/30 border-purple-500 shadow-lg"
-//                         : weeks[weekNum - 1]
-//                         ? "border-green-500/50 bg-green-900/10"
-//                         : "border-purple-500/30 hover:border-purple-400/50"
-//                     }`}
-//                   >
-//                     <div className="text-lg font-bold">Week {weekNum}</div>
-//                     {weeks[weekNum - 1] && (
-//                       <div className="text-xs text-green-400 mt-1">✓ Saved</div>
-//                     )}
-//                   </button>
-//                 ))}
-//               </div>
-
-//               <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
-//                 <h3 className="text-lg font-semibold mb-2">Editing: Week {currentWeek}</h3>
-//               </div>
-
-//               <div className="grid grid-cols-1 gap-6">
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">
-//                     Week Title
-//                   </label>
-//                   <input
-//                     type="text"
-//                     required
-//                     value={weekFormData.title}
-//                     onChange={(e) =>
-//                       setWeekFormData({ ...weekFormData, title: e.target.value })
-//                     }
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                     placeholder="e.g., Introduction to Spot Trading"
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">
-//                     Description
-//                   </label>
-//                   <textarea
-//                     required
-//                     value={weekFormData.description}
-//                     onChange={(e) =>
-//                       setWeekFormData({ ...weekFormData, description: e.target.value })
-//                     }
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[100px]"
-//                     placeholder="Describe the week's objectives..."
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">
-//                     Learning Outcome
-//                   </label>
-//                   <textarea
-//                     required
-//                     value={weekFormData.learning_outcome}
-//                     onChange={(e) =>
-//                       setWeekFormData({ ...weekFormData, learning_outcome: e.target.value })
-//                     }
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[80px]"
-//                     placeholder="What will users learn this week..."
-//                   />
-//                 </div>
-
-//                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                   <div>
-//                     <label className="block text-sm font-medium text-purple-300 mb-2">
-//                       Trading Type
-//                     </label>
-//                     <select
-//                       value={weekFormData.trading_type}
-//                       onChange={(e) =>
-//                         setWeekFormData({ ...weekFormData, trading_type: e.target.value })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                     >
-//                       <option value="SPOT" className="bg-gray-900">Spot Trading</option>
-//                       <option value="SPOT_FUTURES" className="bg-gray-900">Spot + Futures</option>
-//                       <option value="SPOT_FUTURES_OPTIONS" className="bg-gray-900">Spot + Futures + Options</option>
-//                       <option value="PORTFOLIO" className="bg-gray-900">Portfolio Management</option>
-//                     </select>
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-medium text-purple-300 mb-2">
-//                       Target Goal (%)
-//                     </label>
-//                     <input
-//                       type="number"
-//                       step="0.01"
-//                       value={weekFormData.target_goal}
-//                       onChange={(e) =>
-//                         setWeekFormData({ ...weekFormData, target_goal: parseFloat(e.target.value) })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                     />
-//                   </div>
-
-//                       Start Date
-//                     </label>
-//                     <input
-//                       type="datetime-local"
-//                       required
-//                       value={weekFormData.start_date}
-//                       onChange={(e) =>
-//                         setWeekFormData({ ...weekFormData, start_date: e.target.value })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-medium text-purple-300 mb-2">
-//                       End Date
-//                     </label>
-//                     <input
-//                       type="datetime-local"
-//                       required
-//                       value={weekFormData.end_date}
-//                       onChange={(e) =>
-//                         setWeekFormData({ ...weekFormData, end_date: e.target.value })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                     />
-//                   </div>
-//                 </div>
-//               </div>
-
-//               <div className="flex gap-4 pt-4">
-//                 <button
-//                   type="button"
-//                   onClick={handleWeekSave}
-//                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
-//                 >
-//                   Save Week {currentWeek}
-//                 </button>
-//               </div>
-
-//               <div className="flex gap-4 pt-4 border-t border-purple-500/30">
-//                 <button
-//                   type="button"
-//                   onClick={() => setStep(1)}
-//                   className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-//                 >
-//                   Back
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={handleWeeksSubmit}
-//                   disabled={loading || weeks.length === 0}
-//                   className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-//                 >
-//                   {loading ? (
-//                     <>
-//                       <Loader className="animate-spin" size={20} />
-//                       Creating Weeks...
-//                     </>
-//                   ) : (
-//                     <>
-//                       Next: Add Tasks
-//                       <ChevronRight size={20} />
-//                     </>
-//                   )}
-//                 </button>
-//               </div>
-//             </div>
-//           )}
-
-//           {/* Step 3: Tasks Form */}
-//           {step === 3 && (
-//             <div className="space-y-6">
-//               {/* Week Selector for Tasks */}
-//               <div className="grid grid-cols-4 gap-4 mb-6">
-//                 {weeks.map((week) => (
-//                   <button
-//                     key={week.week_number}
-//                     type="button"
-//                     onClick={() => setCurrentWeek(week.week_number)}
-//                     className={`p-4 rounded-xl border transition-all ${
-//                       currentWeek === week.week_number
-//                         ? "bg-purple-900/30 border-purple-500 shadow-lg"
-//                         : "border-purple-500/30 hover:border-purple-400/50"
-//                     }`}
-//                   >
-//                     <div className="text-lg font-bold">Week {week.week_number}</div>
-//                     {/* <div className="text-xs text-purple-300 mt-1">
-//                       {tasks[week.week_number]?.length || 0} tasks
-//                     </div> */}
-
-// <div className="text-xs text-purple-300 mt-1">
-//   {tasks[week.week_number] ? "1 task" : "0 tasks"}
-// </div>
-//                   </button>
-//                 ))}
-//               </div>
-
-//               <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
-//                 <h3 className="text-lg font-semibold mb-2">
-//                   Add Tasks for Week {currentWeek}
-//                 </h3>
-//                 <p className="text-sm text-purple-300">
-//                   {weeks.find(w => w.week_number === currentWeek)?.title}
-//                 </p>
-//               </div>
-
-//               {/* Existing Tasks */}
-//               {/* {tasks[currentWeek] && tasks[currentWeek].length > 0 && (
-//                 <div className="space-y-3 mb-6">
-//                   <h4 className="font-semibold text-purple-300">Added Tasks:</h4>
-//                   {tasks[currentWeek].map((task, index) => (
-//                     <div key={index} className="bg-purple-900/20 rounded-lg p-4 border border-purple-500/30">
-//                       <div className="flex justify-between items-start">
-//                         <div className="flex-1">
-//                           <h5 className="font-semibold text-white mb-1">{task.title}</h5>
-//                           <p className="text-sm text-purple-300">{task.description}</p>
-//                           <div className="mt-2 flex gap-2 text-xs">
-//                             <span className="px-2 py-1 bg-purple-600/30 rounded">
-//                               {task.task_type}
-//                             </span>
-//                             <span className="px-2 py-1 bg-blue-600/30 rounded">
-//                               Target: {task.target_value}
-//                             </span>
-//                             {task.is_mandatory && (
-//                               <span className="px-2 py-1 bg-red-600/30 rounded">
-//                                 Mandatory
-//                               </span>
-//                             )}
-//                           </div>
-//                         </div>
-//                         <button
-//                           onClick={() => handleRemoveTask(currentWeek, index)}
-//                           className="text-red-400 hover:text-red-300 p-2"
-//                         >
-//                           <Trash2 size={18} />
-//                         </button>
-//                       </div>
-//                     </div>
-//                   ))}
-//                 </div>
-//               )} */}
-
-//               {/* Existing Tasks */}
-// {currentWeekHasTask && (
-//   <div className="space-y-3 mb-6">
-//     <h4 className="font-semibold text-purple-300">Current Task:</h4>
-//     <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-500/30">
-//       <div className="flex justify-between items-start">
-//         <div className="flex-1">
-//           <h5 className="font-semibold text-white mb-1">{tasks[currentWeek][0].title}</h5>
-//           <p className="text-sm text-purple-300">{tasks[currentWeek][0].description}</p>
-//           <div className="mt-2 flex gap-2 text-xs">
-//             <span className="px-2 py-1 bg-purple-600/30 rounded">
-//               {tasks[currentWeek][0].task_type}
-//             </span>
-//             <span className="px-2 py-1 bg-blue-600/30 rounded">
-//               Target: {tasks[currentWeek][0].target_value}
-//             </span>
-//             {tasks[currentWeek][0].is_mandatory && (
-//               <span className="px-2 py-1 bg-red-600/30 rounded">
-//                 Mandatory
-//               </span>
-//             )}
-//           </div>
-//         </div>
-//         <button
-//           onClick={() => handleRemoveTask(currentWeek)}
-//           className="text-red-400 hover:text-red-300 p-2"
-//         >
-//           <Trash2 size={18} />
-//         </button>
-//       </div>
-//     </div>
-//   </div>
-// )}
-
-//               {/* Add New Task Form */}
-//               <div className="bg-gray-900/30 rounded-lg p-6 border border-purple-500/20">
-//                 <h4 className="font-semibold text-purple-300 mb-4">Add New Task</h4>
-//                 <div className="space-y-4">
-//                   <div>
-//                     <label className="block text-sm font-medium text-purple-300 mb-2">
-//                       Task Title
-//                     </label>
-//                     <input
-//                       type="text"
-//                       value={currentTask.title}
-//                       onChange={(e) =>
-//                         setCurrentTask({ ...currentTask, title: e.target.value })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                       placeholder="e.g., Complete 5 profitable trades"
-//                     />
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-medium text-purple-300 mb-2">
-//                       Description
-//                     </label>
-//                     <textarea
-//                       value={currentTask.description}
-//                       onChange={(e) =>
-//                         setCurrentTask({ ...currentTask, description: e.target.value })
-//                       }
-//                       className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[80px]"
-//                       placeholder="Describe the task requirements..."
-//                     />
-//                   </div>
-
-//                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                     <div>
-//                       <label className="block text-sm font-medium text-purple-300 mb-2">
-//                         Task Type
-//                       </label>
-//                       <select
-//                         value={currentTask.task_type}
-//                         onChange={(e) =>
-//                           setCurrentTask({ ...currentTask, task_type: e.target.value })
-//                         }
-//                         className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                       >
-//                         <option value="PORTFOLIO_BALANCE" className="bg-gray-900">Portfolio Balance</option>
-//                         <option value="TRADE_COUNT" className="bg-gray-900">Trade Count</option>
-//                         <option value="PROFIT_TARGET" className="bg-gray-900">Profit Target</option>
-//                         <option value="WIN_RATE" className="bg-gray-900">Win Rate</option>
-//                         <option value="RISK_MANAGEMENT" className="bg-gray-900">Risk Management</option>
-//                         <option value="LEARNING" className="bg-gray-900">Learning</option>
-//                       </select>
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-purple-300 mb-2">
-//                         Target Value
-//                       </label>
-//                       <input
-//                         type="number"
-//                         value={currentTask.target_value}
-//                         onChange={(e) =>
-//                           setCurrentTask({ ...currentTask, target_value: parseFloat(e.target.value) })
-//                         }
-//                         className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                       />
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-purple-300 mb-2">
-//                         Mandatory
-//                       </label>
-//                       <select
-//                         value={currentTask.is_mandatory}
-//                         onChange={(e) =>
-//                           setCurrentTask({ ...currentTask, is_mandatory: e.target.value === "true" })
-//                         }
-//                         className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                       >
-//                         <option value="true" className="bg-gray-900">Yes</option>
-//                         <option value="false" className="bg-gray-900">No</option>
-//                       </select>
-//                     </div>
-//                   </div>
-
-//                   <button
-//                     type="button"
-//                     onClick={handleAddTask}
-//                     className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-//                   >
-//                     <Plus size={20} />
-//                     Add Task to Week {currentWeek}
-//                   </button>
-//                 </div>
-//               </div>
-
-//               <div className="flex gap-4 pt-4 border-t border-purple-500/30">
-//                 <button
-//                   type="button"
-//                   onClick={() => setStep(2)}
-//                   className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-//                 >
-//                   Back to Weeks
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={handleSkipTasks}
-//                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors"
-//                 >
-//                   Skip Tasks
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={handleTasksSubmit}
-//                   disabled={loading || Object.keys(tasks).length === 0}
-//                   className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-//                 >
-//                   {loading ? (
-//                     <>
-//                       <Loader className="animate-spin" size={20} />
-//                       Creating Tasks...
-//                     </>
-//                   ) : (
-//                     <>
-//                       <Trophy size={20} />
-//                       Complete Challenge
-//                     </>
-//                   )}
-//                 </button>
-//               </div>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// // Challenge Details View Component
-// const ChallengeDetails = ({ challengeId, onBack }) => {
-//   const [weekData, setWeekData] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [selectedWeek, setSelectedWeek] = useState(1);
-
-//   const [editingTask, setEditingTask] = useState(null);
-// const [taskFormData, setTaskFormData] = useState({
-//   title: "",
-//   description: "",
-//   task_type: "PORTFOLIO_BALANCE",
-//   target_value: 10,
-//   is_mandatory: true,
-//   order: 1,
-// });
-// const [toast, setToast] = useState(null);
-
-// const showToast = (message, type) => {
-//   setToast({ message, type });
-// };
-
-// const handleEditTask = (task) => {
-//   setEditingTask(task);
-//   setTaskFormData({
-//     title: task.title,
-//     description: task.description,
-//     task_type: task.task_type,
-//     target_value: task.target_value,
-//     is_mandatory: task.is_mandatory,
-//     order: task.order,
-//   });
-// };
-
-// const handleSaveTask = async () => {
-//   try {
-//     const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//     const response = await fetch(
-//       `${baseURL}challenges/tasks/?week=${currentWeek.id}`,
-//       {
-//         method: "PATCH",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${tokens.access}`,
-//         },
-//         body: JSON.stringify({
-//           week: currentWeek.id,
-//           ...taskFormData,
-//         }),
-//       }
-//     );
-
-//     const data = await response.json();
-
-//     if (response.ok) {
-//       showToast("Task updated successfully!", "success");
-//       setEditingTask(null);
-//       fetchWeekData(); // Refresh the data
-//     } else {
-//       showToast(data.detail || "Failed to update task", "error");
-//     }
-//   } catch (error) {
-//     showToast("Error updating task: " + error.message, "error");
-//   }
-// };
-
-// const handleCancelEdit = () => {
-//   setEditingTask(null);
-//   setTaskFormData({
-//     title: "",
-//     description: "",
-//     task_type: "PORTFOLIO_BALANCE",
-//     target_value: 10,
-//     is_mandatory: true,
-//     order: 1,
-//   });
-// };
-
-//   useEffect(() => {
-//     fetchWeekData();
-//   }, [challengeId]);
-
-//   const fetchWeekData = async () => {
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const response = await fetch(
-//         `${baseURL}challenges/weeks/?program_id=${challengeId}`,
-//         {
-//           headers: {
-//             Authorization: `Bearer ${tokens.access}`,
-//           },
-//         }
-//       );
-//       const data = await response.json();
-//       setWeekData(data.slice(0, 4));
-//     } catch (error) {
-//       console.error("Error fetching week data:", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const getDifficultyStars = (difficulty) => {
-//     const stars = {
-//       BEGINNER: "★★★",
-//       INTERMEDIATE: "★★★★",
-//       ADVANCED: "★★★★★",
-//       EXPERT: "★★★★★",
-//     };
-//     return stars[difficulty] || "★★★";
-//   };
-
-//   const getTradingTypeLabel = (type) => {
-//     const labels = {
-//       SPOT: "Spot Trading",
-//       SPOT_FUTURES: "Spot + Futures",
-//       SPOT_FUTURES_OPTIONS: "Spot + Futures + Options",
-//       PORTFOLIO: "Portfolio Management",
-//     };
-//     return labels[type] || type;
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="min-h-screen text-white flex items-center justify-center">
-//         <Loader className="animate-spin text-purple-400" size={48} />
-//       </div>
-//     );
-//   }
-
-//   const currentWeek = weekData.find((w) => w.week_number === selectedWeek);
-
-//   return (
-//     <div className="min-h-screen text-white p-6">
-//       <div className="max-w-7xl mx-auto">
-//         <button
-//           onClick={onBack}
-//           className="mb-6 flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors"
-//         >
-//           <ArrowLeft size={20} />
-//           Back to Challenges List
-//         </button>
-
-//         <div className="mb-8">
-//           <h1 className="text-4xl font-bold mb-2">
-//             {weekData[0]?.program_name || "Challenge Details"}
-//           </h1>
-//           <p className="text-purple-300 text-lg">
-//             View and manage weekly challenge structure
-//           </p>
-//         </div>
-
-//         <div className="mb-8">
-//           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-//             {weekData.map((week) => (
-//               <button
-//                 key={week.id}
-//                 onClick={() => setSelectedWeek(week.week_number)}
-//                 className={`p-4 rounded-xl border transition-all ${
-//                   selectedWeek === week.week_number
-//                     ? "bg-purple-900/30 border-purple-500 shadow-lg shadow-purple-500/20"
-//                     : "border-purple-500/30 hover:border-purple-400/50"
-//                 }`}
-//               >
-//                 <div className="text-xl font-bold mb-1">
-//                   Week {week.week_number}
-//                 </div>
-//                 <div className="text-xs text-purple-300">
-//                   {week.is_completed
-//                     ? "✓ Completed"
-//                     : week.is_ongoing
-//                     ? "In Progress"
-//                     : "Upcoming"}
-//                 </div>
-//               </button>
-//             ))}
-//           </div>
-//         </div>
-
-//         {currentWeek && (
-//           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//             <div className="lg:col-span-2 space-y-6">
-//               <div className="rounded-2xl border border-purple-500/30 p-6">
-//                 <h2 className="text-3xl font-bold mb-3">{currentWeek.title}</h2>
-//                 <div className="flex items-center gap-3 flex-wrap mb-4">
-//                   <span className="text-yellow-400">
-//                     {getDifficultyStars("BEGINNER")}
-//                   </span>
-//                   <span className="px-3 py-1 bg-purple-600 rounded-full text-sm">
-//                     {getTradingTypeLabel(currentWeek.trading_type)}
-//                   </span>
-//                 </div>
-//                 <p className="text-purple-200">{currentWeek.description}</p>
-//               </div>
-
-//               <div className="rounded-2xl border border-purple-500/30 p-6">
-//                 <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-//                   <Target className="text-purple-400" size={28} />
-//                   Mission Goals
-//                 </h3>
-//                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                   <div className="rounded-xl p-4 border border-purple-500/20">
-//                     <div className="text-sm text-purple-300 mb-1">
-//                       Target Goal
-//                     </div>
-//                     <div className="text-2xl font-bold text-green-400">
-//                       +{currentWeek.target_goal}%
-//                     </div>
-//                   </div>
-//                   <div className="rounded-xl p-4 border border-purple-500/20">
-//                     <div className="text-sm text-purple-300 mb-1">
-//                       Min Trades
-//                     </div>
-//                     <div className="text-2xl font-bold text-purple-400">
-//                       {currentWeek.min_trades_required}
-//                     </div>
-//                   </div>
-//                   <div className="rounded-xl p-4 border border-purple-500/20">
-//                     <div className="text-sm text-purple-300 mb-1">Duration</div>
-//                     <div className="text-2xl font-bold text-orange-400">
-//                       7 Days
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               <div className="rounded-2xl border border-purple-500/30 p-6">
-//                 <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-//                   <Star className="text-yellow-400" size={28} />
-//                   Learning Outcome
-//                 </h3>
-//                 <p className="text-purple-200">
-//                   {currentWeek.learning_outcome}
-//                 </p>
-//               </div>
-
-//               {/* {currentWeek.tasks && currentWeek.tasks.length > 0 && (
-//                 <div className="rounded-2xl border border-purple-500/30 p-6">
-//                   <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-//                     <Award className="text-purple-400" size={28} />
-//                     Tasks
-//                   </h3>
-//                   <div className="space-y-3">
-//                     {currentWeek.tasks.map((task) => (
-//                       <div
-//                         key={task.id}
-//                         className="rounded-lg p-4 border border-purple-500/20"
-//                       >
-//                         <div className="flex items-start justify-between">
-//                           <div>
-//                             <h4 className="font-semibold text-white mb-1">
-//                               {task.title}
-//                             </h4>
-//                             <p className="text-sm text-purple-300">
-//                               {task.description}
-//                             </p>
-//                           </div>
-//                           {task.is_mandatory && (
-//                             <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
-//                               Required
-//                             </span>
-//                           )}
-//                         </div>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               )} */}
-
-// {currentWeek.tasks && currentWeek.tasks.length > 0 && (
-//   <div className="rounded-2xl border border-purple-500/30 p-6">
-//     <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-//       <Award className="text-purple-400" size={28} />
-//       Tasks
-//     </h3>
-//     <div className="space-y-3">
-//       {currentWeek.tasks.map((task) => (
-//         <div key={task.id} className="rounded-lg p-4 border border-purple-500/20">
-//           {editingTask?.id === task.id ? (
-//             <div className="space-y-4">
-//               <div>
-//                 <label className="block text-sm font-medium text-purple-300 mb-2">Title</label>
-//                 <input
-//                   type="text"
-//                   value={taskFormData.title}
-//                   onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-//                   className="w-full border border-purple-500/30 rounded-lg px-4 py-2 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-purple-300 mb-2">Description</label>
-//                 <textarea
-//                   value={taskFormData.description}
-//                   onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-//                   className="w-full border border-purple-500/30 rounded-lg px-4 py-2 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[80px]"
-//                 />
-//               </div>
-//               <div className="grid grid-cols-2 gap-3">
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">Task Type</label>
-//                   <select
-//                     value={taskFormData.task_type}
-//                     onChange={(e) => setTaskFormData({ ...taskFormData, task_type: e.target.value })}
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-2 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                   >
-//                     <option value="PORTFOLIO_BALANCE" className="bg-gray-900">Portfolio Balance</option>
-//                     <option value="TRADE_COUNT" className="bg-gray-900">Trade Count</option>
-//                     <option value="PROFIT_TARGET" className="bg-gray-900">Profit Target</option>
-//                     <option value="WIN_RATE" className="bg-gray-900">Win Rate</option>
-//                     <option value="RISK_MANAGEMENT" className="bg-gray-900">Risk Management</option>
-//                     <option value="LEARNING" className="bg-gray-900">Learning</option>
-//                   </select>
-//                 </div>
-//                 <div>
-//                   <label className="block text-sm font-medium text-purple-300 mb-2">Target Value</label>
-//                   <input
-//                     type="number"
-//                     value={taskFormData.target_value}
-//                     onChange={(e) => setTaskFormData({ ...taskFormData, target_value: parseFloat(e.target.value) })}
-//                     className="w-full border border-purple-500/30 rounded-lg px-4 py-2 text-white bg-transparent focus:outline-none focus:border-purple-500"
-//                   />
-//                 </div>
-//               </div>
-//               <div className="flex gap-2">
-//                 <button
-//                   onClick={handleSaveTask}
-//                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors"
-//                 >
-//                   Save
-//                 </button>
-//                 <button
-//                   onClick={handleCancelEdit}
-//                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg transition-colors"
-//                 >
-//                   Cancel
-//                 </button>
-//               </div>
-//             </div>
-//           ) : (
-//             <div className="flex items-start justify-between">
-//               <div>
-//                 <h4 className="font-semibold text-white mb-1">{task.title}</h4>
-//                 <p className="text-sm text-purple-300">{task.description}</p>
-//                 <div className="mt-2 flex gap-2 text-xs">
-//                   <span className="px-2 py-1 bg-purple-600/30 rounded">{task.task_type}</span>
-//                   <span className="px-2 py-1 bg-blue-600/30 rounded">Target: {task.target_value}</span>
-//                   {task.is_mandatory && (
-//                     <span className="px-2 py-1 bg-red-600/30 rounded">Required</span>
-//                   )}
-//                 </div>
-//               </div>
-//               <button
-//                 onClick={() => handleEditTask(task)}
-//                 className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors"
-//               >
-//                 Edit
-//               </button>
-//             </div>
-//           )}
-//         </div>
-//       ))}
-//     </div>
-//   </div>
-// )}
-
-// {toast && (
-//   <Toast
-//     message={toast.message}
-//     type={toast.type}
-//     onClose={() => setToast(null)}
-//   />
-// )}
-//             </div>
-
-//             <div className="space-y-6">
-//               <div className="rounded-2xl border border-purple-500/30 p-6">
-//                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-//                   <Calendar className="text-purple-400" size={24} />
-//                   Schedule
-//                 </h3>
-//                 <div className="space-y-3">
-//                   <div>
-//                     <div className="text-sm text-purple-300 mb-1">
-//                       Start Date
-//                     </div>
-//                     <div className="text-white font-semibold">
-//                       {new Date(currentWeek.start_date).toLocaleDateString()}
-//                     </div>
-//                   </div>
-//                   <div>
-//                     <div className="text-sm text-purple-300 mb-1">End Date</div>
-//                     <div className="text-white font-semibold">
-//                       {new Date(currentWeek.end_date).toLocaleDateString()}
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {currentWeek.reward && (
-//                 <div className="rounded-2xl border border-purple-500/30 p-6">
-//                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-//                     <Trophy className="text-yellow-400" size={24} />
-//                     Rewards
-//                   </h3>
-//                   <div className="space-y-4">
-//                     <div className="text-center">
-//                       <div className="text-4xl mb-2">🏆</div>
-//                       <div className="font-semibold text-orange-400 mb-1">
-//                         {currentWeek.reward.badge_name}
-//                       </div>
-//                       <div className="text-xs text-purple-300">
-//                         {currentWeek.reward.badge_description}
-//                       </div>
-//                     </div>
-//                     <div className="grid grid-cols-2 gap-3">
-//                       <div className="rounded-lg p-3 text-center">
-//                         <div className="text-xs text-purple-300 mb-1">
-//                           Profit Bonus
-//                         </div>
-//                         <div className="text-lg font-bold text-green-400">
-//                           {currentWeek.reward.profit_bonus_coins} ZC
-//                         </div>
-//                       </div>
-//                       <div className="rounded-lg p-3 text-center">
-//                         <div className="text-xs text-purple-300 mb-1">
-//                           Loss Recovery
-//                         </div>
-//                         <div className="text-lg font-bold text-orange-400">
-//                           {currentWeek.reward.loss_recovery_coins} ZC
-//                         </div>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               <div className="rounded-2xl border border-purple-500/30 p-6">
-//                 <h3 className="text-xl font-bold mb-4">Status</h3>
-//                 <div className="space-y-2">
-//                   <div className="flex items-center justify-between">
-//                     <span className="text-purple-300">Active</span>
-//                     <span
-//                       className={
-//                         currentWeek.is_active
-//                           ? "text-green-400"
-//                           : "text-red-400"
-//                       }
-//                     >
-//                       {currentWeek.is_active ? (
-//                         <Unlock size={20} />
-//                       ) : (
-//                         <Lock size={20} />
-//                       )}
-//                     </span>
-//                   </div>
-//                   <div className="flex items-center justify-between">
-//                     <span className="text-purple-300">Ongoing</span>
-//                     <span
-//                       className={
-//                         currentWeek.is_ongoing
-//                           ? "text-green-400"
-//                           : "text-gray-400"
-//                       }
-//                     >
-//                       {currentWeek.is_ongoing ? "Yes" : "No"}
-//                     </span>
-//                   </div>
-//                   <div className="flex items-center justify-between">
-//                     <span className="text-purple-300">Completed</span>
-//                     <span
-//                       className={
-//                         currentWeek.is_completed
-//                           ? "text-green-400"
-//                           : "text-gray-400"
-//                       }
-//                     >
-//                       {currentWeek.is_completed ? "Yes" : "No"}
-//                     </span>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-// // Main Challenges Management Component
-// export default function ChallengesManagement() {
-//   const [challenges, setChallenges] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [currentView, setCurrentView] = useState("list");
-//   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
-
-//   useEffect(() => {
-//     if (currentView === "list") {
-//       fetchChallenges();
-//     }
-//   }, [currentView]);
-
-//   const fetchChallenges = async () => {
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const response = await fetch(
-//         `${baseURL}challenges/admin/challenges`,
-//         {
-//           headers: {
-//             Authorization: `Bearer ${tokens.access}`,
-//           },
-//         }
-//       );
-//       const data = await response.json();
-//       setChallenges(data.results);
-//     } catch (error) {
-//       console.error("Error fetching challenges:", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleViewDetails = (challengeId) => {
-//     setSelectedChallengeId(challengeId);
-//     setCurrentView("details");
-//   };
-
-//   if (currentView === "create") {
-//     return (
-//       <CreateChallenge
-//         onBack={() => setCurrentView("list")}
-//         onSuccess={() => setCurrentView("list")}
-//       />
-//     );
-//   }
-
-//   if (currentView === "details" && selectedChallengeId) {
-//     return (
-//       <ChallengeDetails
-//         challengeId={selectedChallengeId}
-//         onBack={() => setCurrentView("list")}
-//       />
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-screen text-white p-6">
-//       <div className="max-w-7xl mx-auto">
-//         <div className="flex items-center justify-between mb-8">
-//           <div>
-//             <h1 className="text-4xl font-bold mb-2">Challenges Management</h1>
-//             <p className="text-purple-300 text-lg">
-//               Create and manage trading challenges
-//             </p>
-//           </div>
-//           <button
-//             onClick={() => setCurrentView("create")}
-//             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center gap-2"
-//           >
-//             <Plus size={20} />
-//             Create New Challenge
-//           </button>
-//         </div>
-
-//         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-//           <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-4 flex items-center justify-between hover:border-purple-400/40 transition-all duration-300">
-//             <div>
-//               <div className="text-sm text-purple-300">Total Challenges</div>
-//               <div className="text-2xl font-semibold text-white">
-//                 {challenges?.length}
-//               </div>
-//             </div>
-//             <Trophy className="text-yellow-400 opacity-90" size={26} />
-//           </div>
-
-//           <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-4 flex items-center justify-between hover:border-purple-400/40 transition-all duration-300">
-//             <div>
-//               <div className="text-sm text-purple-300">Active Challenges</div>
-//               <div className="text-2xl font-semibold text-white">
-//                 {challenges?.filter((c) => c.is_active).length}
-//               </div>
-//             </div>
-//             <TrendingUp className="text-green-400 opacity-90" size={26} />
-//           </div>
-
-//           <div className="rounded-xl border border-purple-500/20 bg-[#120B20]/60 p-4 flex items-center justify-between hover:border-purple-400/40 transition-all duration-300">
-//             <div>
-//               <div className="text-sm text-purple-300">Total Participants</div>
-//               <div className="text-2xl font-semibold text-white">
-//                 {challenges?.reduce((sum, c) => sum + c.total_participants, 0)}
-//               </div>
-//             </div>
-//             <Users className="text-blue-400 opacity-90" size={26} />
-//           </div>
-//         </div>
-
-//         <div className="rounded-2xl border border-purple-500/20 backdrop-blur-sm p-6 shadow-md">
-//           <h2 className="text-2xl font-semibold text-white mb-6">
-//             All Challenges
-//           </h2>
-
-//           {loading ? (
-//             <div className="flex items-center justify-center py-16">
-//               <Loader className="animate-spin text-purple-400" size={48} />
-//             </div>
-//           ) : challenges?.length === 0 ? (
-//             <div className="text-center py-16 text-purple-300">
-//               <Trophy size={72} className="mx-auto mb-4 opacity-40" />
-//               <h3 className="text-xl font-medium mb-2">No Challenges Yet</h3>
-//               <p className="text-sm opacity-70">
-//                 Create your first challenge to get started.
-//               </p>
-//             </div>
-//           ) : (
-//             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-//               {challenges?.map((challenge) => (
-//                 <div
-//                   key={challenge.id}
-//                   onClick={() => handleViewDetails(challenge.id)}
-//                   className="group rounded-xl border border-purple-500/20 bg-[#120B20]/40 p-6 transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)] cursor-pointer"
-//                 >
-//                   <div className="flex items-start justify-between mb-3">
-//                     <div>
-//                       <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors duration-300">
-//                         {challenge.name}
-//                       </h3>
-//                       <span
-//                         className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full ${
-//                           challenge.is_active
-//                             ? "bg-green-500/20 text-green-400"
-//                             : "bg-gray-500/20 text-gray-400"
-//                         }`}
-//                       >
-//                         {challenge.is_active ? "Active" : "Inactive"}
-//                       </span>
-//                     </div>
-//                     <ChevronRight
-//                       size={22}
-//                       className="text-purple-400 opacity-80 group-hover:translate-x-1 transition-transform duration-300"
-//                     />
-//                   </div>
-
-//                   <p className="text-sm text-purple-300/80 mb-5 leading-relaxed line-clamp-2">
-//                     {challenge.description || "No description available."}
-//                   </p>
-
-//                   <div className="grid grid-cols-2 gap-y-3 text-sm">
-//                     <div>
-//                       <p className="text-xs text-purple-300/70 mb-0.5">
-//                         Difficulty
-//                       </p>
-//                       <p className="font-medium text-orange-400 capitalize">
-//                         {challenge.difficulty.toLowerCase()}
-//                       </p>
-//                     </div>
-//                     <div>
-//                       <p className="text-xs text-purple-300/70 mb-0.5">Weeks</p>
-//                       <p className="font-medium text-purple-400">
-//                         {challenge.weeks}
-//                       </p>
-//                     </div>
-//                     <div>
-//                       <p className="text-xs text-purple-300/70 mb-0.5">
-//                         Participants
-//                       </p>
-//                       <p className="font-medium text-blue-400">
-//                         {challenge.total_participants}
-//                       </p>
-//                     </div>
-//                     <div>
-//                       <p className="text-xs text-purple-300/70 mb-0.5">
-//                         Created
-//                       </p>
-//                       <p className="font-medium text-white">
-//                         {new Date(challenge.created_at).toLocaleDateString()}
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// Create New Challenge Component
-// const CreateChallenge = ({ onBack, onSuccess }) => {
-//   const [step, setStep] = useState(1); // 1: Challenge, 2: Weeks, 3: Tasks
-//   const [challengeId, setChallengeId] = useState(null);
-//   const [formData, setFormData] = useState({
-//     name: "",
-//     description: "",
-//     difficulty: "BEGINNER",
-//     is_active: true,
-//   });
-//   const [weeks, setWeeks] = useState([]);
-//   const [createdWeeks, setCreatedWeeks] = useState([]); // Store created weeks with IDs
-//   const [currentWeek, setCurrentWeek] = useState(1);
-//   const [weekFormData, setWeekFormData] = useState({
-//     title: "",
-//     description: "",
-//     learning_outcome: "",
-//     trading_type: "SPOT",
-//     start_date: "",
-//     end_date: "",
-//     target_goal: 5,
-//     min_trades_required: 3,
-//     is_active: true,
-//   });
-//   const [tasks, setTasks] = useState({});
-//   const [currentTask, setCurrentTask] = useState({
-//     title: "",
-//     description: "",
-//     task_type: "PORTFOLIO_BALANCE",
-//     target_value: 10,
-//     is_mandatory: true,
-//     order: 1,
-//   });
-//   const [loading, setLoading] = useState(false);
-//   const [toast, setToast] = useState(null);
-
-//   const showToast = (message, type) => {
-//     setToast({ message, type });
-//   };
-
-//   const handleChallengeSubmit = async (e) => {
-//     e.preventDefault();
-//     setLoading(true);
-
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const response = await fetch(`${baseURL}challenges/admin/challenges/`, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${tokens.access}`,
-//         },
-//         body: JSON.stringify(formData),
-//       });
-
-//       const data = await response.json();
-
-//       if (response.ok) {
-//         setChallengeId(data.data.id);
-//         showToast("Challenge created successfully!", "success");
-//         setTimeout(() => setStep(2), 1000);
-//       } else {
-//         showToast(data.detail || "Failed to create challenge", "error");
-//       }
-//     } catch (error) {
-//       showToast("Error creating challenge: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleWeekSave = () => {
-//     if (!weekFormData.title || !weekFormData.start_date || !weekFormData.end_date) {
-//       showToast("Please fill all required fields", "error");
-//       return;
-//     }
-
-//     // Check if maximum 4 weeks already exist
-//     if (weeks.length >= 4 && !weeks[currentWeek - 1]) {
-//       showToast("Maximum 4 weeks allowed per program", "error");
-//       return;
-//     }
-
-//     setWeeks((prev) => {
-//       const newWeeks = [...prev];
-//       newWeeks[currentWeek - 1] = {
-//         ...weekFormData,
-//         week_number: currentWeek,
-//       };
-//       return newWeeks;
-//     });
-
-//     showToast(`Week ${currentWeek} data saved`, "success");
-//   };
-
-//   // const handleWeeksSubmit = async () => {
-//   //   if (weeks.length === 0) {
-//   //     showToast("Please add at least one week", "error");
-//   //     return;
-//   //   }
-
-//   //   if (weeks.length > 4) {
-//   //     showToast("Maximum 4 weeks allowed per program", "error");
-//   //     return;
-//   //   }
-
-//   //   setLoading(true);
-//   //   try {
-//   //     const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//   //     const createdWeeksData = [];
-
-//   //     for (const week of weeks) {
-//   //       // Format dates to ISO format with Z suffix
-//   //       const formattedStartDate = new Date(week.start_date).toISOString();
-//   //       const formattedEndDate = new Date(week.end_date).toISOString();
-
-//   //       const response = await fetch(
-//   //         `${baseURL}challenges/admin/weeks/`,
-//   //         {
-//   //           method: "POST",
-//   //           headers: {
-//   //             "Content-Type": "application/json",
-//   //             Authorization: `Bearer ${tokens.access}`,
-//   //           },
-//   //           body: JSON.stringify({
-//   //             program: challengeId,
-//   //             title: week.title,
-//   //             description: week.description,
-//   //             learning_outcome: week.learning_outcome,
-//   //             week_number: week.week_number,
-//   //             trading_type: week.trading_type,
-//   //             start_date: formattedStartDate,
-//   //             end_date: formattedEndDate,
-//   //             target_goal: week.target_goal,
-//   //             min_trades_required: week.min_trades_required,
-//   //             is_active: week.is_active,
-//   //           }),
-//   //         }
-//   //       );
-
-//   //       const data = await response.json();
-
-//   //       if (response.ok) {
-//   //         createdWeeksData.push(data);
-//   //       } else {
-//   //         showToast(`Failed to create week ${week.week_number}: ${data.detail || "Unknown error"}`, "error");
-//   //         setLoading(false);
-//   //         return;
-//   //       }
-//   //     }
-
-//   //     showToast("All weeks created successfully!", "success");
-//   //     setCreatedWeeks(createdWeeksData);
-//   //     setTimeout(() => setStep(3), 1000);
-//   //   } catch (error) {
-//   //     showToast("Error creating weeks: " + error.message, "error");
-//   //   } finally {
-//   //     setLoading(false);
-//   //   }
-//   // };
-
-//   const handleWeeksSubmit = async () => {
-//     if (weeks.length === 0) {
-//       showToast("Please add at least one week", "error");
-//       return;
-//     }
-
-//     if (weeks.length > 4) {
-//       showToast("Maximum 4 weeks allowed per program", "error");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-//       const createdWeeksData = [];
-
-//       for (const week of weeks) {
-//         // Format dates to ISO format with Z suffix
-//         const formattedStartDate = new Date(week.start_date).toISOString();
-//         const formattedEndDate = new Date(week.end_date).toISOString();
-
-//         const payload = {
-//           program: challengeId,
-//           title: week.title,
-//           description: week.description,
-//           learning_outcome: week.learning_outcome,
-//           week_number: week.week_number,
-//           trading_type: week.trading_type,
-//           start_date: formattedStartDate,
-//           end_date: formattedEndDate,
-//           target_goal: week.target_goal,
-//           min_trades_required: week.min_trades_required,
-//           is_active: week.is_active,
-//         };
-
-//         // Console log the payload
-//         console.log(`Week ${week.week_number} Payload:`, payload);
-//         console.log(`Week ${week.week_number} Payload (JSON):`, JSON.stringify(payload, null, 2));
-
-//         const response = await fetch(
-//           `${baseURL}challenges/admin/weeks/`,
-//           {
-//             method: "POST",
-//             headers: {
-//               "Content-Type": "application/json",
-//               Authorization: `Bearer ${tokens.access}`,
-//             },
-//             body: JSON.stringify(payload),
-//           }
-//         );
-
-//         const data = await response.json();
-
-//         // Console log the response
-//         console.log(`Week ${week.week_number} Response:`, data);
-
-//         if (response.ok) {
-//           createdWeeksData.push(data);
-//         } else {
-//           console.error(`Week ${week.week_number} Error Response:`, data);
-//           showToast(`Failed to create week ${week.week_number}: ${data.detail || "Unknown error"}`, "error");
-//           setLoading(false);
-//           return;
-//         }
-//       }
-
-//       console.log("All Created Weeks Data:", createdWeeksData);
-//       showToast("All weeks created successfully!", "success");
-//       setCreatedWeeks(createdWeeksData);
-//       setTimeout(() => setStep(3), 1000);
-//     } catch (error) {
-//       console.error("Error creating weeks:", error);
-//       showToast("Error creating weeks: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Check if current week already has a task (max 1 task per week)
-//   const currentWeekHasTask = tasks[currentWeek] && tasks[currentWeek].length > 0;
-
-//   const handleAddTask = () => {
-//     if (!currentTask.title || !currentTask.description) {
-//       showToast("Please fill task title and description", "error");
-//       return;
-//     }
-
-//     if (currentWeekHasTask) {
-//       showToast("Only 1 task allowed per week. Remove the existing task first.", "error");
-//       return;
-//     }
-
-//     setTasks((prev) => ({
-//       ...prev,
-//       [currentWeek]: [{ ...currentTask }],
-//     }));
-
-//     setCurrentTask({
-//       title: "",
-//       description: "",
-//       task_type: "PORTFOLIO_BALANCE",
-//       target_value: 10,
-//       is_mandatory: true,
-//       order: 1,
-//     });
-
-//     showToast("Task added", "success");
-//   };
-
-//   const handleRemoveTask = (weekNum) => {
-//     setTasks((prev) => {
-//       const newTasks = { ...prev };
-//       delete newTasks[weekNum];
-//       return newTasks;
-//     });
-//     showToast("Task removed", "success");
-//   };
-
-//   const handleTasksSubmit = async () => {
-//     setLoading(true);
-//     try {
-//       const tokens = JSON.parse(localStorage.getItem("authTokens"));
-
-//       for (const [weekNumber, weekTasks] of Object.entries(tasks)) {
-//         const weekData = createdWeeks.find(w => w.week_number === parseInt(weekNumber));
-//         if (!weekData) continue;
-
-//         for (const task of weekTasks) {
-//           const response = await fetch(
-//             `${baseURL}challenges/tasks/?week=${weekData.id}`,
-//             {
-//               method: "POST",
-//               headers: {
-//                 "Content-Type": "application/json",
-//                 Authorization: `Bearer ${tokens.access}`,
-//               },
-//               body: JSON.stringify({
-//                 week: weekData.id,
-//                 title: task.title,
-//                 description: task.description,
-//                 task_type: task.task_type,
-//                 target_value: task.target_value,
-//                 is_mandatory: task.is_mandatory,
-//                 order: task.order,
-//               }),
-//             }
-//           );
-
-//           const data = await response.json();
-
-//           if (!response.ok) {
-//             showToast(`Failed to create task: ${data.detail || "Unknown error"}`, "error");
-//             setLoading(false);
-//             return;
-//           }
-//         }
-//       }
-
-//       showToast("Challenge created successfully with all weeks and tasks!", "success");
-//       setTimeout(() => onSuccess(), 1500);
-//     } catch (error) {
-//       showToast("Error creating tasks: " + error.message, "error");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleSkipTasks = () => {
-//     showToast("Challenge created successfully!", "success");
-//     setTimeout(() => onSuccess(), 1000);
-//   };
-
-//   useEffect(() => {
-//     if (step === 2 && currentWeek <= weeks.length && weeks[currentWeek - 1]) {
-//       setWeekFormData(weeks[currentWeek - 1]);
-//     } else if (step === 2) {
-//       setWeekFormData({
-//         title: "",
-//         description: "",
-//         learning_outcome: "",
-//         trading_type: "SPOT",
-//         start_date: "",
-//         end_date: "",
-//         target_goal: 5,
-//         min_trades_required: 3,
-//         is_active: true,
-//       });
-//     }
-// }, [currentWeek, step]);
-
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Plus,
   Calendar,
@@ -2011,7 +31,7 @@ const Toast = ({ message, type, onClose }) => {
   }, [onClose]);
 
   const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-  const icon = type === "success" ? "✓" : "✕";
+  const icon = type === "success" ? "âœ“" : "âœ•";
 
   return (
     <div
@@ -2070,6 +90,17 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
     is_mandatory: true,
     order: 1,
   });
+
+  const [rewardFormData, setRewardFormData] = useState({
+    badge_name: "",
+    badge_description: "",
+    badge_icon: "",
+    profit_bonus_coins: 25000,
+    loss_recovery_coins: 10000,
+  });
+
+  // Steps: 1: Challenge, 2: Weeks, 3: Tasks, 4: Rewards
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -2083,13 +114,16 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
 
     try {
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
+      // Force is_active to false explicitly on creation
+      const payload = { ...formData, is_active: false };
+
       const response = await fetch(`${baseURL}challenges/admin/challenges/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${tokens.access}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -2097,7 +131,7 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
 
       if (response.ok) {
         setChallengeId(data.data.id);
-        showToast("Challenge created successfully!", "success");
+        showToast("Challenge created successfully! Configure weeks next.", "success");
         setTimeout(() => setStep(2), 1000);
       } else {
         showToast(data.detail || "Failed to create challenge", "error");
@@ -2296,8 +330,8 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
       return;
     }
 
-    showToast("Weeks data saved! Now add tasks.", "success");
-    setTimeout(() => setStep(3), 500);
+    showToast(`Week ${currentWeek} saved! Now add a task.`, "success");
+    setStep(3);
   };
 
   // Check if current week already has a task (max 1 task per week)
@@ -2386,32 +420,114 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
     }
   };
 
-  const handleRemoveTask = (weekNum) => {
-    setTasks((prev) => {
-      const newTasks = { ...prev };
-      delete newTasks[weekNum];
-      return newTasks;
-    });
-    showToast("Task removed", "success");
-  };
 
   const handleTasksSubmit = async () => {
-    if (Object.keys(tasks).length === 0) {
-      showToast("Please add at least one task", "error");
+    if (!tasks[currentWeek] || tasks[currentWeek].length === 0) {
+      showToast("Please add a task first", "error");
       return;
     }
 
-    showToast(
-      "Challenge created successfully with all weeks and tasks!",
-      "success"
-    );
-    setTimeout(() => onSuccess(), 1500);
+    setStep(4); // Move to Rewards
   };
 
-  const handleSkipTasks = () => {
-    showToast("Challenge created successfully!", "success");
-    setTimeout(() => onSuccess(), 1000);
+  const handleCreateReward = async () => {
+    if (!rewardFormData.badge_name) {
+      showToast("Please enter a badge name", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
+
+      // Need to find the week ID for the current week
+      // The weeks array contains the created week data from handleCreateWeek
+      const currentWeekObj = createdWeeks[currentWeek];
+
+      if (!currentWeekObj) {
+        showToast("Week not found. Please save week first.", "error");
+        return;
+      }
+
+      const payload = {
+        week: currentWeekObj.id,
+        ...rewardFormData
+      };
+
+      const response = await fetch(`${baseURL}challenges/rewards/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens.access}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast("Reward configured successfully!", "success");
+
+        // Clear forms
+        setRewardFormData({
+          badge_name: "",
+          badge_description: "",
+          badge_icon: "",
+          profit_bonus_coins: 25000,
+          loss_recovery_coins: 10000,
+        });
+
+        // Loop Logic
+        if (currentWeek < 4) {
+          const nextWeek = currentWeek + 1;
+          setCurrentWeek(nextWeek);
+          setStep(2); // Go back to Week Form
+
+          // Reset Week Form for next week
+          setWeekFormData({
+            title: "",
+            description: "",
+            learning_outcome: "",
+            trading_type: "SPOT",
+            start_date: "",
+            end_date: "",
+            target_goal: 5,
+            min_trades_required: "",
+            min_spot_trades: 0,
+            min_futures_trades: 0,
+            min_options_trades: 0,
+            is_active: true,
+          });
+
+          // Reset Task Form
+          setCurrentTask({
+            title: "",
+            description: "",
+            task_type: "PORTFOLIO_BALANCE",
+            target_value: 10,
+            is_mandatory: true,
+            order: 1,
+          });
+
+          showToast(`Proceeding to Week ${nextWeek}`, "info");
+
+        } else {
+          // Finished 4 weeks
+          showToast("All 4 Weeks Configured! Allocating Challenge...", "success");
+          onSuccess(); // Exit
+        }
+
+      } else {
+        showToast(`Failed to create reward: ${JSON.stringify(data)}`, "error");
+      }
+    } catch (error) {
+      showToast("Error creating reward: " + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
   };
+
+
 
   // useEffect(() => {
   //   if (step === 2 && currentWeek <= weeks.length && weeks[currentWeek - 1]) {
@@ -2536,6 +652,24 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
             </div>
             <span className="font-medium">Tasks</span>
           </div>
+          <div
+            className={`w-12 h-0.5 ${step >= 4 ? "bg-purple-400" : "bg-gray-500"
+              }`}
+          />
+          <div
+            className={`flex items-center gap-2 ${step >= 4 ? "text-purple-400" : "text-gray-500"
+              }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 4
+                ? "border-purple-400 bg-purple-400/20"
+                : "border-gray-500"
+                }`}
+            >
+              4
+            </div>
+            <span className="font-medium">Rewards</span>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-purple-500/30 p-8">
@@ -2544,8 +678,11 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
             {step === 1
               ? "Create New Challenge"
               : step === 2
-                ? "Add Weeks (Max 4)"
-                : "Add Tasks (1 per Week)"}
+                ? `Week ${currentWeek}: Configuration`
+                : step === 3
+                  ? `Week ${currentWeek}: Add Task`
+                  : `Week ${currentWeek}: Configure Reward`
+            }
           </h1>
 
           {/* Step 1: Challenge Form */}
@@ -2572,14 +709,14 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
                   Description
                 </label>
                 {/* <textarea
-                  required
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[120px]"
-                  placeholder="Describe the challenge objectives and structure..."
-                /> */}
+                required
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500 min-h-[120px]"
+                placeholder="Describe the challenge objectives and structure..."
+              /> */}
 
                 <div>
                   <ReactQuill
@@ -2676,69 +813,10 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
           {/* Step 2: Weeks Form */}
           {step === 2 && (
             <div className="space-y-6">
-              {/* Week Selector */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {[1, 2, 3, 4].map((weekNum) => {
-                  const isPreviousWeekSaved =
-                    weekNum === 1 || weeks[weekNum - 2];
-                  const isCurrentWeekSaved = weeks[weekNum - 1];
-                  const isLocked = !isPreviousWeekSaved;
-
-                  return (
-                    <div key={weekNum} className="relative h-20">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isLocked) {
-                            setCurrentWeek(weekNum);
-                          }
-                        }}
-                        className={`w-full h-full p-4 rounded-xl border transition-all flex flex-col items-center justify-center ${isLocked
-                          ? "bg-gray-900/50 border-gray-700/50 cursor-default"
-                          : currentWeek === weekNum
-                            ? "bg-purple-900/30 border-purple-500 shadow-lg"
-                            : isCurrentWeekSaved
-                              ? "border-green-500/50 bg-green-900/10 hover:border-green-400/50"
-                              : "border-purple-500/30 hover:border-purple-400/50"
-                          }`}
-                      >
-                        <div
-                          className={`text-lg font-bold ${isLocked ? "text-gray-500" : "text-white"
-                            }`}
-                        >
-                          Week {weekNum}
-                        </div>
-                        {isCurrentWeekSaved && !isLocked && (
-                          <div className="text-xs text-green-400 mt-1">
-                            ✓ Saved
-                          </div>
-                        )}
-                      </button>
-
-                      {isLocked && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50">
-                          <div className="text-center px-2">
-                            <Lock
-                              className="mx-auto mb-2 text-gray-400"
-                              size={24}
-                            />
-                            <div className="text-xs text-gray-400 font-medium leading-tight">
-                              Save Week {weekNum - 1}
-                              <br />
-                              to add Week {weekNum}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
+                <h3 className="text-lg font-semibold mb-2">Defining Week {currentWeek}</h3>
+                <p className="text-sm text-purple-300">Configure the parameters for this stage of the challenge.</p>
               </div>
-
-              {/* <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
-                <h3 className="text-lg font-semibold mb-2">Editing: Week {currentWeek}</h3>
-                <p className="text-sm text-purple-300">Maximum 4 weeks allowed per program</p>
-              </div> */}
 
               <div className="grid grid-cols-1 gap-6">
                 <div>
@@ -2797,15 +875,15 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
                       Trading Type
                     </label>
                     {/* <select
-                      value={weekFormData.trading_type}
-                      onChange={(e) =>
-                        setWeekFormData({
-                          ...weekFormData,
-                          trading_type: e.target.value,
-                        })
-                      }
-                      className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-                    > */}
+                    value={weekFormData.trading_type}
+                    onChange={(e) =>
+                      setWeekFormData({
+                        ...weekFormData,
+                        trading_type: e.target.value,
+                      })
+                    }
+                    className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  > */}
 
                     <select
                       value={weekFormData.trading_type}
@@ -2849,21 +927,21 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
                   </div>
 
                   {/* <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
-                      Min Trades Required
-                    </label>
-                    <input
-                      type="number"
-                      value={weekFormData.min_trades_required}
-                      onChange={(e) =>
-                        setWeekFormData({
-                          ...weekFormData,
-                          min_trades_required: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
-                    />
-                  </div> */}
+                  <label className="block text-sm font-medium text-purple-300 mb-2">
+                    Min Trades Required
+                  </label>
+                  <input
+                    type="number"
+                    value={weekFormData.min_trades_required}
+                    onChange={(e) =>
+                      setWeekFormData({
+                        ...weekFormData,
+                        min_trades_required: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  />
+                </div> */}
 
                   {weekFormData.trading_type === "SPOT" ? (
                     <div>
@@ -3077,57 +1155,10 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
           {/* Step 3: Tasks Form */}
           {step === 3 && (
             <div className="space-y-6">
-              {/* Week Selector for Tasks */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {weeks.map((week, index) => {
-                  const weekNumber = index + 1;
-                  const isCreated = !!createdWeeks[weekNumber];
-
-                  return (
-                    <button
-                      key={weekNumber}
-                      type="button"
-                      onClick={() => setCurrentWeek(weekNumber)}
-                      className={`p-4 rounded-xl border transition-all ${currentWeek === weekNumber
-                        ? "bg-purple-900/30 border-purple-500 shadow-lg"
-                        : "border-purple-500/30 hover:border-purple-400/50"
-                        }`}
-                    >
-                      <div className="text-lg font-bold">Week {weekNumber}</div>
-                      <div className="text-xs text-purple-300 mt-1">
-                        {tasks[weekNumber] ? "1 task" : "0 tasks"}
-                      </div>
-                      {isCreated && (
-                        <div className="text-xs text-green-400 mt-1">
-                          ✓ Created
-                        </div>
-                      )}
-                      {!isCreated && (
-                        <div className="text-xs text-yellow-400 mt-1">
-                          Not created
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
+                <h3 className="text-lg font-semibold mb-2">Mission for Week {currentWeek}</h3>
+                <p className="text-sm text-purple-300">Define the passing criteria task for this week.</p>
               </div>
-
-              {/* <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
-      <h3 className="text-lg font-semibold mb-2">
-        Add Task for Week {currentWeek}
-      </h3>
-      <p className="text-sm text-purple-300">
-        {weeks[currentWeek - 1]?.title || `Week ${currentWeek}`}
-      </p>
-      <p className="text-xs text-orange-400 mt-1">
-        ⚠️ Only 1 task allowed per week
-      </p>
-      {!createdWeeks[currentWeek] && (
-        <p className="text-xs text-yellow-400 mt-2">
-          ℹ️ Week will be created automatically when you add a task
-        </p>
-      )}
-    </div> */}
 
               {/* Existing Task */}
               {currentWeekHasTask && (
@@ -3156,29 +1187,29 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
 
                           {/* Target */}
                           <span className="inline-flex items-center rounded-full bg-blue-500/15 px-3 py-1 font-medium text-blue-300 border border-blue-500/30">
-                            🎯 Target: {tasks[currentWeek][0].target_value} %
+                            ðŸŽ¯ Target: {tasks[currentWeek][0].target_value} %
                           </span>
 
                           {/* Mandatory */}
                           {tasks[currentWeek][0].is_mandatory && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-3 py-1 font-medium text-red-300 border border-red-500/30">
-                              ⚠ Mandatory
+                              Mandatory
                             </span>
                           )}
                         </div>
 
                       </div>
                       {/* <button
-              onClick={() => handleRemoveTask(currentWeek)}
-              className="text-red-400 hover:text-red-300 p-2"
-            >
-              <Trash2 size={18} />
-            </button> */}
+            onClick={() => handleRemoveTask(currentWeek)}
+            className="text-red-400 hover:text-red-300 p-2"
+          >
+            <Trash2 size={18} />
+          </button> */}
                     </div>
                   </div>
                   {/* <p className="text-sm text-purple-300 italic">
-          This week already has a task. Remove it to add a different task.
-        </p> */}
+        This week already has a task. Remove it to add a different task.
+      </p> */}
                 </div>
               )}
 
@@ -3345,13 +1376,7 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
                 >
                   Back to Weeks
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSkipTasks}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors"
-                >
-                  Skip Tasks
-                </button>
+
                 <button
                   type="button"
                   onClick={handleTasksSubmit}
@@ -3365,9 +1390,117 @@ const CreateChallenge = ({ onBack, onSuccess }) => {
                     </>
                   ) : (
                     <>
-                      <Trophy size={20} />
-                      Complete Challenge
+                      Next: Configure Rewards
+                      <ChevronRight size={20} />
                     </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Rewards Form */}
+          {step === 4 && (
+            <div className="space-y-6">
+              <div className="bg-purple-900/10 rounded-lg p-4 mb-4">
+                <h3 className="text-lg font-semibold mb-2">Reward for Completing Week {currentWeek}</h3>
+                <p className="text-sm text-purple-300">Set the badge and coin rewards for this stage.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-purple-300 mb-2">
+                  Badge Name
+                </label>
+                <input
+                  type="text"
+                  value={rewardFormData.badge_name}
+                  onChange={(e) => setRewardFormData({ ...rewardFormData, badge_name: e.target.value })}
+                  className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  placeholder="e.g. Master Trader"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-purple-300 mb-2">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={rewardFormData.badge_description}
+                  onChange={(e) => setRewardFormData({ ...rewardFormData, badge_description: e.target.value })}
+                  className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  placeholder="Awarded for completing Week 1..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-purple-300 mb-2">
+                  Badge Icon URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={rewardFormData.badge_icon}
+                  onChange={(e) => setRewardFormData({ ...rewardFormData, badge_icon: e.target.value })}
+                  className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-purple-300 mb-2">
+                    Profit Bonus Coins
+                  </label>
+                  <input
+                    type="number"
+                    value={rewardFormData.profit_bonus_coins}
+                    onChange={(e) => setRewardFormData({ ...rewardFormData, profit_bonus_coins: parseInt(e.target.value) || 0 })}
+                    className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-purple-300 mb-2">
+                    Loss Recovery Coins
+                  </label>
+                  <input
+                    type="number"
+                    value={rewardFormData.loss_recovery_coins}
+                    onChange={(e) => setRewardFormData({ ...rewardFormData, loss_recovery_coins: parseInt(e.target.value) || 0 })}
+                    className="w-full border border-purple-500/30 rounded-lg px-4 py-3 text-white bg-transparent focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-purple-500/30">
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Back to Task
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateReward}
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader className="animate-spin" size={20} />
+                      Saving...
+                    </>
+                  ) : (
+                    currentWeek < 4 ? (
+                      <>
+                        Save & Next Week
+                        <ChevronRight size={20} />
+                      </>
+                    ) : (
+                      <>
+                        <Trophy size={20} />
+                        Finish & Activate
+                      </>
+                    )
                   )}
                 </button>
               </div>
@@ -3425,7 +1558,7 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
 
     const minSpot = parseInt(weekFormData.min_spot_trades || 0);
     const minFutures = parseInt(weekFormData.min_futures_trades || 0);
-    const minOptions = parseInt(weekFormData.min_options_trades || 0);
+    // const minOptions = parseInt(weekFormData.min_options_trades || 0);
 
     // Validate minimum trades based on trading type
     if (weekFormData.trading_type === "SPOT" && minSpot <= 0) {
@@ -3893,7 +2026,7 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
       const response = await fetch(
         `${baseURL}challenges/tasks/${editingTask.id}/`,
         {
-          method: "PATCH", // ✅ Changed from PUT to PATCH
+          method: "PATCH", // âœ… Changed from PUT to PATCH
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${tokens.access}`,
@@ -3913,11 +2046,11 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
         setEditingTask(null);
         await fetchTasksForWeek(currentWeek.id);
       } else {
-        console.error("❌ Update failed:", data);
+        console.error("âŒ Update failed:", data);
         showToast(`Failed to update task: ${JSON.stringify(data)}`, "error");
       }
     } catch (error) {
-      console.error("❌ Error updating task:", error);
+      console.error("âŒ Error updating task:", error);
       showToast("Error updating task: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -3925,40 +2058,41 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
   };
 
   // Handle delete task
-  const handleDeleteTask = async (taskId) => {
-    if (!confirm("Are you sure you want to delete this task?")) {
-      return;
-    }
+  // Handle delete task
+  // const handleDeleteTask = async (taskId) => {
+  //   if (!confirm("Are you sure you want to delete this task?")) {
+  //     return;
+  //   }
 
-    setLoading(true);
-    try {
-      const tokens = JSON.parse(localStorage.getItem("authTokens"));
+  //   setLoading(true);
+  //   try {
+  //     const tokens = JSON.parse(localStorage.getItem("authTokens"));
 
-      const response = await fetch(`${baseURL}challenges/tasks/${taskId}/`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${tokens.access}`,
-        },
-      });
+  //     const response = await fetch(`${baseURL}challenges/tasks/${taskId}/`, {
+  //       method: "DELETE",
+  //       headers: {
+  //         Authorization: `Bearer ${tokens.access}`,
+  //       },
+  //     });
 
-      if (response.ok || response.status === 204) {
-        showToast("Task deleted successfully!", "success");
-        // Refresh tasks for current week
-        await fetchTasksForWeek(currentWeek.id);
-      } else {
-        const data = await response.json();
-        showToast(
-          `Failed to delete task: ${data.detail || "Unknown error"}`,
-          "error"
-        );
-      }
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      showToast("Error deleting task: " + error.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (response.ok || response.status === 204) {
+  //       showToast("Task deleted successfully!", "success");
+  //       // Refresh tasks for current week
+  //       await fetchTasksForWeek(currentWeek.id);
+  //     } else {
+  //       const data = await response.json();
+  //       showToast(
+  //         `Failed to delete task: ${data.detail || "Unknown error"}`,
+  //         "error"
+  //       );
+  //     }
+  //   } catch (error) {
+  //     console.error("Error deleting task:", error);
+  //     showToast("Error deleting task: " + error.message, "error");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // Cancel edit
   const handleCancelEdit = () => {
@@ -4047,6 +2181,7 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
     };
     return stars[difficulty] || "★★★";
   };
+
 
   const getTradingTypeLabel = (type) => {
     const labels = {
@@ -4397,17 +2532,17 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                   {/* <div className="rounded-2xl border border-purple-500/30 p-6">
-                <h2 className="text-3xl font-bold mb-3">{currentWeek.title}</h2>
-                <div className="flex items-center gap-3 flex-wrap mb-4">
-                  <span className="text-yellow-400">
-                    {getDifficultyStars("BEGINNER")}
-                  </span>
-                  <span className="px-3 py-1 bg-purple-600 rounded-full text-sm">
-                    {getTradingTypeLabel(currentWeek.trading_type)}
-                  </span>
-                </div>
-                <p className="text-purple-200">{currentWeek.description}</p>
-              </div> */}
+              <h2 className="text-3xl font-bold mb-3">{currentWeek.title}</h2>
+              <div className="flex items-center gap-3 flex-wrap mb-4">
+                <span className="text-yellow-400">
+                  {getDifficultyStars("BEGINNER")}
+                </span>
+                <span className="px-3 py-1 bg-purple-600 rounded-full text-sm">
+                  {getTradingTypeLabel(currentWeek.trading_type)}
+                </span>
+              </div>
+              <p className="text-purple-200">{currentWeek.description}</p>
+            </div> */}
 
                   <div className="rounded-2xl border border-purple-500/30 p-6">
                     {editingWeek && editingWeek.id === currentWeek.id ? (
@@ -4517,35 +2652,35 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
                   </div>
 
                   {/* <div className="rounded-2xl border border-purple-500/30 p-6">
-                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                    <Target className="text-purple-400" size={28} />
-                    Mission Goals
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-xl p-4 border border-purple-500/20">
-                      <div className="text-sm text-purple-300 mb-1">
-                        Target Goal
-                      </div>
-                      <div className="text-2xl font-bold text-green-400">
-                        +{currentWeek.target_goal}%
-                      </div>
+                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Target className="text-purple-400" size={28} />
+                  Mission Goals
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-xl p-4 border border-purple-500/20">
+                    <div className="text-sm text-purple-300 mb-1">
+                      Target Goal
                     </div>
-                    <div className="rounded-xl p-4 border border-purple-500/20">
-                      <div className="text-sm text-purple-300 mb-1">
-                        Min Trades
-                      </div>
-                      <div className="text-2xl font-bold text-purple-400">
-                        {currentWeek.min_trades_required}
-                      </div>
-                    </div>
-                    <div className="rounded-xl p-4 border border-purple-500/20">
-                      <div className="text-sm text-purple-300 mb-1">Duration</div>
-                      <div className="text-2xl font-bold text-orange-400">
-                        7 Days
-                      </div>
+                    <div className="text-2xl font-bold text-green-400">
+                      +{currentWeek.target_goal}%
                     </div>
                   </div>
-                </div> */}
+                  <div className="rounded-xl p-4 border border-purple-500/20">
+                    <div className="text-sm text-purple-300 mb-1">
+                      Min Trades
+                    </div>
+                    <div className="text-2xl font-bold text-purple-400">
+                      {currentWeek.min_trades_required}
+                    </div>
+                  </div>
+                  <div className="rounded-xl p-4 border border-purple-500/20">
+                    <div className="text-sm text-purple-300 mb-1">Duration</div>
+                    <div className="text-2xl font-bold text-orange-400">
+                      7 Days
+                    </div>
+                  </div>
+                </div>
+              </div> */}
 
                   <div className="rounded-2xl border border-purple-500/30 p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -4713,14 +2848,14 @@ const ChallengeDetails = ({ challengeId, onBack }) => {
                   </div>
 
                   {/* <div className="rounded-2xl border border-purple-500/30 p-6">
-                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                  <Star className="text-yellow-400" size={28} />
-                  Learning Outcome
-                </h3>
-                <p className="text-purple-200">
-                  {currentWeek.learning_outcome}
-                </p>
-              </div> */}
+              <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                <Star className="text-yellow-400" size={28} />
+                Learning Outcome
+              </h3>
+              <p className="text-purple-200">
+                {currentWeek.learning_outcome}
+              </p>
+            </div> */}
 
                   <div className="rounded-2xl border border-purple-500/30 p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -5374,7 +3509,7 @@ export default function ChallengesManagement() {
       } else {
         const data = await response.json();
         showToast(
-          `Failed to delete: ${data.detail || "Unknown error"}`,
+          `Failed to delete: ${data.detail || data.error || "Unknown error"}`,
           "error"
         );
       }
@@ -5415,6 +3550,38 @@ export default function ChallengesManagement() {
   const handleViewDetails = (challengeId) => {
     setSelectedChallengeId(challengeId);
     setCurrentView("details");
+  };
+
+
+
+  const handleToggleActive = async (e, challenge) => {
+    e.stopPropagation(); // Prevent card click
+
+    // If trying to activate an already active challenge (unlikely via toggle) or deactivated
+    const newStatus = !challenge.is_active;
+
+    try {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
+      const response = await fetch(`${baseURL}challenges/admin/challenges/${challenge.id}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens.access}`,
+        },
+        body: JSON.stringify({ is_active: newStatus }),
+      });
+
+      if (response.ok) {
+        showToast(`Challenge ${newStatus ? 'Activated' : 'Deactivated'}`, "success");
+        fetchChallenges(); // Refresh to ensure single-active rule is reflected
+      } else {
+        const data = await response.json();
+        showToast(`Failed to update status: ${data.detail || "Unknown error"}`, "error");
+      }
+
+    } catch (error) {
+      showToast("Error updating status: " + error.message, "error");
+    }
   };
 
   if (currentView === "create") {
@@ -5523,34 +3690,59 @@ export default function ChallengesManagement() {
                 <div
                   key={challenge.id}
                   onClick={() => handleViewDetails(challenge.id)}
-                  className="group rounded-xl border border-purple-500/20 bg-[#120B20]/40 p-6 transition-all duration-300 hover:border-purple-400/40 hover:bg-[#160C26]/70 hover:shadow-[0_0_12px_rgba(168,85,247,0.15)] cursor-pointer"
+                  className={`group rounded-xl border p-6 transition-all duration-300 cursor-pointer relative overflow-hidden ${challenge.is_active
+                    ? "border-green-500/50 bg-[#120B20]/60 shadow-[0_0_20px_rgba(34,197,94,0.15)] hover:border-green-400 hover:shadow-[0_0_30px_rgba(34,197,94,0.25)]"
+                    : "border-red-900/30 bg-[#120B20]/40 hover:border-red-500/40 hover:bg-[#160C26]/70"
+                    }`}
                 >
+                  {/* Active Indicator Glow/Bar */}
+                  {challenge.is_active && (
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-500 to-emerald-600 shadow-[0_0_10px_#22c55e]" />
+                  )}
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors duration-300">
                         {challenge.name}
                       </h3>
                       <span
-                        className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full ${challenge.is_active
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-gray-500/20 text-gray-400"
+                        className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${challenge.is_active
+                          ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                          : "bg-red-500/10 text-red-400 border border-red-500/20"
                           }`}
                       >
+                        <div className={`w-2 h-2 rounded-full ${challenge.is_active ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
                         {challenge.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => confirmDeleteChallenge(e, challenge.id)}
-                        className="p-1.5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-all z-10"
-                        title="Delete Challenge"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                      <ChevronRight
-                        size={22}
-                        className="text-purple-400 opacity-80 group-hover:translate-x-1 transition-transform duration-300"
-                      />
+
+                    <div className="flex flex-col items-end gap-3">
+                      {/* Toggle Switch */}
+                      <div onClick={(e) => e.stopPropagation()} title={challenge.is_active ? "Deactivate" : "Activate"}>
+                        <button
+                          onClick={(e) => handleToggleActive(e, challenge)}
+                          className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out relative ${challenge.is_active ? "bg-green-600" : "bg-gray-700"
+                            }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ease-in-out ${challenge.is_active ? "translate-x-6" : "translate-x-0"
+                              }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => confirmDeleteChallenge(e, challenge.id)}
+                          className="p-1.5 hover:bg-red-500/20 text-gray-500 hover:text-red-400 rounded-lg transition-all z-10"
+                          title="Delete Challenge"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                        <ChevronRight
+                          size={22}
+                          className="text-purple-400/60 opacity-80 group-hover:translate-x-1 group-hover:text-purple-400 transition-all duration-300"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -5602,43 +3794,47 @@ export default function ChallengesManagement() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmation.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-[#120B20] border border-purple-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold mb-4 text-white">Delete Confirmation</h3>
-            <p className="text-purple-300 mb-6">
-              {deleteConfirmation.type === 'all'
-                ? "Are you sure you want to delete ALL challenges? This action cannot be undone."
-                : "Are you sure you want to delete this challenge? This action cannot be undone."}
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setDeleteConfirmation({ isOpen: false, type: null, id: null })}
-                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={executeDelete}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition-colors flex items-center justify-center gap-2"
-                disabled={loading}
-              >
-                {loading ? <Loader size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                Delete
-              </button>
+      {
+        deleteConfirmation.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-[#120B20] border border-purple-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+              <h3 className="text-xl font-bold mb-4 text-white">Delete Confirmation</h3>
+              <p className="text-purple-300 mb-6">
+                {deleteConfirmation.type === 'all'
+                  ? "Are you sure you want to delete ALL challenges? This action cannot be undone."
+                  : "Are you sure you want to delete this challenge? This action cannot be undone."}
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDeleteConfirmation({ isOpen: false, type: null, id: null })}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition-colors flex items-center justify-center gap-2"
+                  disabled={loading}
+                >
+                  {loading ? <Loader size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </div>
+      {
+        toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )
+      }
+    </div >
   );
 }

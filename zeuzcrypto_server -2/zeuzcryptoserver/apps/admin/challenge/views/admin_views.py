@@ -38,6 +38,18 @@ class ChallengeAdminViewSet(viewsets.ModelViewSet):
             "data": serializer.data
         }, status=status.HTTP_201_CREATED)
 
+    def destroy(self, request, *args, **kwargs):
+        """Prevent deletion if users are participating in any week of this program"""
+        instance = self.get_object()
+        # Check if any week in this program has participants
+        if UserChallengeParticipation.objects.filter(week__program=instance).exists():
+             return Response(
+                {'error': 'Cannot delete challenge program with active participants. Deactivate it instead.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     # def create(self, request, *args, **kwargs):
     #     difficulty = request.data.get("difficulty")
     #     is_active = request.data.get("is_active", True)
@@ -201,6 +213,17 @@ class ChallengeWeekAdminViewSet(viewsets.ModelViewSet):
         """Export participants to CSV"""
         week = self.get_object()
         return AdminService.export_participants_csv(week)
+
+    def destroy(self, request, *args, **kwargs):
+        """Prevent deletion if users are participating"""
+        instance = self.get_object()
+        if UserChallengeParticipation.objects.filter(week=instance).exists():
+            return Response(
+                {'error': 'Cannot delete challenge week with active participants. Deactivate it instead.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # Add imports at the top if not present, but I'll add them inside the method or file if possible, 

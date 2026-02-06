@@ -42,13 +42,23 @@ from apps.admin.challenge.services.trade_service import TradeService
 from apps.admin.challenge.services.task_verification import TaskVerificationEngine
 
 
+from django.db.models import Q
+
 class ChallengeProgramViewSet(viewsets.ReadOnlyModelViewSet):
     """List and retrieve challenge programs"""
-    queryset = ChallengeProgram.objects.filter(is_active=True)
+    # queryset = ChallengeProgram.objects.filter(is_active=True)
     serializer_class = ChallengeProgramSerializer
     permission_classes = [IsAuthenticated]
 
-#
+    def get_queryset(self):
+        user = self.request.user
+        # Return active programs OR programs where user has participated in at least one week
+        return ChallengeProgram.objects.filter(
+            Q(is_active=True) | 
+            Q(weeks__participants__user=user)
+        ).distinct()
+
+
 # class ChallengeWeekViewSet(viewsets.ReadOnlyModelViewSet):
 #     """Challenge week management"""
 #     queryset = ChallengeWeek.objects.all()
@@ -181,7 +191,7 @@ class ChallengeProgramViewSet(viewsets.ReadOnlyModelViewSet):
 #         """Verify all tasks for participation"""
 #         week = self.get_object()
 #         user = request.user
-#
+#         
 #         try:
 #             participation = UserChallengeParticipation.objects.get(user=user, week=week)
 #             all_completed, results = TaskVerificationEngine.verify_all_tasks(participation)
@@ -212,8 +222,14 @@ class ChallengeWeekViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(program_id=program_id)
 
         is_active = request.query_params.get('is_active')
-        if is_active is not None:
-            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        if is_active is not None and is_active.lower() == 'true':
+            # Show active weeks OR weeks where user is participating
+            queryset = queryset.filter(
+                Q(is_active=True) | 
+                Q(participants__user=request.user)
+            ).distinct()
+        elif is_active is not None:
+             queryset = queryset.filter(is_active=is_active.lower() == 'true')
 
         is_ongoing = request.query_params.get('is_ongoing')
         if is_ongoing and is_ongoing.lower() == 'true':

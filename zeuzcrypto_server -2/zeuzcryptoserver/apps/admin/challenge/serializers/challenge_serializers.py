@@ -13,18 +13,30 @@ from apps.admin.challenge.models.challenge_models import ChallengeReward
 
 
 class ChallengeProgramSerializer(serializers.ModelSerializer):
+    is_active = serializers.BooleanField()
     weeks_count = serializers.SerializerMethodField()
+    is_joined = serializers.SerializerMethodField()
     
     class Meta:
         model = ChallengeProgram
         fields = [
             'id', 'name', 'description', 'difficulty',
-            'is_active', 'weeks_count', 'created_at', 'updated_at'
+            'is_active', 'weeks_count', 'is_joined', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_weeks_count(self, obj):
         return obj.weeks.count()
+
+    def get_is_joined(self, obj):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            # efficient check if user has participation in any week of this program
+            return UserChallengeParticipation.objects.filter(
+                user=request.user,
+                week__program=obj
+            ).exists()
+        return False
 
 #
 # class ChallengeTaskSerializer(serializers.ModelSerializer):
