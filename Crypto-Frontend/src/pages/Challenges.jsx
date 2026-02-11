@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   LineChart,
   CheckCircle,
+  AlertCircle,
   Shield,
   Zap,
   BookOpen
@@ -185,6 +186,7 @@ export default function Challenges() {
   const [joiningChallenge, setJoiningChallenge] = useState(false);
   const [completingChallenge, setCompletingChallenge] = useState(false);
   const [userProgressLoading, setUserProgressLoading] = useState(false);
+  const [portfolioLoading, setPortfolioLoading] = useState(false); // Global Portfolio Loading State
 
   console.log(weeksData, "weeks data")
   console.log(userProgress, "the user progress")
@@ -236,6 +238,10 @@ export default function Challenges() {
       updateURL({ task: challenge.id });
     } else {
       updateURL({ task: null });
+      // Restore week wallet if we have user progress and are going back to the week view
+      if (userProgress?.id) {
+        fetchWalletData(userProgress.id);
+      }
     }
   };
 
@@ -252,9 +258,19 @@ export default function Challenges() {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log(`[DEBUG] fetchWalletData called for participationId: ${participationId}`);
+        console.log("[DEBUG] All available wallets from API:", data.results.map(w => ({ id: w.id, pid: w.participation_id, active: w.is_active })));
+
         const currentWallet = data.results.find(
           (wallet) => wallet.participation_id === participationId
         );
+
+        if (!currentWallet) {
+          console.warn(`[WARNING] No wallet found for participationId: ${participationId}. Available IDs:`, data.results.map(w => w.participation_id));
+        } else {
+          console.log(`[DEBUG] Found matching wallet:`, currentWallet.id);
+        }
+
         setWalletData(currentWallet || null);
       }
     } catch (error) {
@@ -268,13 +284,13 @@ export default function Challenges() {
   useEffect(() => {
     if (selectedChallenge?.participationId) {
       fetchWalletData(selectedChallenge.participationId);
-    } else if (userProgress?.id && showHoldings) {
-      // Fallback: If no specific challenge task selected, but we have user progress for the week
-      fetchWalletData(userProgress.id);
     } else {
-      setWalletData(null);
+      // If we exit a challenge task, we might want to ensure the week wallet is active.
+      // However, fetchUserProgress handles the main load.
+      // If we go Back -> handleSetSelectedChallenge(null) handles restoration manually?
+      // No, let's keep it clean: meaningful updates only.
     }
-  }, [selectedChallenge, userProgress, showHoldings]);
+  }, [selectedChallenge]);
 
   // Effect to handle deep linking for task details once weeksData is loaded
   useEffect(() => {
@@ -424,6 +440,7 @@ export default function Challenges() {
   const fetchUserProgress = async (weekId) => {
     try {
       setUserProgressLoading(true);
+      setPortfolioLoading(true);
       const tokens = JSON.parse(localStorage.getItem("authTokens"));
       const url = `${baseURL}challenges/weeks/${weekId}/user_progress/`;
 
@@ -439,6 +456,13 @@ export default function Challenges() {
 
       const data = await response.json();
       console.log("User Progress API Response:", data);
+      console.log(`[DEBUG] fetchUserProgress called for weekId: ${weekId}`);
+      console.log(`[DEBUG] Returned Participation ID: ${data.id}`);
+      console.log(`[DEBUG] Returned Participation Week ID: ${data.week?.id || data.week}`);
+
+      if (data.week && data.week.id && data.week.id.toString() !== weekId.toString()) {
+        console.error("[CRITICAL] Mismatch! Requested week", weekId, "but got participation for week", data.week.id);
+      }
 
       if (data.error) {
         console.log("User not participating in challenge");
@@ -447,15 +471,19 @@ export default function Challenges() {
 
       } else {
         setUserProgress(data);
+        if (data.id) {
+          // Chain wallet fetch to ensure single loading flow
+          await fetchWalletData(data.id);
+        }
       }
 
       return data;
     } catch (err) {
       console.error("Error fetching user progress:", err);
       setUserProgress(null);
-      return null;
     } finally {
       setUserProgressLoading(false);
+      setPortfolioLoading(false);
     }
   };
 
@@ -728,7 +756,13 @@ export default function Challenges() {
     );
   }
 
-  const currentWeekData = weeksData.find((week) => week.id === selectedWeek);
+  /* DEBUG: Relaxed match */
+  const currentWeekData = weeksData.find((week) => week.id.toString() === selectedWeek?.toString());
+
+  /* TEMP DEBUG OVERLAY */
+  if (showHoldings) {
+    console.log("DEBUG RENDER:", { selectedWeek, found: !!currentWeekData, weekNum: currentWeekData?.week_number });
+  }
 
   if (isChallengeStarted && selectedChallenge) {
     return (
@@ -757,10 +791,18 @@ export default function Challenges() {
             ← Back to Challenges
           </button>
 
+          {/* Global Loading State for Portfolio */}
+          {portfolioLoading && (
+            <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center rounded-xl backdrop-blur-sm">
+              <Loader2 className="animate-spin text-purple-400 mb-4" size={48} />
+              <p className="text-purple-300 font-bold">Loading Portfolio Data...</p>
+            </div>
+          )}
+
           {/* Wallet Info */}
-          {walletData && (
+          {(walletData || walletLoading) ? (
             <div className="sm:min-w-[420px] rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all">
-              {walletLoading ? (
+              {walletLoading || !walletData ? (
                 <div className="flex flex-col items-center justify-center h-[120px]">
                   <Loader2
                     className="animate-spin text-purple-400 mb-3"
@@ -775,7 +817,9 @@ export default function Challenges() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                       <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                      <span className="truncate">{walletData.week_title} Wallet</span>
+                      <span className="truncate">
+                        {currentWeekData?.week_number ? `Week ${currentWeekData.week_number} Wallet` : walletData.week_title}
+                      </span>
                     </h3>
                   </div>
 
@@ -827,16 +871,32 @@ export default function Challenges() {
                 </div>
               )}
             </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[50vh] text-center w-full">
+              <AlertCircle size={48} className="text-gray-500 mb-4" />
+              <h3 className="text-xl font-bold text-white mb-2">No Wallet Found</h3>
+              <p className="text-gray-400 max-w-md mb-6">
+                You haven't started the trading challenge for this week yet.
+                Join the challenge to create your wallet and start trading.
+              </p>
+              <button
+                onClick={() => handleShowHoldings(false)}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all"
+              >
+                Go to Challenge Board
+              </button>
+            </div>
           )}
         </div>
 
-        <div className={walletData ? "mt-4 sm:-mt-16" : "mt-0"}>
-          <OrderHistory
-            selectedChallenge={selectedChallenge || { weekData: currentWeekData }}
-            walletData={walletData}
-            walletLoading={walletLoading}
-          />
-        </div>
+        {walletData && (
+          <div className="mt-4 sm:-mt-16">
+            <OrderHistory
+              selectedChallenge={selectedChallenge || (currentWeekData ? { weekData: currentWeekData } : null)}
+              walletData={walletData}
+              walletLoading={walletLoading} // Pass the loading state
+            />    </div>
+        )}
       </div>
     );
   }
@@ -1345,7 +1405,7 @@ export default function Challenges() {
           </div>
 
           {/* Weekly Portfolio Buttons */}
-          {userProgress && (
+          {weeksData.length > 0 && (
             <div className="flex flex-wrap gap-3 justify-center md:justify-end">
               {weeksData
                 .filter(w => {
@@ -1366,9 +1426,24 @@ export default function Challenges() {
                     <button
                       key={week.id}
                       onClick={() => {
+                        // If clicking the ALREADY selected week, force a refetch
+                        // because useEffect won't fire if ID hasn't changed.
+                        const isSameWeek = selectedWeek?.toString() === week.id.toString();
+
                         handleSetSelectedWeek(week.id);
-                        handleSetSelectedChallenge(null); // Clear active task to ensure we show the user progress for the selected week
+
+                        // Manually clear challenge without triggering the "restore wallet" logic
+                        setSelectedChallenge(null);
+                        updateURL({ task: null });
+
+                        setUserProgress(null); // Clear previous progress to avoid stale data
+                        setWalletData(null); // Clear previous wallet data
                         handleShowHoldings(true);
+
+                        if (isSameWeek) {
+                          console.log("Forcing refetch for same week:", week.id);
+                          fetchUserProgress(week.id);
+                        }
                       }}
                       className={`flex items-center gap-3 border px-4 py-2 rounded-xl transition-all shadow-lg group ${selectedWeek === week.id || selectedWeek === week.id.toString()
                         ? "bg-[#120B20] border-purple-500 hover:border-purple-400 hover:shadow-purple-500/20"

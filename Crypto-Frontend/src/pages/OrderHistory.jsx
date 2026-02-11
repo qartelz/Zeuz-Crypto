@@ -2837,6 +2837,8 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
   const [orderHistory, setOrderHistory] = useState([]);
 
   console.log(selectedChallenge, "the seleted data in holdings of challnge");
+  console.log("[DEBUG] OrderHistory selectedChallenge:", selectedChallenge);
+  console.log("[DEBUG] OrderHistory walletData:", walletData);
 
   const [holdings, setHoldings] = useState(() => {
     const saved = localStorage.getItem("cachedHoldings_OrderHistory");
@@ -4038,6 +4040,7 @@ const OrderHistory = ({ selectedChallenge, walletData, walletLoading }) => {
           Authorization: `Bearer ${tokens?.access}`,
         },
       });
+      console.log(`[DEBUG] OrderHistory fetching from: ${apiUrl}`);
 
       console.log(response, "responseresponseresponse");
 
