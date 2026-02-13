@@ -155,12 +155,12 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="w-full h-full mt-14 flex items-center justify-center  ">
+    <div className="w-full h-full mt-14 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-4xl">
         {/* Header with Gradient Text */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
               Profile Settings
             </h1>
             <p className="text-gray-400 text-sm mt-1">Manage your personal information</p>
@@ -168,23 +168,23 @@ const ProfilePage = () => {
           {!isEditing ? (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg shadow-purple-500/20"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg shadow-purple-500/20"
             >
               <Edit2 className="w-4 h-4" />
               Edit Profile
             </button>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex gap-3 w-full sm:w-auto">
               <button
                 onClick={handleCancel}
-                className="px-5 py-2.5 border border-white/20 text-gray-300 hover:bg-white/5 rounded-lg transition-all"
+                className="flex-1 sm:flex-none px-5 py-2.5 border border-white/20 text-gray-300 hover:bg-white/5 rounded-lg transition-all text-center"
               >
                 Cancel
               </button>
               <button
                 onClick={updateProfile}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -194,7 +194,7 @@ const ProfilePage = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    Save Changes
+                    Save
                   </>
                 )}
               </button>
@@ -208,8 +208,8 @@ const ProfilePage = () => {
           <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-purple-500/10 to-transparent pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-blue-500/10 to-transparent pointer-events-none"></div>
 
-          <div className="relative p-8">
-            <div className="flex items-start gap-8">
+          <div className="relative p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
               {/* Avatar Section with Glow */}
               <div className="flex-shrink-0">
                 <div className="relative group">
@@ -217,11 +217,11 @@ const ProfilePage = () => {
                     <img
                       src={formData.avatar}
                       alt="Profile"
-                      className="w-28 h-28 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/20"
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/20"
                     />
                   ) : (
-                    <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-purple-500/30 to-blue-500/30 border-2 border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20 backdrop-blur-sm">
-                      <span className="text-4xl font-bold text-white">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-purple-500/30 to-blue-500/30 border-2 border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20 backdrop-blur-sm">
+                      <span className="text-3xl sm:text-4xl font-bold text-white">
                         {formData.first_name?.[0]?.toUpperCase() || 'U'}
                       </span>
                     </div>
@@ -237,9 +237,9 @@ const ProfilePage = () => {
               </div>
 
               {/* Form Section */}
-              <div className="flex-1 space-y-5">
+              <div className="flex-1 space-y-5 w-full">
                 {/* Name Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="flex items-center gap-2 text-sm text-gray-300 mb-2 font-medium">
                       <User className="w-4 h-4 text-purple-400" />
@@ -293,7 +293,7 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Address Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="flex items-center gap-2 text-sm text-gray-300 mb-2 font-medium">
                       <MapPin className="w-4 h-4 text-pink-400" />
@@ -335,16 +335,16 @@ const ProfilePage = () => {
             </div>
 
             {/* Status Badges */}
-            <div className="flex gap-3 mt-6 pt-6 border-t border-white/10">
-              <div className="flex-1 bg-purple-500/10 border border-purple-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/10">
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
                 <p className="text-xs text-gray-400">Status</p>
                 <p className="text-sm font-medium text-purple-300 mt-0.5">Active</p>
               </div>
-              <div className="flex-1 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
                 <p className="text-xs text-gray-400">Member Since</p>
                 <p className="text-sm font-medium text-blue-300 mt-0.5">{user?.date_joined ? new Date(user.date_joined).getFullYear() : 'N/A'}</p>
               </div>
-              <div className="flex-1 bg-pink-500/10 border border-pink-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
+              <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg px-4 py-3 backdrop-blur-sm">
                 <p className="text-xs text-gray-400">Role</p>
                 <p className="text-sm font-medium text-pink-300 mt-0.5">{user?.role || 'User'}</p>
               </div>
@@ -358,7 +358,7 @@ const ProfilePage = () => {
                   Subscription Details
                 </h3>
                 <div className="bg-white/5 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
                     <div>
                       <p className="text-xs text-gray-400">Plan</p>
                       <p className="text-sm font-semibold text-white mt-1">{profileData.subscription.plan_name}</p>

@@ -757,6 +757,7 @@ export default function Challenges() {
   }
 
   /* DEBUG: Relaxed match */
+  console.log("[DEBUG] Calculating currentWeekData. selectedWeek:", selectedWeek, "weeksData IDs:", weeksData.map(w => w.id));
   const currentWeekData = weeksData.find((week) => week.id.toString() === selectedWeek?.toString());
 
   /* TEMP DEBUG OVERLAY */
@@ -947,432 +948,455 @@ export default function Challenges() {
               </div>
 
               <div className="flex justify-start lg:justify-start items-center gap-4 py-4 sm:py-6">
-                {userProgressLoading ? (
-                  <button
-                    disabled
-                    className="w-full sm:w-auto bg-gray-600/20 text-gray-400 font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-base sm:text-lg cursor-wait"
-                  >
-                    <Loader2 className="animate-spin" size={20} />
-                    <span className="text-sm sm:text-base">Loading Status...</span>
-                  </button>
-                ) : (!userProgress || (userProgress.status !== 'COMPLETED' && !userProgress.is_completed)) ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        if (!userProgress || userProgress.error) {
-                          if (selectedChallenge.weekData) {
-                            joinChallenge(selectedChallenge.weekData.id);
-                          }
-                        } else {
-                          setIsChallengeStarted(true);
-                        }
-                      }}
-                      disabled={joiningChallenge}
-                      className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {joiningChallenge ? (
-                        <>
-                          <Loader2 className="animate-spin" size={20} />
-                          <span className="text-sm sm:text-base">Joining...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={18} />
-                          <span className="text-sm sm:text-base">{getChallengeButtonText()}</span>
-                        </>
-                      )}
-                    </button>
+                {(() => {
+                  const isWeekCompleted = currentWeekData?.is_completed;
+                  const isUserCompleted = userProgress && (userProgress.status === 'COMPLETED' || userProgress.is_completed);
+                  const shouldShowActionButtons = !isWeekCompleted && !isUserCompleted;
 
-                    {/* Complete Challenge Button */}
-                    {userProgress && userProgress.status === 'IN_PROGRESS' && (
+                  console.log("DEBUG BUTTON LOGIC (FIXED):", {
+                    weekId: currentWeekData?.id,
+                    isWeekCompleted,
+                    isUserCompleted,
+                    status: userProgress?.status,
+                    shouldShowActionButtons
+                  });
+
+                  if (userProgressLoading) {
+                    return (
                       <button
-                        onClick={async () => {
-                          try {
-                            setCompletingChallenge(true); // Ensure this state is defined
-                            const tokens = JSON.parse(localStorage.getItem("authTokens"));
-                            const participationId = userProgress.id;
-
-                            const response = await fetch(`${baseURL}challenges/participations/${participationId}/complete-challenge/`, {
-                              method: 'POST',
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${tokens?.access}`,
-                              }
-                            });
-
-                            const data = await response.json();
-
-                            if (data.error) {
-                              toast.error(data.error, {
-                                duration: 4000,
-                                position: "top-center",
-                                style: {
-                                  background: "#1f1730",
-                                  color: "#fff",
-                                  border: "1px solid #ef4444",
-                                },
-                              });
-                            } else {
-                              toast.success("Challenge Completed Successfully!", {
-                                duration: 4000,
-                                position: "top-center",
-                                style: {
-                                  background: "#1f1730",
-                                  color: "#fff",
-                                  border: "1px solid #22c55e",
-                                },
-                              });
-                              // Update local state to reflect completion
-                              setUserProgress({ ...userProgress, status: 'COMPLETED' });
-                            }
-                          } catch (err) {
-                            console.error("Error completing challenge:", err);
-                            toast.error("An error occurred", {
-                              duration: 4000,
-                              position: "top-center",
-                              style: {
-                                background: "#1f1730",
-                                color: "#fff",
-                                border: "1px solid #ef4444",
-                              },
-                            });
-                          } finally {
-                            setCompletingChallenge(false);
-                          }
-                        }}
-                        disabled={completingChallenge}
-                        className="w-full sm:w-auto bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 font-bold py-2 sm:py-2.5 px-3 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-1.5 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled
+                        className="w-full sm:w-auto bg-gray-600/20 text-gray-400 font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-base sm:text-lg cursor-wait"
                       >
-                        {completingChallenge ? (
-                          <Loader2 className="animate-spin" size={20} />
-                        ) : (
-                          <CheckCircle size={20} />
-                        )}
-                        <span className="text-sm sm:text-base">Complete Challenge</span>
+                        <Loader2 className="animate-spin" size={20} />
+                        <span className="text-sm sm:text-base">Loading Status...</span>
                       </button>
+                    );
+                  }
+
+                  if (shouldShowActionButtons) {
+                    return (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (!userProgress || userProgress.error) {
+                              if (selectedChallenge.weekData) {
+                                joinChallenge(selectedChallenge.weekData.id);
+                              }
+                            } else {
+                              setIsChallengeStarted(true);
+                            }
+                          }}
+                          disabled={joiningChallenge}
+                          className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 sm:py-3 px-4 rounded-2xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {joiningChallenge ? (
+                            <>
+                              <Loader2 className="animate-spin" size={20} />
+                              <span className="text-sm sm:text-base">Joining...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play size={18} />
+                              <span className="text-sm sm:text-base">{getChallengeButtonText()}</span>
+                            </>
+                          )}
+                        </button>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-6 py-3 rounded-xl font-bold flex items-center gap-2">
+                      <CheckCircle size={20} />
+                      Challenge Completed
+                    </div>
+                  );
+                })()}
+
+                {/* Complete Challenge Button */}
+                {userProgress && userProgress.status === 'IN_PROGRESS' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        setCompletingChallenge(true); // Ensure this state is defined
+                        const tokens = JSON.parse(localStorage.getItem("authTokens"));
+                        const participationId = userProgress.id;
+
+                        const response = await fetch(`${baseURL}challenges/participations/${participationId}/complete-challenge/`, {
+                          method: 'POST',
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${tokens?.access}`,
+                          }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.error) {
+                          toast.error(data.error, {
+                            duration: 4000,
+                            position: "top-center",
+                            style: {
+                              background: "#1f1730",
+                              color: "#fff",
+                              border: "1px solid #ef4444",
+                            },
+                          });
+                        } else {
+                          toast.success("Challenge Completed Successfully!", {
+                            duration: 4000,
+                            position: "top-center",
+                            style: {
+                              background: "#1f1730",
+                              color: "#fff",
+                              border: "1px solid #22c55e",
+                            },
+                          });
+                          // Update local state to reflect completion
+                          setUserProgress({ ...userProgress, status: 'COMPLETED' });
+                        }
+                      } catch (err) {
+                        console.error("Error completing challenge:", err);
+                        toast.error("An error occurred", {
+                          duration: 4000,
+                          position: "top-center",
+                          style: {
+                            background: "#1f1730",
+                            color: "#fff",
+                            border: "1px solid #ef4444",
+                          },
+                        });
+                      } finally {
+                        setCompletingChallenge(false);
+                      }
+                    }}
+                    disabled={completingChallenge}
+                    className="w-full sm:w-auto bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 font-bold py-2 sm:py-2.5 px-3 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-1.5 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {completingChallenge ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <CheckCircle size={20} />
                     )}
-                  </>
-                ) : (
-                  <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-6 py-3 rounded-xl font-bold flex items-center gap-2">
-                    <CheckCircle size={20} />
-                    Challenge Completed
-                  </div>
+                    <span className="text-sm sm:text-base">Complete Challenge</span>
+                  </button>
                 )}
+
               </div>
             </div>
-
-            {walletData && (
-              <div className="w-full rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all">
-                {walletLoading ? (
-                  <div className="flex flex-col items-center justify-center h-[120px]">
-                    <Loader2
-                      className="animate-spin text-purple-400 mb-3"
-                      size={32}
-                    />
-                    <p className="text-sm text-gray-300 font-medium">
-                      Loading wallet...
-                    </p>
-                  </div>
-                ) : (
-                  <div className="h-auto sm:h-[120px] flex flex-col">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                        <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                        <span className="truncate">{walletData.week_title} Wallet</span>
-                      </h3>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-green-500/30 transition-all">
-                        <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1 sm:mb-1.5 uppercase tracking-wide">
-                          Available
-                        </p>
-                        <p className="text-base sm:text-lg font-bold text-green-400 tabular-nums">
-                          {parseFloat(
-                            walletData.available_balance
-                          ).toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </p>
-                      </div>
-
-                      <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-yellow-500/30 transition-all">
-                        <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1 sm:mb-1.5 uppercase tracking-wide">
-                          Locked
-                        </p>
-                        <p className="text-base sm:text-lg font-bold text-yellow-400 tabular-nums">
-                          {parseFloat(walletData.locked_balance).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 2 }
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-blue-500/30 transition-all">
-                        <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1  sm:mb-1.5 uppercase tracking-wide">
-                          Earned
-                        </p>
-                        <p className="text-base sm:text-lg font-bold text-blue-400 tabular-nums">
-                          {parseFloat(walletData.earned_balance).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 2 }
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          <div className="flex flex-col lg:flex-row w-full flex-1 justify-between gap-4 lg:gap-6">
-            <div className="w-full lg:w-10/12 space-y-4 sm:space-y-6">
-              {/* Your Mission */}
-              <div className="bg-[#10081C] rounded-2xl p-4 sm:p-6">
-                <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
-                  <Target className="" size={24} />
-                  Your Mission
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                  <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
-                    <div className="text-xs sm:text-sm text-purple-300 mb-1">
-                      Target PnL
-                    </div>
-                    <div className="text-xl sm:text-2xl font-bold text-[#7A00E4]">
-                      {selectedChallenge.mission.targetPnL}
-                    </div>
-                    <div className="text-xs mt-1">from entry</div>
+          {walletData && (
+            <div className="w-full rounded-xl p-3 border shadow-lg border-purple-500/40 transition-all">
+              {walletLoading ? (
+                <div className="flex flex-col items-center justify-center h-[120px]">
+                  <Loader2
+                    className="animate-spin text-purple-400 mb-3"
+                    size={32}
+                  />
+                  <p className="text-sm text-gray-300 font-medium">
+                    Loading wallet...
+                  </p>
+                </div>
+              ) : (
+                <div className="h-auto sm:h-[120px] flex flex-col">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                      <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                      <span className="truncate">{walletData.week_title} Wallet</span>
+                    </h3>
                   </div>
-                  <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
-                    <div className="text-xs sm:text-sm text-purple-300 mb-1">
-                      Start Date
+
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-green-500/30 transition-all">
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1 sm:mb-1.5 uppercase tracking-wide">
+                        Available
+                      </p>
+                      <p className="text-base sm:text-lg font-bold text-green-400 tabular-nums">
+                        {parseFloat(
+                          walletData.available_balance
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
                     </div>
-                    <div className="text-lg sm:text-xl font-bold text-green-400">
-                      {selectedChallenge.mission.startDate}
+
+                    <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-yellow-500/30 transition-all">
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1 sm:mb-1.5 uppercase tracking-wide">
+                        Locked
+                      </p>
+                      <p className="text-base sm:text-lg font-bold text-yellow-400 tabular-nums">
+                        {parseFloat(walletData.locked_balance).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 2 }
+                        )}
+                      </p>
                     </div>
-                  </div>
-                  <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
-                    <div className="text-xs sm:text-sm text-purple-300 mb-1">End Date</div>
-                    <div className="text-lg sm:text-xl font-bold text-red-400">
-                      {selectedChallenge.mission.endDate}
+
+                    <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 rounded-lg p-2 sm:p-1 border border-gray-700/50 hover:border-blue-500/30 transition-all">
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium mb-1  sm:mb-1.5 uppercase tracking-wide">
+                        Earned
+                      </p>
+                      <p className="text-base sm:text-lg font-bold text-blue-400 tabular-nums">
+                        {parseFloat(walletData.earned_balance).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 2 }
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+        </div>
 
-                <div className="mt-4 sm:mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="p-3 sm:p-4 border border-purple-500/20 rounded-xl">
-                    <div className="text-xs sm:text-sm text-purple-300 mb-2">
-                      Allowed Pairs
-                    </div>
-                    <div className="text-base sm:text-lg font-bold text-[#F3AD0A]">
-                      {selectedChallenge.mission.allowedPairs}
-                    </div>
+        <div className="flex flex-col lg:flex-row w-full flex-1 justify-between gap-4 lg:gap-6">
+          <div className="w-full lg:w-10/12 space-y-4 sm:space-y-6">
+            {/* Your Mission */}
+            <div className="bg-[#10081C] rounded-2xl p-4 sm:p-6">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
+                <Target className="" size={24} />
+                Your Mission
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
+                  <div className="text-xs sm:text-sm text-purple-300 mb-1">
+                    Target PnL
                   </div>
-                  <div className="p-3 sm:p-4 border border-purple-500/20 rounded-xl">
-                    <div className="text-xs sm:text-sm text-purple-300 mb-2">
-                      Minimum Trades
-                    </div>
-                    <div className="text-xs sm:text-sm font-semibold text-white">
-                      {selectedChallenge.mission.minTrades}
-                    </div>
+                  <div className="text-xl sm:text-2xl font-bold text-[#7A00E4]">
+                    {selectedChallenge.mission.targetPnL}
+                  </div>
+                  <div className="text-xs mt-1">from entry</div>
+                </div>
+                <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
+                  <div className="text-xs sm:text-sm text-purple-300 mb-1">
+                    Start Date
+                  </div>
+                  <div className="text-lg sm:text-xl font-bold text-green-400">
+                    {selectedChallenge.mission.startDate}
                   </div>
                 </div>
-
-                {/* Task Description */}
-                {selectedChallenge.timerBehavior && (
-                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 border border-purple-500/20 rounded-xl">
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl sm:text-2xl">📝</span>
-                      <div>
-                        <h3 className="text-sm sm:text-base font-semibold text-green-400 mb-1">
-                          Task Description
-                        </h3>
-                        <p
-                          className="text-xs sm:text-sm text-purple-200"
-                          dangerouslySetInnerHTML={{
-                            __html: selectedChallenge.timerBehavior,
-                          }}
-                        />
-
-                      </div>
-                    </div>
+                <div className="rounded-xl p-3 sm:p-4 border border-purple-500/20">
+                  <div className="text-xs sm:text-sm text-purple-300 mb-1">End Date</div>
+                  <div className="text-lg sm:text-xl font-bold text-red-400">
+                    {selectedChallenge.mission.endDate}
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Rewards & Unlocks */}
-              <div className="flex flex-col lg:flex-row gap-2 w-full">
-                {selectedChallenge.rewards && (
-                  <div className="border w-full lg:w-2/4 bg-[#10081C] border-purple-500/30 rounded-2xl p-4 sm:p-6">
-                    <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
-                      Rewards & Unlocks
-                    </h2>
+              <div className="mt-4 sm:mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-4 border border-purple-500/20 rounded-xl">
+                  <div className="text-xs sm:text-sm text-purple-300 mb-2">
+                    Allowed Pairs
+                  </div>
+                  <div className="text-base sm:text-lg font-bold text-[#F3AD0A]">
+                    {selectedChallenge.mission.allowedPairs}
+                  </div>
+                </div>
+                <div className="p-3 sm:p-4 border border-purple-500/20 rounded-xl">
+                  <div className="text-xs sm:text-sm text-purple-300 mb-2">
+                    Minimum Trades
+                  </div>
+                  <div className="text-xs sm:text-sm font-semibold text-white">
+                    {selectedChallenge.mission.minTrades}
+                  </div>
+                </div>
+              </div>
 
-                    {selectedChallenge.rewards.badgeName !== "No badge" && (
-                      <div className="mb-4 sm:mb-6 text-center">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 border-2 border-yellow-400 rounded-full flex items-center justify-center bg-yellow-400/10">
-                          <span className="text-3xl sm:text-4xl">🏆</span>
-                        </div>
-                        <div className="text-lg sm:text-xl font-bold text-yellow-400 mb-1">
-                          {selectedChallenge.rewards.badgeName}
-                        </div>
-                        {selectedChallenge.rewards.badgeDescription && (
-                          <div className="text-xs sm:text-sm text-purple-300">
-                            {selectedChallenge.rewards.badgeDescription}
-                          </div>
-                        )}
-                      </div>
-                    )}
+              {/* Task Description */}
+              {selectedChallenge.timerBehavior && (
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 border border-purple-500/20 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl sm:text-2xl">📝</span>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-semibold text-green-400 mb-1">
+                        Task Description
+                      </h3>
+                      <p
+                        className="text-xs sm:text-sm text-purple-200"
+                        dangerouslySetInnerHTML={{
+                          __html: selectedChallenge.timerBehavior,
+                        }}
+                      />
 
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="text-center p-3 sm:p-4 border border-purple-500/20 rounded-xl">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 border rounded-full flex items-center justify-center">
-                          <span className="text-xl sm:text-2xl">💰</span>
-                        </div>
-                        <div className="text-xs text-purple-300 mb-1">
-                          Profit Bonus
-                        </div>
-                        <div className="text-base sm:text-lg font-bold text-green-400">
-                          {selectedChallenge.rewards.profitCoins} ZC
-                        </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rewards & Unlocks */}
+            <div className="flex flex-col lg:flex-row gap-2 w-full">
+              {selectedChallenge.rewards && (
+                <div className="border w-full lg:w-2/4 bg-[#10081C] border-purple-500/30 rounded-2xl p-4 sm:p-6">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
+                    Rewards & Unlocks
+                  </h2>
+
+                  {selectedChallenge.rewards.badgeName !== "No badge" && (
+                    <div className="mb-4 sm:mb-6 text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 border-2 border-yellow-400 rounded-full flex items-center justify-center bg-yellow-400/10">
+                        <span className="text-3xl sm:text-4xl">🏆</span>
                       </div>
-                      <div className="text-center p-3 sm:p-4 border border-purple-500/20 rounded-xl">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 border rounded-full flex items-center justify-center">
-                          <span className="text-xl sm:text-2xl">🛡️</span>
+                      <div className="text-lg sm:text-xl font-bold text-yellow-400 mb-1">
+                        {selectedChallenge.rewards.badgeName}
+                      </div>
+                      {selectedChallenge.rewards.badgeDescription && (
+                        <div className="text-xs sm:text-sm text-purple-300">
+                          {selectedChallenge.rewards.badgeDescription}
                         </div>
-                        <div className="text-xs text-purple-300 mb-1">
-                          Loss Recovery
-                        </div>
-                        <div className="text-base sm:text-lg font-bold text-orange-400">
-                          {selectedChallenge.rewards.lossCoins} ZC
-                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="text-center p-3 sm:p-4 border border-purple-500/20 rounded-xl">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 border rounded-full flex items-center justify-center">
+                        <span className="text-xl sm:text-2xl">💰</span>
+                      </div>
+                      <div className="text-xs text-purple-300 mb-1">
+                        Profit Bonus
+                      </div>
+                      <div className="text-base sm:text-lg font-bold text-green-400">
+                        {selectedChallenge.rewards.profitCoins} ZC
+                      </div>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 border border-purple-500/20 rounded-xl">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 border rounded-full flex items-center justify-center">
+                        <span className="text-xl sm:text-2xl">🛡️</span>
+                      </div>
+                      <div className="text-xs text-purple-300 mb-1">
+                        Loss Recovery
+                      </div>
+                      <div className="text-base sm:text-lg font-bold text-orange-400">
+                        {selectedChallenge.rewards.lossCoins} ZC
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                <div className="space-y-2 w-full lg:w-2/4">
-                  <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
-                    <h2 className="text-xl sm:text-2xl font-bold mb-4">Prerequisites</h2>
-                    <div className="space-y-3">
-                      {selectedChallenge.prerequisites.map((prereq, idx) => (
+              <div className="space-y-2 w-full lg:w-2/4">
+                <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-4">Prerequisites</h2>
+                  <div className="space-y-3">
+                    {selectedChallenge.prerequisites.map((prereq, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 rounded-lg p-2 sm:p-3"
+                      >
                         <div
-                          key={idx}
-                          className="flex items-center gap-3 rounded-lg p-2 sm:p-3"
+                          className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${prereq.completed ? "bg-green-500" : "bg-gray-600"
+                            }`}
                         >
-                          <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${prereq.completed ? "bg-green-500" : "bg-gray-600"
-                              }`}
-                          >
-                            {prereq.completed && <Check size={16} />}
-                          </div>
-                          <span
-                            className={`text-xs sm:text-sm ${prereq.completed ? "text-white" : "text-gray-400"
-                              }`}
-                          >
-                            {prereq.text}
-                          </span>
+                          {prereq.completed && <Check size={16} />}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border bg-[#10081C] border-purple-500/30 rounded-2xl p-4 sm:p-6">
-                    <h2 className="text-xl sm:text-2xl font-bold mb-4">
-                      Coin Incentive System
-                    </h2>
-                    <div className="flex flex-col divide-y divide-purple-500/80 rounded-xl overflow-hidden">
-                      <div className="flex justify-between py-2">
-                        <div className="text-xs sm:text-sm mb-1">Loss Recovery</div>
-                        <div className="text-xs sm:text-sm font-bold text-orange-400">
-                          {selectedChallenge.coinIncentive.loss}
-                        </div>
+                        <span
+                          className={`text-xs sm:text-sm ${prereq.completed ? "text-white" : "text-gray-400"
+                            }`}
+                        >
+                          {prereq.text}
+                        </span>
                       </div>
-                      <div className="flex justify-between py-2">
-                        <div className="text-xs sm:text-sm mb-1">Profit Bonus</div>
-                        <div className="text-xs sm:text-sm font-bold text-green-400">
-                          {selectedChallenge.coinIncentive.profit}
-                        </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border bg-[#10081C] border-purple-500/30 rounded-2xl p-4 sm:p-6">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-4">
+                    Coin Incentive System
+                  </h2>
+                  <div className="flex flex-col divide-y divide-purple-500/80 rounded-xl overflow-hidden">
+                    <div className="flex justify-between py-2">
+                      <div className="text-xs sm:text-sm mb-1">Loss Recovery</div>
+                      <div className="text-xs sm:text-sm font-bold text-orange-400">
+                        {selectedChallenge.coinIncentive.loss}
+                      </div>
+                    </div>
+                    <div className="flex justify-between py-2">
+                      <div className="text-xs sm:text-sm mb-1">Profit Bonus</div>
+                      <div className="text-xs sm:text-sm font-bold text-green-400">
+                        {selectedChallenge.coinIncentive.profit}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Right Sidebar */}
-            <div className="space-y-2 w-full lg:w-auto">
-              <div className="space-y-2 w-full">
-                <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-bold mb-2">Scoring System</h3>
-                  <p className="text-xs sm:text-sm text-red-400 mb-4">
-                    {selectedChallenge.scoringSystem.type}
-                  </p>
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span className="text-purple-300">Profit ➡️</span>
-                      <span className="font-semibold">Score</span>
-                    </div>
-                    {selectedChallenge.scoringSystem.tiers.map((tier, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between py-2 border-b border-purple-500/20"
-                      >
-                        <span className={`text-xs sm:text-sm ${tier.color}`}>{tier.name}</span>
-                        <span className="text-purple-300 text-xs sm:text-sm">
-                          {tier.range}
-                        </span>
-                      </div>
-                    ))}
+          {/* Right Sidebar */}
+          <div className="space-y-2 w-full lg:w-auto">
+            <div className="space-y-2 w-full">
+              <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-bold mb-2">Scoring System</h3>
+                <p className="text-xs sm:text-sm text-red-400 mb-4">
+                  {selectedChallenge.scoringSystem.type}
+                </p>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="text-purple-300">Profit ➡️</span>
+                    <span className="font-semibold">Score</span>
                   </div>
-                  <div className="">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm sm:text-base text-purple-300">Score</span>
-                      <span className="text-xl sm:text-2xl font-bold text-orange-400">
-                        {selectedChallenge.scoringSystem.currentScore}
+                  {selectedChallenge.scoringSystem.tiers.map((tier, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between py-2 border-b border-purple-500/20"
+                    >
+                      <span className={`text-xs sm:text-sm ${tier.color}`}>{tier.name}</span>
+                      <span className="text-purple-300 text-xs sm:text-sm">
+                        {tier.range}
                       </span>
                     </div>
+                  ))}
+                </div>
+                <div className="">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm sm:text-base text-purple-300">Score</span>
+                    <span className="text-xl sm:text-2xl font-bold text-orange-400">
+                      {selectedChallenge.scoringSystem.currentScore}
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-bold mb-4">Challenge Tiers</h3>
-                  <div className="space-y-3">
-                    {selectedChallenge.challengeTiers.map((tier, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${tier.unlocked
-                          ? "bg-orange-900/20 border-orange-500/30"
-                          : "bg-gray-900/20 border-gray-500/30"
-                          }`}
-                      >
-                        <span className="text-xl sm:text-2xl">
-                          {tier.name === "Bronze"
-                            ? "🥉"
-                            : tier.name === "Silver"
-                              ? "🥈"
-                              : "🥇"}
-                        </span>
-                        <div className="flex-1">
-                          <div
-                            className={`text-sm sm:text-base font-semibold ${tier.unlocked
-                              ? "text-orange-400"
-                              : "text-gray-400"
-                              }`}
-                          >
-                            {tier.name}
-                          </div>
-                          <div className="text-xs text-purple-300">
-                            {tier.level}
-                          </div>
+              <div className="bg-[#10081C] border border-purple-500/30 rounded-2xl p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-bold mb-4">Challenge Tiers</h3>
+                <div className="space-y-3">
+                  {selectedChallenge.challengeTiers.map((tier, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${tier.unlocked
+                        ? "bg-orange-900/20 border-orange-500/30"
+                        : "bg-gray-900/20 border-gray-500/30"
+                        }`}
+                    >
+                      <span className="text-xl sm:text-2xl">
+                        {tier.name === "Bronze"
+                          ? "🥉"
+                          : tier.name === "Silver"
+                            ? "🥈"
+                            : "🥇"}
+                      </span>
+                      <div className="flex-1">
+                        <div
+                          className={`text-sm sm:text-base font-semibold ${tier.unlocked
+                            ? "text-orange-400"
+                            : "text-gray-400"
+                            }`}
+                        >
+                          {tier.name}
                         </div>
-                        {!tier.unlocked && (
-                          <Lock size={16} className="text-gray-400" />
-                        )}
+                        <div className="text-xs text-purple-300">
+                          {tier.level}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      {!tier.unlocked && (
+                        <Lock size={16} className="text-gray-400" />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1380,8 +1404,8 @@ export default function Challenges() {
         </div>
       </div>
     );
-  }
 
+  }
   // Main Challenges List View
   return (
     <div className="min-h-screen text-white p-2 sm:p-4  overflow-x-hidden relative">
