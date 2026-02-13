@@ -23,7 +23,7 @@ from django.http import JsonResponse
 #     return JsonResponse({"status": "ok", "message": "ZeuzCrypto Server is running"})
 
 urlpatterns = [
-    path("", health_check, name="health_check"),
+    # path("", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("api/", include("api.urls")),
 ]
