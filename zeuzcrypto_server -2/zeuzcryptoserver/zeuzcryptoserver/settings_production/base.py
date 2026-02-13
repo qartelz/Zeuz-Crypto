@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     # Django contrib apps
-    # "django.contrib.sites",
+    "django.contrib.sites",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
