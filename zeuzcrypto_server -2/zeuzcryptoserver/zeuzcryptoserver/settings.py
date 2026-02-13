@@ -25,8 +25,7 @@ SECRET_KEY = "django-insecure-+5s+xno^y)ss$-8i8_#%7xv3-)im#gihn1g$c^l!wd!&6#ryj7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = ["zeuzcrypto.com", "www.zeuzcrypto.com", "13.51.47.77"]
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -75,11 +74,17 @@ WSGI_APPLICATION = "zeuzcryptoserver.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+import dj_database_url
+import os
+
+# ...
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default="postgres://postgres:iDLijIdGtsgKjIeJxmUHDUDskdftytZX@shinkansen.proxy.rlwy.net:13821/railway",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 

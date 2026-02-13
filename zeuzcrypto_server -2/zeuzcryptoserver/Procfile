@@ -1,0 +1,3 @@
+web: daphne -b 0.0.0.0 -p $PORT zeuzcryptoserver.asgi:application
+worker: celery -A zeuzcryptoserver worker -l info
+beat: celery -A zeuzcryptoserver beat -l info

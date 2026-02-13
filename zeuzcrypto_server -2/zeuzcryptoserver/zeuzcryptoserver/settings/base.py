@@ -18,6 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key")
 SECRET_KEY = "django-insecure-+5s+xno^y)ss$-8i8_#%7xv3-)im#gihn1g$c^l!wd!&6#ryj7"
 
+ALLOWED_HOSTS = ["*"]
+
 # -----------------------------------------------------------------------------
 # Custom User Model
 # -----------------------------------------------------------------------------
@@ -27,6 +29,7 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
+    'daphne',
 
     'channels',
     
@@ -75,45 +78,32 @@ WSGI_APPLICATION = "zeuzcryptoserver.wsgi.application"
 # -----------------------------------------------------------------------------
 # Database
 # -----------------------------------------------------------------------------
+import dj_database_url
+
+# ...
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default="postgres://postgres:iDLijIdGtsgKjIeJxmUHDUDskdftytZX@shinkansen.proxy.rlwy.net:13821/railway",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
-CELERY_BROKER_URL = "redis://localhost:6379/0"  # or your Redis/RabbitMQ URL
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Kolkata"
-# -----------------------------------------------------------------------------
-# Templates
-# -----------------------------------------------------------------------------
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # keep this for custom templates
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
-# -----------------------------------------------------------------------------
-# WebSocket / Channels configuration
-# -----------------------------------------------------------------------------
+
+# ...
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [os.getenv("REDIS_URL", "redis://127.0.0.1:6379")],
         },
     },
 }
