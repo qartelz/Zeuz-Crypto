@@ -8,7 +8,12 @@ DEBUG = False
 
 # Set this environment variable to a comma-separated list of allowed hosts
 ALLOWED_HOSTS = ["*"] # Allow all for Railway internal/external routing or customize
-CSRF_TRUSTED_ORIGINS = ["https://*.up.railway.app", "https://*.railway.app"]
+CSRF_TRUSTED_ORIGINS = [
+    # "https://*.up.railway.app",
+    # "https://*.railway.app",
+    "https://zeuzcrypto.com",
+    "https://www.zeuzcrypto.com",
+]
 
 # Database
 # Railway provides DATABASE_URL for linked Postgres services

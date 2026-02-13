@@ -9,7 +9,7 @@ def main():
     """Run administrative tasks."""
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE",
-        os.getenv("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings.dev")
+        os.getenv("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings_production.dev")
     )
 
     try:
