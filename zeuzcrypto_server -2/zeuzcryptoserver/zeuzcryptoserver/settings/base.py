@@ -18,6 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key")
 SECRET_KEY = "django-insecure-+5s+xno^y)ss$-8i8_#%7xv3-)im#gihn1g$c^l!wd!&6#ryj7"
 
+ALLOWED_HOSTS = ["*"]
+
 # -----------------------------------------------------------------------------
 # Custom User Model
 # -----------------------------------------------------------------------------
