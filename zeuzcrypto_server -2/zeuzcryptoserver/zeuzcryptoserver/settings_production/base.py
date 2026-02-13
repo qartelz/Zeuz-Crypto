@@ -30,7 +30,6 @@ AUTH_USER_MODEL = "accounts.User"
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
     'daphne',
-
     'channels',
     
     "apps.account",
