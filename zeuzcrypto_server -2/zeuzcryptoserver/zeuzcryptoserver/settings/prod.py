@@ -12,9 +12,11 @@ CSRF_TRUSTED_ORIGINS = ["https://*.up.railway.app", "https://*.railway.app"]
 
 # Database
 # Railway provides DATABASE_URL for linked Postgres services
+# Database
+# Use provided credentials or fallback to DATABASE_URL
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
+        default="postgres://postgres:iDLijIdGtsgKjIeJxmUHDUDskdftytZX@shinkansen.proxy.rlwy.net:13821/railway",
         conn_max_age=600,
         conn_health_checks=True,
     )
