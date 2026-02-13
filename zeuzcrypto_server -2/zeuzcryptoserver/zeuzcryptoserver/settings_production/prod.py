@@ -4,7 +4,7 @@ from .base import *
 import os
 import dj_database_url
 
-DEBUG = False
+DEBUG = True
 
 # Set this environment variable to a comma-separated list of allowed hosts
 ALLOWED_HOSTS = ["*"] # Allow all for Railway internal/external routing or customize
