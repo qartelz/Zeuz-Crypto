@@ -27,6 +27,7 @@ AUTH_USER_MODEL = "accounts.User"
 # Installed Apps
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
+    'daphne',
 
     'channels',
     
