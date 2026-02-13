@@ -26,3 +26,6 @@ whitenoise
 dj-database-url
 psycopg2-binary
 django-cors-headers
+djangorestframework
+djangorestframework-simplejwt
+django-filter
