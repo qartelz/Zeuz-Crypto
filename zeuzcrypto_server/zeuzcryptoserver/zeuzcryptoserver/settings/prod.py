@@ -4,7 +4,7 @@ from .base import *
 
 import os
 
-DEBUG = False
+DEBUG = True
 
 # Set this environment variable to a comma-separated list of allowed hosts
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "yourdomain.com").split(",")
