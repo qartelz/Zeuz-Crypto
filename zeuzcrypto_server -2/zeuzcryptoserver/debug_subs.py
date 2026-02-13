@@ -6,7 +6,7 @@ from django.conf import settings
 # Add the project root to sys.path
 sys.path.append(os.getcwd())
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings.dev")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings_production.dev")
 django.setup()
 
 from apps.accounts.models import User

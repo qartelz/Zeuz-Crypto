@@ -3,7 +3,7 @@ from celery import Celery
 from django.conf import settings
 from celery.schedules import crontab, timedelta
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings.base")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zeuzcryptoserver.settings_production.base")
 
 app = Celery("zeuzcryptoserver")
 app.config_from_object("django.conf:settings", namespace="CELERY")
